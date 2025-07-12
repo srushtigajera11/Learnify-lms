@@ -2,57 +2,29 @@ const Enrollment = require('../models/Enrollment');
 const Course = require('../models/courseModel');
 const Lesson = require('../models/Lesson');
 
-exports.getStudentDashboard = async (req, res) => {
-  try {
-    const studentId = req.user._id;
-
-    // Find all enrollments of the student
-    const enrollments = await Enrollment.find({ studentId })
-      .populate('courseId')
-      .populate('progress.lessonId');
-
-    const dashboardData = [];
-
-    for (const enroll of enrollments) {
-      const course = enroll.courseId;
-
-      // Count all lessons of the course
-      const totalLessons = await Lesson.countDocuments({ courseId: course._id });
-
-      // Count completed lessons from progress array
-      const completedLessons = enroll.progress.length;
-
-      dashboardData.push({
-        courseId: course._id,
-        title: course.title,
-        description: course.description,
-        totalLessons,
-        completedLessons,
-        enrolledAt: enroll.enrolledAt,
-      });
-    }
-
-    res.json({ success: true, courses: dashboardData });
-
-  } catch (error) {
-    console.error('Student dashboard error:', error);
-    res.status(500).json({ success: false, message: 'Server Error' });
-  }
-};
-
 exports.getAllCoursesForStudents = async (req, res) => {
-  try{
-    const courses = await Course.find({status : 'published'}).populate('createdBy', 'name');
+  try {
+    const courses = await Course.find({ status: 'published' }).populate('createdBy', 'name');
+
+    const coursesWithLessons = await Promise.all(
+      courses.map(async (course) => {
+        const totalLessons = await Lesson.countDocuments({ courseId: course._id });
+        return {
+          ...course.toObject(),
+          totalLessons,
+        };
+      })
+    );
+
     res.status(200).json({
       success: true,
-      courses
+      courses: coursesWithLessons,
     });
-  }catch (error) {
+  } catch (error) {
     console.error('Error fetching courses:', error);
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
-
 
 exports.enrollInCourse = async (req, res) => {
   try {
@@ -86,8 +58,13 @@ exports.getEnrolledCourses = async (req, res) => {
 
     // Find all enrollments of the student
     const enrollments = await Enrollment.find({ studentId })
-      .populate('courseId', 'title description createdBy thumbnail')
-      .populate('progress.lessonId', 'title');
+  .populate({
+    path: 'courseId',
+    select: 'title description createdBy thumbnail',
+    populate: { path: 'createdBy', select: 'name' }  // <-- This populates instructor name
+  })
+  .populate('progress.lessonId', 'title');
+
 
     if (!enrollments.length) {
       return res.status(404).json({ success: false, message: 'No enrolled courses found' });

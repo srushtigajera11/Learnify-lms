@@ -30,30 +30,59 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchCourses = async () => {
-
-      try {
-        setLoading(true);
-        const res = await axiosInstance.get('/students/courses');
-        if (Array.isArray(res.data.courses)) {
-          setCourses(res.data.courses);
-        } else {
-          setError('Invalid data format received from server');
-        }
-      } catch (error) {
-         setError(error.response?.data?.message || 'Failed to fetch courses');
-      } finally {
-        setLoading(false);
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosInstance.get('/students/courses');
+      if (Array.isArray(res.data.courses)) {
+        setCourses(res.data.courses);
+      } else {
+        setError('Invalid data format received from server');
       }
-    };
 
-    fetchCourses();
-  }, []);
+      // ✅ Fetch wishlist here:
+      const wishlistData = await fetchWishlist();
+      setWishlist(wishlistData.map((item) => item.courseId._id));  // store course IDs in wishlist state
+      
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to fetch courses');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleEnroll = async (courseId) => {
+  fetchCourses();
+}, []);
+
+
+  const handleEnroll = async (courseId , coursePrice) => {
   try {
-    const res = await axiosInstance.post(`/students/enroll/${courseId}`);
-    alert(res.data.message);
+    const {data : keydata} = await axiosInstance.get('/payment/get-key');
+    const razorpayKey = keydata.key;
+    const {data : orderdata} = await axiosInstance.post(`/payment/create-order`, { amount: coursePrice });
+    console.log("Order data:", orderdata);
+     // Open Razorpay Checkout
+      const options = {
+        key: razorpayKey, // Replace with your Razorpay key_id
+        amount: orderdata.order.amount, // Amount is in currency subunits. Default currency is INR. Hence, 50000 refers to 50000 paise
+        currency: 'INR',
+        name: 'Leranify LMS',
+        description: 'Test Transaction',
+        order_id: orderdata.order.id, // This is the order_id created in the backend
+        callback_url: 'http://localhost:3000/payment-success', // Your success URL
+        prefill: {
+          name: 'Srish j',
+          email: 'srish.j@example.com',
+          contact: '9999999999'
+        },
+        theme: {
+          color: '#F37254'
+        },
+      };
+
+      const rzp = new Razorpay(options);
+      rzp.open();
+    
   } catch (err) {
     alert(err.response?.data?.message || "Enrollment failed");
   }
@@ -119,6 +148,7 @@ if (error) {
               <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
                 <Chip label={`Lessons: ${course.totalLessons}`} />
                 <Chip label={`CreatedBy: ${course.createdBy?.name}`} />
+                <Chip label={`Price: ₹${course.price}`} />
               </Stack>
             </CardContent>
             <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between' }}>
@@ -126,7 +156,7 @@ if (error) {
                 variant="contained"
                 color="primary"
                 startIcon={<LaunchIcon />}
-                onClick={() => handleEnroll(course._id)}
+                onClick={() => handleEnroll(course._id, course.price)}
               >
                 Enroll
               </Button>

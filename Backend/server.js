@@ -13,8 +13,10 @@ const studentRoutes = require("./routes/studentRoute");
 const adminRoutes = require('./routes/adminRoute');
 const wishlistRoute = require('./routes/wishlistRoute');
 const progressRoute = require('./routes/progressRoute');
+ const paymentRoute = require('./routes/paymentRoute');
 const path = require("path");
 const PORT = process.env.PORT || 5000;
+
 connectDB();
 
 const app = express();
@@ -35,7 +37,7 @@ app.use('/api/analytics', require('./routes/analyticsRoute'));
 app.use('/api/admin', adminRoutes);
 app.use('/api/wishlist', wishlistRoute);
 app.use('/api/progress', progressRoute);
-
+app.use('/api/payment', paymentRoute);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${process.env.PORT}`);

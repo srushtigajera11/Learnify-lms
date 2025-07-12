@@ -30,15 +30,19 @@ const TutorSidebar = ({ onSelect, selectedRoute }) => {
       variant="permanent"
       anchor="left"
       sx={{
-        width: 220,
+        width: 240,
         flexShrink: 0,
         "& .MuiDrawer-paper": {
-          width: 220,
+          width: 240,
           boxSizing: "border-box",
-          bgcolor: "#fff",
-          borderRight: "1px solid #e0e0e0",
+          bgcolor: "#1c1d1f",  // Dark sidebar
+          color: "#fff",
+          borderRight: "none",
           marginTop: "64px",
           height: "calc(100% - 64px)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
         },
       }}
     >
@@ -50,22 +54,22 @@ const TutorSidebar = ({ onSelect, selectedRoute }) => {
               <ListItemButton
                 onClick={() => onSelect(item.route)}
                 sx={{
-                  color: isSelected ? "#4c1d95" : "#4b5563",
-                  bgcolor: isSelected ? "#e0e7ff" : "transparent",
+                  color: isSelected ? "#fff" : "#d1d5db",
+                  bgcolor: isSelected ? "#343638" : "transparent",
                   "&:hover": {
-                    bgcolor: "#f3e8ff",
-                    color: "#4c1d95",
+                    bgcolor: "#2d2f31",
+          
                   },
                   px: 2,
                   py: 1.5,
-                  borderRadius: "6px",
+                  borderRadius: "8px",
                   mx: 1,
                   my: 0.5,
                 }}
               >
                 <ListItemIcon
                   sx={{
-                    color: isSelected ? "#4c1d95" : "#9ca3af",
+                    color: isSelected ? "#fff" : "#9ca3af",
                     minWidth: 36,
                   }}
                 >
