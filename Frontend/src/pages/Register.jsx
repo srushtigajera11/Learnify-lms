@@ -128,6 +128,10 @@ const Register = () => {
               margin="normal"
               required
             />
+            <Typography variant="caption" color="textSecondary">
+  Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
+</Typography>
+
             <FormControl margin="normal" fullWidth>
               <FormLabel sx={{ mb: 1 }}>Select Role</FormLabel>
               <RadioGroup

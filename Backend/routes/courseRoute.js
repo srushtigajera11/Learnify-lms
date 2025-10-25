@@ -3,34 +3,36 @@ const router = express.Router();
 
 const courseController = require('../controller/courseController');
 const { isAuthenticated, authorizeRoles } = require('../middleware/auth');
-const { uploadThumbnail } = require('../middleware/uploadMiddleware'); // your multer config for Cloudinary upload
+const { uploadThumbnail } = require('../middleware/uploadMiddleware');
 
-// Create course (tutor only) with thumbnail upload (single file field named 'thumbnail')
+// CREATE course (tutor only)
 router.post(
   '/',
   isAuthenticated,
   authorizeRoles('tutor'),
-  uploadThumbnail.single('thumbnail'),  // multer middleware to handle thumbnail upload
+  uploadThumbnail.single('thumbnail'),
   courseController.createCourse
-
 );
 
-// Get all courses (any logged-in user)
-// ✅ Specific routes first
+// GET routes - from specific to general
 router.get('/my-course', isAuthenticated, authorizeRoles('tutor'), courseController.getMyCourses);
 router.get('/my-course/:id', isAuthenticated, authorizeRoles('tutor'), courseController.getMyCourseById);
-router.get('/:courseId', isAuthenticated, authorizeRoles('student'), courseController.getCourseDetails);
 
-// Update course (tutor only) with optional thumbnail upload
+// ✅ ADD THIS MISSING ROUTE
+router.get('/', isAuthenticated, courseController.getAllCourses);
+
+router.get('/:courseId', isAuthenticated, courseController.getCourseDetails);
+
+// UPDATE course (tutor only)
 router.put(
   '/:id',
   isAuthenticated,
   authorizeRoles('tutor'),
-  uploadThumbnail.single('thumbnail'),  // optional thumbnail update
+  uploadThumbnail.single('thumbnail'),
   courseController.updateMyCourse
 );
 
-// Delete course (tutor only)
+// DELETE course (tutor only)
 router.delete(
   '/:id',
   isAuthenticated,

@@ -1,33 +1,47 @@
-// src/components/DashboardCard.jsx
-import { Card, CardContent, Typography } from "@mui/material";
-import EarningsCharts from "../Components/EarningCharts";
+import { Card, CardContent, Typography, Box } from "@mui/material";
 
-const DashboardCard = ({ title, value, icon, color }) => {
+const TutorDashboardCard = ({ title, value, icon, color }) => {
   return (
-    <>
     <Card
       sx={{
         display: "flex",
         alignItems: "center",
         p: 2,
-        backgroundColor: color || "#f5f5f5",
-        boxShadow: 3,
         borderRadius: 3,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+        bgcolor: "white",
       }}
     >
-      <div style={{ fontSize: "2rem", marginRight: 16 }}>{icon}</div>
+      {/* Icon Circle */}
+      <Box
+        sx={{
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          bgcolor: color || "#e0e7ff", // light tint
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          mr: 2,
+        }}
+      >
+        {icon}
+      </Box>
+
+      {/* Text Content */}
       <CardContent sx={{ p: 0 }}>
-        <Typography variant="subtitle2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: 500 }}
+        >
           {title}
         </Typography>
-        <Typography variant="h5" fontWeight="bold">
+        <Typography variant="h5" fontWeight="bold" sx={{ mt: 0.5 }}>
           {value}
         </Typography>
       </CardContent>
     </Card>
-   
-    </>
   );
 };
 
-export default DashboardCard;
+export default TutorDashboardCard;

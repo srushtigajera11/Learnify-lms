@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
 import {
   Typography,
-  Grid,
   Card,
   CardContent,
   CardMedia,
@@ -76,6 +75,7 @@ const EnrolledCourses = () => {
       </Box>
     );
   }
+
   if (enrolledCourses.length === 0) {
     return (
       <Box sx={{ p: 3 }}>
@@ -86,50 +86,94 @@ const EnrolledCourses = () => {
     );
   }
 
-
   return (
     <Box sx={{ p: 3, bgcolor: '#f8f9fc', minHeight: 'calc(100vh - 64px)' }}>
       <Typography variant="h4" gutterBottom>
         Enrolled Courses
       </Typography>
-      <Grid container spacing={3} alignItems="stretch">
+
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+          gap: 3,
+          mt: 2,
+        }}
+      >
         {enrolledCourses.map((course) => {
           const courseData = course.courseId;
           return (
-            <Grid item xs={12} sm={6} md={4} key={course._id}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Card
+              key={course._id}
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: 400,
+              }}
+            >
+              <Box sx={{ height: 160, overflow: 'hidden' }}>
                 <CardMedia
                   component="img"
-                  height="140"
+                  height="160"
                   image={courseData.thumbnail || '/default-thumbnail.jpg'}
                   alt={courseData.title}
+                  sx={{ width: '100%', objectFit: 'cover' }}
                 />
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography variant="h6" gutterBottom noWrap>
-                    {courseData.title}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-                    {courseData.description.substring(0, 80)}...
-                  </Typography>
-                </CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
-                  <Tooltip title={wishlist.includes(courseData._id) ? 'Remove from Wishlist' : 'Add to Wishlist'}>
-                    <IconButton onClick={() => handleWishlistToggle(courseData._id)} color="error">
-                      {wishlist.includes(courseData._id) ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-                    </IconButton>
-                  </Tooltip>
-                  <Button variant="contained" color="primary" onClick={() => navigate(`/student/course/${courseData._id}`)}>
-                    View Course
-                  </Button>
-                  <Typography variant="body2" color="textSecondary">
-                    By {course.courseId.createdBy?.name || 'Unknown'}
-                  </Typography>
-                </Box>
-              </Card>
-            </Grid>
+              </Box>
+
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Typography variant="h6" gutterBottom noWrap>
+                  {courseData.title}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="textSecondary"
+                  sx={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {courseData.description}
+                </Typography>
+              </CardContent>
+
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  px: 2,
+                  pb: 2,
+                }}
+              >
+                <Tooltip
+                  title={
+                    wishlist.includes(courseData._id) ? 'Remove from Wishlist' : 'Add to Wishlist'
+                  }
+                >
+                  <IconButton onClick={() => handleWishlistToggle(courseData._id)} color="error">
+                    {wishlist.includes(courseData._id) ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+                  </IconButton>
+                </Tooltip>
+
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => navigate(`/student/course/${courseData._id}`)}
+                >
+                  View Course
+                </Button>
+
+                {/* <Typography variant="body2" color="textSecondary">
+                  By {courseData.createdBy?.name || 'Unknown'}
+                </Typography> */}
+              </Box>
+            </Card>
           );
         })}
-      </Grid>
+      </Box>
     </Box>
   );
 };

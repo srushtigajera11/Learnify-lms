@@ -18,13 +18,14 @@ const CourseDetail = () => {
   const [progress, setProgress] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [certified, setCertified] = useState(false);
 
+  // Fetch course and lessons
   const fetchCourseDetails = async () => {
     try {
       const { data } = await axiosInstance.get(`/courses/${courseId}`);
       setCourse(data.course);
       setLessons(data.lessons);
-      setProgress(data.progress?.completedLessons || []);
     } catch (err) {
       setError('Failed to load course details');
     } finally {
@@ -32,23 +33,40 @@ const CourseDetail = () => {
     }
   };
 
+  // Fetch saved progress
+  const fetchProgress = async () => {
+    try {
+      const { data } = await axiosInstance.get(`/progress/${courseId}`);
+      setProgress(data.completedLessons || []);
+    } catch (err) {
+      console.error('Failed to fetch progress', err);
+    }
+  };
+
   useEffect(() => {
     fetchCourseDetails();
+    fetchProgress();
   }, [courseId]);
 
+  // Handle lesson complete
   const handleMarkComplete = async (lessonId) => {
-  try {
-    await axiosInstance.post(`/progress/${courseId}/${lessonId}`);
-    setProgress((prev) => [...prev, lessonId]);
-  } catch (err) {
-    console.error('Failed to mark lesson complete', err);
-  }
-};
-
+    try {
+      await axiosInstance.post(`/progress/${courseId}/${lessonId}`);
+      setProgress((prev) => [...prev, lessonId]);
+    } catch (err) {
+      console.error('Failed to mark lesson complete', err);
+    }
+  };
 
   const totalLessons = lessons.length;
   const completedLessons = progress.length;
   const isCourseCompleted = totalLessons > 0 && completedLessons >= totalLessons;
+
+  useEffect(() => {
+    if (isCourseCompleted) {
+      setCertified(true);
+    }
+  }, [completedLessons, totalLessons]);
 
   if (loading) {
     return (
@@ -89,9 +107,9 @@ const CourseDetail = () => {
         {isCourseCompleted && (
           <Chip
             icon={<CheckCircleIcon />}
-            label="Course Completed"
+            label="Course Completed - Certificate Earned"
             color="success"
-            size="small"
+            size="medium"
             sx={{ mt: 2 }}
           />
         )}

@@ -1,6 +1,5 @@
 
-const dotenv = require("dotenv");
-dotenv.config();
+require('dotenv').config(); // 👈 This should be the first line!
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -14,6 +13,7 @@ const adminRoutes = require('./routes/adminRoute');
 const wishlistRoute = require('./routes/wishlistRoute');
 const progressRoute = require('./routes/progressRoute');
  const paymentRoute = require('./routes/paymentRoute');
+const historyRoutes = require('./routes/historyRoute');
 const path = require("path");
 const PORT = process.env.PORT || 5000;
 
@@ -38,6 +38,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/wishlist', wishlistRoute);
 app.use('/api/progress', progressRoute);
 app.use('/api/payment', paymentRoute);
+app.use('/api/history', historyRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${process.env.PORT}`);

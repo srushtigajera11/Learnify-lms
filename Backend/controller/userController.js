@@ -4,12 +4,16 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
 const { isAdmin } = require('../middleware/isAdmin');
+const { registerSchema } = require('../utils/validation');
 dotenv.config();
 
 
 
 exports.createUserProfile = async (req, res) => {
   try {
+     const { error } = registerSchema.validate(req.body);
+    if (error) return res.status(400).json({ message: error.details[0].message });
+
     const { name, email, password, role } = req.body;
 
     const existingUser = await User.findOne({ email });

@@ -1,5 +1,6 @@
 const Course = require('../models/courseModel');
 const Lesson = require('../models/Lesson');
+const cloudinary = require('../utils/cloudinary');
 // Create a new course (Tutor only)
 exports.createCourse = async (req, res) => {
   try {
@@ -57,23 +58,21 @@ exports.getMyCourseById = async (req, res) => {
 };
 
 
-// Get all published courses (or draft courses if admin/tutor)
+// In getAllCourses - fix the user reference
 exports.getAllCourses = async (req, res) => {
   try {
     let filter = { status: 'published' };
 
-    // If user is tutor/admin, they can see their draft courses
     if (req.user.role === 'tutor') {
       filter = {
         $or: [
           { status: 'published' },
-          { createdBy: req.user._id },
-          { status: 'draft', createdBy: req.user._id }
+          { createdBy: req.user.id }, // ✅ FIXED: req.user.id instead of req.user._id
         ]
       };
     }
     else if (req.user.role === 'admin') {
-      filter = {}; // Admin can see all courses
+      filter = {};
     }
 
     const courses = await Course.find(filter).populate('createdBy', 'name email');
@@ -101,7 +100,7 @@ exports.updateMyCourse = async (req, res) => {
   try {
     const courseId = req.params.id;
 
-    // Find course first
+    // Find the course
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: 'Course not found' });
 
@@ -118,13 +117,14 @@ exports.updateMyCourse = async (req, res) => {
       course.thumbnail = result.secure_url;
     }
 
-    // Update allowed fields
-    const allowedUpdates = ['title', 'description', 'status'];
-    allowedUpdates.forEach((field) => {
-      if (req.body[field]) {
-        course[field] = req.body[field];
-      }
-    });
+    // ✅ FIX: Update ALL fields from request body
+    const { title, description, status, category, price } = req.body;
+
+    course.title = title !== undefined ? title : course.title;
+    course.description = description !== undefined ? description : course.description;
+    course.status = status !== undefined ? status : course.status;
+    course.category = category !== undefined ? category : course.category;
+    course.price = price !== undefined ? parseFloat(price) : course.price; // Convert to number
 
     await course.save();
     res.json({ message: 'Course updated successfully', course });

@@ -1,4 +1,3 @@
-// src/components/StudentSidebar.jsx
 import React from "react";
 import {
   Drawer,
@@ -9,11 +8,13 @@ import {
   ListItemText,
   Box,
   Divider,
+  Typography,
 } from "@mui/material";
+
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SchoolIcon from "@mui/icons-material/School";
 import FavoriteIcon from "@mui/icons-material/Favorite";
-import HistoryIcon from '@mui/icons-material/History';
+import HistoryIcon from "@mui/icons-material/History";
 import PersonIcon from "@mui/icons-material/Person";
 import LogoutIcon from "@mui/icons-material/Logout";
 
@@ -25,22 +26,22 @@ const studentMenu = [
   { text: "Profile", icon: <PersonIcon />, route: "/student/profile" },
 ];
 
+const drawerWidth = 240;
+
 const StudentSidebar = ({ onSelect, selectedRoute }) => {
   return (
     <Drawer
       variant="permanent"
       anchor="left"
       sx={{
-        width: 240,
+        width: drawerWidth,
         flexShrink: 0,
         "& .MuiDrawer-paper": {
-          width: 240,
+          width: drawerWidth,
           boxSizing: "border-box",
-          bgcolor: "#1c1d1f",  // Dark sidebar
+          bgcolor: "#1c1d1f",
           color: "#fff",
           borderRight: "none",
-          marginTop: "64px",
-          height: "calc(100% - 64px)",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
@@ -48,6 +49,12 @@ const StudentSidebar = ({ onSelect, selectedRoute }) => {
       }}
     >
       <Box>
+        <Box sx={{ px: 2, py: 3 }}>
+          <Typography variant="h6" sx={{ color: "#ffffff" }}>
+            Learnify
+          </Typography>
+        </Box>
+
         <List>
           {studentMenu.map((item, index) => {
             const isSelected = item.route === selectedRoute;
@@ -61,11 +68,11 @@ const StudentSidebar = ({ onSelect, selectedRoute }) => {
                     "&:hover": {
                       bgcolor: "#2d2f31",
                     },
-                    px: 2,
-                    py: 1.5,
                     borderRadius: "8px",
                     mx: 1,
                     my: 0.5,
+                    px: 2,
+                    py: 1.5,
                   }}
                 >
                   <ListItemIcon
@@ -90,9 +97,9 @@ const StudentSidebar = ({ onSelect, selectedRoute }) => {
         </List>
       </Box>
 
-      {/* Logout Button (Sticky at bottom like Udemy) */}
+      {/* Sticky Logout Section */}
       <Box>
-        <Divider sx={{ backgroundColor: "#374151" }} />
+        <Divider sx={{ backgroundColor: "#374151", mb: 1 }} />
         <ListItem disablePadding>
           <ListItemButton
             onClick={() => onSelect("/logout")}
@@ -101,11 +108,11 @@ const StudentSidebar = ({ onSelect, selectedRoute }) => {
               "&:hover": {
                 bgcolor: "#2d2f31",
               },
-              px: 2,
-              py: 1.5,
               borderRadius: "8px",
               mx: 1,
               my: 0.5,
+              px: 2,
+              py: 1.5,
             }}
           >
             <ListItemIcon sx={{ color: "#9ca3af", minWidth: 36 }}>
@@ -115,7 +122,6 @@ const StudentSidebar = ({ onSelect, selectedRoute }) => {
               primary="Logout"
               primaryTypographyProps={{
                 fontSize: 15,
-                fontWeight: 400,
               }}
             />
           </ListItemButton>

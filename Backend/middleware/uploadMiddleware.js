@@ -4,15 +4,15 @@ const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('../utils/cloudinary');
 
-// profile pic storage
-const profilePicStorage = multer.diskStorage({
-  destination: './uploads/profilePics',
-  filename: (req, file, cb) => {
-    cb(null, `profile_${Date.now()}${path.extname(file.originalname)}`);
-  },
-});
+// // profile pic storage
+// const profilePicStorage = multer.diskStorage({
+//   destination: './uploads/profilePics',
+//   filename: (req, file, cb) => {
+//     cb(null, `profile_${Date.now()}${path.extname(file.originalname)}`);
+//   },
+// });
 
-const uploadProfilePic = multer({ storage: profilePicStorage });    
+// const uploadProfilePic = multer({ storage: profilePicStorage });    
 
 const storage = new CloudinaryStorage({
   cloudinary,
@@ -27,9 +27,6 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-// Middleware that accepts any fields (dynamic file keys)
-const uploadMaterials = upload.any(); 
-
 const thumbnailStorage = new CloudinaryStorage({
   cloudinary,
   params: {
@@ -41,5 +38,5 @@ const thumbnailStorage = new CloudinaryStorage({
 
 const uploadThumbnail = multer({ storage: thumbnailStorage });
 
-module.exports = {upload , uploadProfilePic , uploadThumbnail};
+module.exports = {upload , uploadThumbnail};
 

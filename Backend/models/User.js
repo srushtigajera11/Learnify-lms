@@ -16,12 +16,31 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['student','tutor'],
+    enum: ['student', 'tutor'],
     required: true,
     default: 'student'
   },
   isAdmin: { type: Boolean, default: false },
+  
+  // Essential for all users
+  avatar: { type: String },
+  isVerified: { type: Boolean, default: false },
+  lastLogin: Date,
+  
+  // Tutor-specific fields (only relevant when role='tutor')
+  tutorProfile: {
+    headline: String,
+    bio: String,
+    expertise: [String], // ["Web Development", "JavaScript", "React"]
+    experience: Number, // in years
+    socialLinks: {
+      youtube: String,
+      linkedin: String, 
+      twitter: String,
+      website: String
+    }
+  }
+  
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);
- 

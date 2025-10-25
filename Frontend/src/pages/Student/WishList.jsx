@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Typography,
-  Grid,
   Card,
   CardMedia,
   CardContent,
@@ -75,47 +74,81 @@ const Wishlist = () => {
       <Typography variant="h4" gutterBottom>
         My Wishlist
       </Typography>
-      <Grid container spacing={3}>
+
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+          gap: 3,
+          mt: 2,
+        }}
+      >
         {wishlist.map((item) => {
           const course = item.courseId;
           return (
-            <Grid item xs={12} sm={6} md={4} key={course._id}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Card
+              key={course._id}
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: 400,
+              }}
+            >
+              <Box sx={{ height: 160, overflow: 'hidden' }}>
                 <CardMedia
                   component="img"
-                  height="140"
+                  height="160"
                   image={course.thumbnail || '/default-thumbnail.jpg'}
                   alt={course.title}
+                  sx={{ width: '100%', objectFit: 'cover' }}
                 />
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography
-                    variant="h6"
-                    gutterBottom
-                    noWrap
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => navigate(`/course/${course._id}`)}
-                  >
-                    {course.title}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    {course.description.substring(0, 80)}...
-                  </Typography>
-                </CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
-                  <Tooltip title="Remove from Wishlist">
-                    <IconButton onClick={() => handleRemove(course._id)} color="error">
-                      <FavoriteIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Typography variant="body2" color="textSecondary">
-                    By {course.createdBy?.name || 'Unknown'}
-                  </Typography>
-                </Box>
-              </Card>
-            </Grid>
+              </Box>
+
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  noWrap
+                  sx={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/course/${course._id}`)}
+                >
+                  {course.title}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="textSecondary"
+                  sx={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {course.description}
+                </Typography>
+              </CardContent>
+
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  p: 2,
+                }}
+              >
+                <Tooltip title="Remove from Wishlist">
+                  <IconButton onClick={() => handleRemove(course._id)} color="error">
+                    <FavoriteIcon />
+                  </IconButton>
+                </Tooltip>
+                <Typography variant="body2" color="textSecondary">
+                  By {course.createdBy?.name || 'Unknown'}
+                </Typography>
+              </Box>
+            </Card>
           );
         })}
-      </Grid>
+      </Box>
     </Box>
   );
 };

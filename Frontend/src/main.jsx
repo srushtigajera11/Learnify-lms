@@ -1,15 +1,18 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';
 import App from './App';
-import { Provider } from 'react-redux';
+import './index.css';
 import { AuthProvider } from './Context/authContext';
-// import store from './store';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import theme from './theme'; // 👈 import the theme
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>
-    <AuthProvider>
-    <App />
-    </AuthProvider>
-    </React.StrictMode>
+  <React.StrictMode>
+    <ThemeProvider theme={theme}>
+      <CssBaseline /> {/* Normalize and apply base background */}
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </ThemeProvider>
+  </React.StrictMode>
 );

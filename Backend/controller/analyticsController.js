@@ -61,21 +61,25 @@ exports.getTutorStats = async (req, res) => {
   try {
     const tutorId = req.user.id;
 
+    // Get all courses created by this tutor
     const courses = await Course.find({ createdBy: tutorId });
-    const courseIds = courses.map(course => course._id);
+    const courseIds = courses.map((course) => course._id);
 
     const totalCourses = courses.length;
 
+    // Total number of students enrolled across all tutor courses
     const totalEnrollments = await Enrollment.countDocuments({
       courseId: { $in: courseIds },
     });
 
+    // Count pending (draft) courses
     const pendingApprovals = await Course.countDocuments({
       createdBy: tutorId,
       status: "draft",
     });
 
-    const monthlyEarningsAgg = await Enrollment.aggregate([
+    // ✅ Lifetime total earnings (no date filter)
+    const totalEarningsAgg = await Enrollment.aggregate([
       {
         $lookup: {
           from: "courses",
@@ -88,20 +92,17 @@ exports.getTutorStats = async (req, res) => {
       {
         $match: {
           "course.createdBy": new mongoose.Types.ObjectId(tutorId),
-          createdAt: {
-            $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-          },
         },
       },
       {
         $group: {
           _id: null,
-          total: { $sum: "$course.price" },
+          totalEarnings: { $sum: "$course.price" },
         },
       },
     ]);
 
-    const monthlyEarnings = monthlyEarningsAgg[0]?.total || 0;
+    const lifetimeEarnings = totalEarningsAgg[0]?.totalEarnings || 0;
 
     res.status(200).json({
       success: true,
@@ -109,7 +110,7 @@ exports.getTutorStats = async (req, res) => {
         totalCourses,
         totalEnrollments,
         pendingApprovals,
-        monthlyEarnings,
+        monthlyEarnings: lifetimeEarnings, // 👈 keep same key for frontend compatibility
       },
     });
   } catch (err) {

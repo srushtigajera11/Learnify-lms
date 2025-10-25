@@ -1,54 +1,41 @@
 // src/layouts/TutorDashboardLayout.jsx
-
-import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation, Outlet } from "react-router-dom";
+import React, { useState } from "react";
 import { Box } from "@mui/material";
-import SharedHeader from "../components/SharedHeader";
-import TutorSidebar from "../Components/TutorSidebar";
-import axiosInstance from "../utils/axiosInstance";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import Header from "../Components/Header";
+import WelcomeBanner from "../Components/tutor_Welcome";
+import Sidebar from "../Components/Sidebar";
+import Footer from "../Components/Footer";
 
 const TutorDashboardLayout = () => {
-  const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const [selectedRoute, setSelectedRoute] = useState(location.pathname);
 
-  useEffect(() => {
-    const getProfile = async () => {
-      try {
-        const response = await axiosInstance.get("/users/profile");
-        if (response?.data?.user) {
-          setUser(response.data.user);
-        }
-      } catch (err) {
-        console.error("Error fetching user profile:", err);
-        setUser(null);
-      }
-    };
-    getProfile();
-  }, []);
+  const handleSelect = (route) => {
+    setSelectedRoute(route);
+    navigate(route);
+  };
 
   return (
-    <>
-      <SharedHeader />
-      <Box sx={{ display: "flex" }}>
-        <TutorSidebar
-          onSelect={(route) => navigate(route)}
-          selectedRoute={location.pathname}
-        />
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+      {/* Sidebar (fixed) */}
+      
+     
+      <Sidebar onSelect={handleSelect} selectedRoute={selectedRoute} />
+  
 
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            bgcolor: "#f8f9fc",
-            p: 3,
-            minHeight: "calc(100vh - 64px)",
-          }}
-        >
-          <Outlet context={user} /> {/* ⬅️ This is where nested routes will render */}
-        </Box>
-      </Box>
-    </>
+      {/* Main section */}
+      <Box sx={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+  <WelcomeBanner user={"tutor"} />
+  <Header />
+  <Box component="main" sx={{ flex: 1, p: 4, bgcolor: "#f9fafb", minWidth: 0 }}>
+    <Outlet />
+  </Box>
+  <Footer />
+</Box>
+
+    </Box>
   );
 };
 
