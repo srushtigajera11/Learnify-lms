@@ -66,10 +66,7 @@ function AppRoutes() {
         <Route path="course/:courseId/edit" element={<EditCourse />} />
         <Route path="course/:courseId/lessons/add" element={<AddLessonForm />} />
         <Route path="course/:courseId/lessons" element={<ViewLessons />} />
-        <Route
-          path="course/:courseId/lesson/:lessonId/edit"
-          element={<EditLesson />}
-        />
+        <Route path="course/:courseId/lesson/:lessonId/edit" element={<EditLesson />} />
       </Route>
 
       {/* Admin Route Protected */}
