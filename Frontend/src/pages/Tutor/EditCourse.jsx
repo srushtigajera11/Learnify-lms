@@ -130,7 +130,7 @@ const EditCourse = () => {
       });
 
       setSuccess("Course updated successfully!");
-      setTimeout(() => navigate("/tutor/my-courses"), 1500);
+      setTimeout(() => navigate("/tutor/courses"), 1500);
     } catch (err) {
       console.error("Failed to update course:", err);
       setError(err.response?.data?.message || "Failed to update course. Please try again.");
@@ -153,7 +153,7 @@ const EditCourse = () => {
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
         <Button 
           startIcon={<ArrowBack />} 
-          onClick={() => navigate("/tutor/my-courses")}
+          onClick={() => navigate("/tutor/courses")}
           sx={{ mr: 2 }}
         >
           Back
@@ -296,7 +296,7 @@ const EditCourse = () => {
         <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
           <Button 
             variant="outlined" 
-            onClick={() => navigate("/tutor/my-courses")}
+            onClick={() => navigate("/tutor/courses")}
             disabled={loading}
           >
             Cancel

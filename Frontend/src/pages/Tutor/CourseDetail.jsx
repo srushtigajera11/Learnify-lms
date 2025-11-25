@@ -16,9 +16,7 @@ import {
   Add,
   List,
   Quiz,
-  Assignment,
   School,
-  BarChart,
   Edit,
 } from '@mui/icons-material';
 import axiosInstance from '../../utils/axiosInstance';
@@ -109,24 +107,6 @@ export default function CourseDetail() {
       ],
     },
     {
-      title: 'Assignments',
-      description: 'Manage student assignments',
-      icon: <Assignment color="success" />,
-      actions: [
-        {
-          label: 'View Assignments',
-          onClick: () => navigate(`/tutor/course/${courseId}/assignments`),
-          variant: 'outlined',
-        },
-        {
-          label: 'Create Assignment',
-          onClick: () => navigate(`/tutor/course/${courseId}/assignments/create`),
-          variant: 'contained',
-          startIcon: <Add />,
-        },
-      ],
-    },
-    {
       title: 'Students',
       description: 'View enrolled students and progress',
       icon: <School color="info" />,
@@ -138,30 +118,18 @@ export default function CourseDetail() {
         },
       ],
     },
-    {
-      title: 'Analytics',
-      description: 'Course performance and insights',
-      icon: <BarChart color="warning" />,
-      actions: [
-        {
-          label: 'View Analytics',
-          onClick: () => navigate(`/tutor/course/${courseId}/analytics`),
-          variant: 'contained',
-        },
-      ],
-    },
   ];
 
   return (
     <Box sx={{ p: 3 }}>
       {/* Header Section */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+      <Box sx={{ mb: 6 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
           <Box>
             <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
               {course.title}
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 2 }}>
               <Chip
                 label={course.status?.toUpperCase()}
                 color={course.status === 'published' ? 'success' : 'default'}
@@ -176,110 +144,99 @@ export default function CourseDetail() {
             variant="outlined"
             startIcon={<Edit />}
             onClick={() => navigate(`/tutor/course/${courseId}/edit`)}
+            sx={{ minWidth: 140 }}
           >
             Edit Course
           </Button>
         </Box>
         
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.6 }}>
           {course.description}
         </Typography>
       </Box>
 
-      <Divider sx={{ mb: 4 }} />
+      <Divider sx={{ mb: 6 }} />
 
       {/* Management Cards Grid */}
-      <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-        Course Management
-      </Typography>
-      
-      <Grid container spacing={3}>
-        {managementCards.map((card, index) => (
-          <Grid item xs={12} sm={6} md={4} key={index}>
-            <Card 
-              sx={{ 
-                height: '100%',
-                transition: '0.3s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 6,
-                }
-              }}
-            >
-              <CardContent sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Box sx={{ mr: 2 }}>
-                    {card.icon}
-                  </Box>
-                  <Typography variant="h6" component="h3">
-                    {card.title}
-                  </Typography>
-                </Box>
-                
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3, flexGrow: 1 }}>
-                  {card.description}
-                </Typography>
-
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {card.actions.map((action, actionIndex) => (
-                    <Button
-                      key={actionIndex}
-                      variant={action.variant}
-                      onClick={action.onClick}
-                      startIcon={action.startIcon}
-                      fullWidth
-                      size="small"
-                    >
-                      {action.label}
-                    </Button>
-                  ))}
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Quick Stats Section (Optional) */}
-      <Card sx={{ mt: 4, p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Quick Stats
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h5" gutterBottom sx={{ mb: 4, fontWeight: 600 }}>
+          Course Management
         </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={6} sm={3}>
-            <Typography variant="body2" color="text.secondary">
-              Total Lessons
-            </Typography>
-            <Typography variant="h6" color="primary">
-              0
-            </Typography>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Typography variant="body2" color="text.secondary">
-              Enrolled Students
-            </Typography>
-            <Typography variant="h6" color="primary">
-              0
-            </Typography>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Typography variant="body2" color="text.secondary">
-              Completion Rate
-            </Typography>
-            <Typography variant="h6" color="primary">
-              0%
-            </Typography>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Typography variant="body2" color="text.secondary">
-              Average Rating
-            </Typography>
-            <Typography variant="h6" color="primary">
-              ⭐ 0.0
-            </Typography>
-          </Grid>
+        
+        <Grid container spacing={4}>
+          {managementCards.map((card, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <Card 
+                sx={{ 
+                  height: '100%',
+                  transition: '0.3s',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  '&:hover': {
+                    transform: 'translateY(-6px)',
+                    boxShadow: 8,
+                  }
+                }}
+              >
+                <CardContent sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  height: '100%',
+                  p: 3 
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                    <Box sx={{ 
+                      mr: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {card.icon}
+                    </Box>
+                    <Typography variant="h6" component="h3" fontWeight="600">
+                      {card.title}
+                    </Typography>
+                  </Box>
+                  
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary" 
+                    sx={{ 
+                      mb: 4, 
+                      flexGrow: 1,
+                      lineHeight: 1.5
+                    }}
+                  >
+                    {card.description}
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {card.actions.map((action, actionIndex) => (
+                      <Button
+                        key={actionIndex}
+                        variant={action.variant}
+                        onClick={action.onClick}
+                        startIcon={action.startIcon}
+                        fullWidth
+                        size="medium"
+                        sx={{ 
+                          py: 1,
+                          borderRadius: 2
+                        }}
+                      >
+                        {action.label}
+                      </Button>
+                    ))}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
         </Grid>
-      </Card>
+      </Box>
+
+      {/* Empty space for better visual balance */}
+      <Box sx={{ height: 40 }} />
     </Box>
   );
 }

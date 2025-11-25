@@ -29,7 +29,8 @@ import Reviews from "./pages/Student/Reviews";
 import PurchaseHistory from "./pages/Student/PurchaseHistory";
 import Profile from "./pages/Student/Profile";
 import CourseDetailStudent from "./pages/Student/CourseDetail";
-
+import ViewQuiz from "./pages/Tutor/ViewQuiz";
+import CreateQuiz from "./pages/Tutor/CreateQuiz";
 import { useAuth } from "./Context/authContext";
 
 function AppRoutes() {
@@ -67,6 +68,9 @@ function AppRoutes() {
         <Route path="course/:courseId/lessons/add" element={<AddLessonForm />} />
         <Route path="course/:courseId/lessons" element={<ViewLessons />} />
         <Route path="course/:courseId/lesson/:lessonId/edit" element={<EditLesson />} />
+        <Route path="course/:courseId/quizzes" element={<ViewQuiz />} />
+        <Route path="course/:courseId/quizzes/create" element={<CreateQuiz />} />
+        <Route path="*" element={<TutorDashboard />} />
       </Route>
 
       {/* Admin Route Protected */}

@@ -230,7 +230,7 @@ const MyCourses = () => {
                       </IconButton>
                     </Tooltip>
 
-                    <Tooltip title="Edit Course">
+                    {/* <Tooltip title="Edit Course">
                       <IconButton
                         color="secondary"
                         onClick={() => navigate(`/tutor/course/${course._id}/edit`)}
@@ -238,7 +238,7 @@ const MyCourses = () => {
                       >
                         <Edit />
                       </IconButton>
-                    </Tooltip>
+                    </Tooltip> */}
 
                     <Tooltip title="Delete Course">
                       <IconButton
