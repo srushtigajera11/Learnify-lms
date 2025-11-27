@@ -57,7 +57,10 @@ const quizSchema = new mongoose.Schema({
   shuffleQuestions: { 
     type: Boolean, 
     default: false 
-  },
+  },lessonId: { 
+  type: mongoose.Schema.Types.ObjectId, 
+  ref: 'Lesson' 
+},
   
   // Gamification & Certification
   isFinalQuiz: { 
