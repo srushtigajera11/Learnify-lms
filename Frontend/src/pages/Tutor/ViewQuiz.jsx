@@ -51,51 +51,42 @@ export default function ViewQuiz() {
     fetchQuizzes();
   }, [courseId]);
 
-const fetchQuizzes = async () => {
-  try {
-    setLoading(true);
-    // Change from: /courses/${courseId}/quizzes
-    // To: /quizzes/${courseId}
-    const response = await axiosInstance.get(`/quizzes/${courseId}`);
-    console.log('Quizzes response:', response);
-    setQuizzes(response.data.data);
-  } catch (err) {
-    console.error('Load quizzes error:', err);
-    console.error('Error response:', err.response?.data);
-    setError(err.response?.data?.message || 'Failed to load quizzes');
-  } finally {
-    setLoading(false);
-  }
-};
-
-const handleDeleteQuiz = async (quizId) => {
-  if (window.confirm('Are you sure you want to delete this quiz?')) {
+  const fetchQuizzes = async () => {
     try {
-      // This stays the same: /quizzes/quiz/${quizId}
+      setLoading(true);
+      const response = await axiosInstance.get(`/quizzes/${courseId}`);
+      console.log('Quizzes response:', response);
+      setQuizzes(response.data.data);
+    } catch (err) {
+      console.error('Load quizzes error:', err);
+      console.error('Error response:', err.response?.data);
+      setError(err.response?.data?.message || 'Failed to load quizzes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteQuiz = async (quizId) => {
+    try {
       await axiosInstance.delete(`/quizzes/quiz/${quizId}`);
+      setDeleteDialog({ open: false, quiz: null });
       fetchQuizzes();
     } catch (err) {
-      console.error('Delete error:', err);
       setError(err.response?.data?.message || 'Failed to delete quiz');
     }
-  }
-};
+  };
 
-const handlePublishToggle = async (quiz) => {
-  setPublishLoading(quiz._id);
-  try {
-    // This stays the same: /quizzes/quiz/${quiz._id}/publish
-    await axiosInstance.patch(`/quizzes/quiz/${quiz._id}/publish`);
-    fetchQuizzes();
-  } catch (err) {
-    console.error('Publish error:', err);
-    setError(err.response?.data?.message || 'Failed to update quiz status');
-  } finally {
-    setPublishLoading(null);
-  }
-};
-
- 
+  const handlePublishToggle = async (quiz) => {
+    setPublishLoading(quiz._id);
+    try {
+      await axiosInstance.patch(`/quizzes/quiz/${quiz._id}/publish`);
+      fetchQuizzes();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update quiz status');
+    } finally {
+      setPublishLoading(null);
+    }
+  };
 
   const getTotalPoints = (quiz) => {
     return quiz.questions.reduce((total, question) => total + question.points, 0);
@@ -119,6 +110,7 @@ const handlePublishToggle = async (quiz) => {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
           <Typography variant="h4" component="h1" gutterBottom>
@@ -143,6 +135,7 @@ const handlePublishToggle = async (quiz) => {
         </Alert>
       )}
 
+      {/* Quick Stats */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Card>
@@ -198,6 +191,7 @@ const handlePublishToggle = async (quiz) => {
         </Grid>
       </Grid>
 
+      {/* Quizzes Table */}
       <Card>
         <CardContent>
           {quizzes.length > 0 ? (
@@ -347,6 +341,7 @@ const handlePublishToggle = async (quiz) => {
         </CardContent>
       </Card>
 
+      {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialog.open}
         onClose={() => setDeleteDialog({ open: false, quiz: null })}

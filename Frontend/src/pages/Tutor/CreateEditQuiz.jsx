@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -20,6 +20,7 @@ import {
   Divider,
   Paper,
   Chip,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add,
@@ -31,33 +32,32 @@ import {
 } from '@mui/icons-material';
 import axiosInstance from '../../utils/axiosInstance';
 
-export default function CreateEditQuiz() {
+export default function EditQuiz() {
   const { courseId, quizId } = useParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [isEditing] = useState(false);
+  const [quizData, setQuizData] = useState(null);
 
-  const [quizData, setQuizData] = useState({
-    title: '',
-    description: '',
-    timeLimit: 30,
-    passingScore: 70,
-    maxAttempts: 1,
-    shuffleQuestions: false,
-    isPublished: false,
-    questions: [
-      {
-        questionText: '',
-        questionType: 'multiple-choice',
-        options: [
-          { text: '', isCorrect: true },
-          { text: '', isCorrect: false },
-        ],
-        points: 1,
-      },
-    ],
-  });
+  useEffect(() => {
+    fetchQuiz();
+  }, [quizId]);
+
+  const fetchQuiz = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get(`/quizzes/quiz/${quizId}`);
+      console.log('Quiz data loaded:', response.data.data);
+      setQuizData(response.data.data);
+    } catch (err) {
+      console.error('Load quiz error:', err);
+      console.error('Error response:', err.response?.data);
+      setError(err.response?.data?.message || 'Failed to load quiz');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const addQuestion = () => {
     const newQuestion = {
@@ -161,7 +161,7 @@ export default function CreateEditQuiz() {
       }
     }
 
-    setLoading(true);
+    setSaving(true);
     try {
       // Clean up the data before sending to backend
       const cleanQuizData = {
@@ -183,26 +183,22 @@ export default function CreateEditQuiz() {
         }))
       };
 
-      console.log('Cleaned quiz data:', cleanQuizData);
+      console.log('Saving quiz data:', cleanQuizData);
       
-      if (isEditing) {
-        await axiosInstance.put(`/quizzes/quiz/${quizId}`, cleanQuizData);
-      } else {
-        await axiosInstance.post(`/quizzes/${courseId}`, cleanQuizData);
-      }
-      
+      await axiosInstance.put(`/quizzes/quiz/${quizId}`, cleanQuizData);
       navigate(`/tutor/course/${courseId}/quizzes`);
     } catch (err) {
       console.error('API Error:', err);
       console.error('Error details:', err.response?.data);
       setError(err.response?.data?.message || 'Failed to save quiz');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   // Check if quiz is valid for saving
   const isQuizValid = () => {
+    if (!quizData) return false;
     if (!quizData.title.trim()) return false;
     
     return quizData.questions.every(question => 
@@ -212,11 +208,35 @@ export default function CreateEditQuiz() {
     );
   };
 
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error && !quizData) {
+    return (
+      <Alert severity="error" sx={{ m: 2 }}>
+        {error}
+      </Alert>
+    );
+  }
+
+  if (!quizData) {
+    return (
+      <Alert severity="warning" sx={{ m: 2 }}>
+        Quiz not found
+      </Alert>
+    );
+  }
+
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          {isEditing ? 'Edit Quiz' : 'Create New Quiz'}
+          Edit Quiz
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
@@ -229,10 +249,10 @@ export default function CreateEditQuiz() {
           <Button
             variant="contained"
             onClick={handleSaveQuiz}
-            disabled={loading || !isQuizValid()}
+            disabled={saving || !isQuizValid()}
             startIcon={<Save />}
           >
-            {loading ? 'Saving...' : 'Save Quiz'}
+            {saving ? 'Saving...' : 'Update Quiz'}
           </Button>
         </Box>
       </Box>
@@ -421,7 +441,7 @@ export default function CreateEditQuiz() {
             const hasCorrectAnswer = question.options.some(opt => opt.isCorrect);
             
             return (
-              <Card key={questionIndex} sx={{ mb: 3 }}>
+              <Card key={question._id || questionIndex} sx={{ mb: 3 }}>
                 <CardContent>
                   {/* Question Header */}
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
@@ -497,7 +517,7 @@ export default function CreateEditQuiz() {
 
                   {question.options.map((option, optionIndex) => (
                     <Box
-                      key={optionIndex}
+                      key={option._id || optionIndex}
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
