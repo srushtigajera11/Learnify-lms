@@ -30,10 +30,10 @@ import PurchaseHistory from "./pages/Student/PurchaseHistory";
 import Profile from "./pages/Student/Profile";
 import CourseDetailStudent from "./pages/Student/CourseDetail";
 import ViewQuiz from "./pages/Tutor/ViewQuiz";
-import EditQuiz from "./pages/Tutor/CreateEditQuiz";
+import EditQuiz from "./pages/Tutor/EditQuiz";
 import CreateQuiz from "./pages/Tutor/CreateQuiz";
 import { useAuth } from "./Context/authContext";
-import CreateEditQuiz from "./pages/Tutor/CreateQuiz";
+import QuizPreview from "./pages/Tutor/QuizPreview";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -71,9 +71,9 @@ function AppRoutes() {
         <Route path="course/:courseId/lessons" element={<ViewLessons />} />
         <Route path="course/:courseId/lesson/:lessonId/edit" element={<EditLesson />} />
         <Route path="course/:courseId/quizzes/create" element={<CreateQuiz />} />
-        <Route path="course/:courseId/quizzes" element={<ViewQuiz />} />
-        <Route path="course/:courseId/quizzes/:quizId/edit" element={<CreateEditQuiz />} />
-        <Route path="course/:courseId/quizzes/:quizId/preview" element={<ViewQuiz />} />
+        <Route path="/tutor/course/:courseId/quizzes/:quizId/edit" element={<EditQuiz />} />
+        <Route path="/tutor/course/:courseId/quizzes" element={<ViewQuiz />} />
+        <Route path="course/:courseId/quizzes/:quizId/preview" element={<QuizPreview />} />
         <Route path="*" element={<TutorDashboard />} />
       </Route>
 

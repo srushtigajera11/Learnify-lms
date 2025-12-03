@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+// CreateEditQuiz.jsx
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
+  Grid,
   Card,
   CardContent,
   Typography,
@@ -12,35 +14,41 @@ import {
   Select,
   MenuItem,
   IconButton,
-  Grid,
-  Alert,
-  Radio,
-  FormControlLabel,
   Switch,
+  FormControlLabel,
   Divider,
-  Paper,
   Chip,
-} from '@mui/material';
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Tooltip,
+  Stack,
+  Alert,
+} from "@mui/material";
 import {
-  Add,
-  Delete,
-  Save,
-  Cancel,
-  CheckCircle,
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Save as SaveIcon,
   Cancel as CancelIcon,
-} from '@mui/icons-material';
-import axiosInstance from '../../utils/axiosInstance';
+  ExpandMore as ExpandMoreIcon,
+  RadioButtonUnchecked as RadioIcon,
+  RadioButtonChecked as RadioCheckedIcon,
+} from "@mui/icons-material";
+import axiosInstance from "../../utils/axiosInstance";
 
 export default function CreateEditQuiz() {
   const { courseId, quizId } = useParams();
   const navigate = useNavigate();
+  const isEditing = Boolean(quizId);
+
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [isEditing] = useState(false);
+  const [loadingQuiz, setLoadingQuiz] = useState(false);
+  const [error, setError] = useState("");
+  const [openQuestion, setOpenQuestion] = useState(0); // which accordion open
 
   const [quizData, setQuizData] = useState({
-    title: '',
-    description: '',
+    title: "",
+    description: "",
     timeLimit: 30,
     passingScore: 70,
     maxAttempts: 1,
@@ -48,265 +56,321 @@ export default function CreateEditQuiz() {
     isPublished: false,
     questions: [
       {
-        questionText: '',
-        questionType: 'multiple-choice',
+        id: Date.now().toString(),
+        questionText: "",
+        questionType: "multiple-choice",
         options: [
-          { text: '', isCorrect: true },
-          { text: '', isCorrect: false },
+          { id: "o1", text: "", isCorrect: true },
+          { id: "o2", text: "", isCorrect: false },
         ],
         points: 1,
       },
     ],
   });
 
+  useEffect(() => {
+    // if editing, fetch the quiz
+    if (!isEditing) return;
+    const fetchQuiz = async () => {
+      try {
+        setLoadingQuiz(true);
+        const res = await axiosInstance.get(`/quizzes/quiz/${quizId}`);
+        const data = res.data.data;
+        // map to local shape (ensure option ids exist)
+        const mapped = {
+          title: data.title || "",
+          description: data.description || "",
+          timeLimit: data.timeLimit ?? 30,
+          passingScore: data.passingScore ?? 70,
+          maxAttempts: data.maxAttempts ?? 1,
+          shuffleQuestions: data.shuffleQuestions ?? false,
+          isPublished: data.isPublished ?? false,
+          questions: (data.questions || []).map((q) => ({
+            id: q._id || Date.now().toString(),
+            questionText: q.questionText || "",
+            questionType: q.questionType || "multiple-choice",
+            points: q.points ?? 1,
+            options: (q.options || []).map((opt, idx) => ({
+              id: opt._id || `opt-${idx}-${Date.now()}`,
+              text: opt.text || "",
+              isCorrect: !!opt.isCorrect,
+            })),
+          })),
+        };
+        // ensure each question has at least two options
+        if (mapped.questions.length === 0) {
+          mapped.questions = [
+            {
+              id: Date.now().toString(),
+              questionText: "",
+              questionType: "multiple-choice",
+              options: [
+                { id: "o1", text: "", isCorrect: true },
+                { id: "o2", text: "", isCorrect: false },
+              ],
+              points: 1,
+            },
+          ];
+        }
+        setQuizData(mapped);
+      } catch (err) {
+        console.error("Failed to load quiz:", err);
+        setError(err.response?.data?.message || "Failed to load quiz");
+      } finally {
+        setLoadingQuiz(false);
+      }
+    };
+    fetchQuiz();
+  }, [isEditing, quizId]);
+
   const addQuestion = () => {
-    const newQuestion = {
-      questionText: '',
-      questionType: 'multiple-choice',
+    const q = {
+      id: Date.now().toString(),
+      questionText: "",
+      questionType: "multiple-choice",
       options: [
-        { text: '', isCorrect: true },
-        { text: '', isCorrect: false },
+        { id: `${Date.now()}-o1`, text: "", isCorrect: true },
+        { id: `${Date.now()}-o2`, text: "", isCorrect: false },
       ],
       points: 1,
     };
-    setQuizData({
-      ...quizData,
-      questions: [...quizData.questions, newQuestion],
-    });
+    setQuizData((prev) => ({ ...prev, questions: [...prev.questions, q] }));
+    setOpenQuestion(quizData.questions.length);
   };
 
-  const updateQuestion = (questionIndex, field, value) => {
-    const updatedQuestions = [...quizData.questions];
-    updatedQuestions[questionIndex] = {
-      ...updatedQuestions[questionIndex],
-      [field]: value,
-    };
-    setQuizData({ ...quizData, questions: updatedQuestions });
-  };
-
-  const deleteQuestion = (questionIndex) => {
+  const removeQuestion = (index) => {
     if (quizData.questions.length <= 1) {
-      setError('Quiz must have at least one question');
+      setError("Quiz must have at least one question.");
       return;
     }
-    const updatedQuestions = quizData.questions.filter(
-      (_, index) => index !== questionIndex
-    );
-    setQuizData({ ...quizData, questions: updatedQuestions });
+    const copy = [...quizData.questions];
+    copy.splice(index, 1);
+    setQuizData({ ...quizData, questions: copy });
+    setError("");
+    setOpenQuestion(Math.max(0, index - 1));
   };
 
-  const addOption = (questionIndex) => {
-    const updatedQuestions = [...quizData.questions];
-    const newOption = {
-      text: '',
-      isCorrect: false,
-    };
-    updatedQuestions[questionIndex].options.push(newOption);
-    setQuizData({ ...quizData, questions: updatedQuestions });
+  const updateQuestionField = (index, field, value) => {
+    const copy = [...quizData.questions];
+    copy[index] = { ...copy[index], [field]: value };
+    setQuizData({ ...quizData, questions: copy });
   };
 
-  const updateOption = (questionIndex, optionIndex, field, value) => {
-    const updatedQuestions = [...quizData.questions];
-    
-    if (field === 'isCorrect' && value === true) {
-      updatedQuestions[questionIndex].options.forEach((opt, idx) => {
-        opt.isCorrect = idx === optionIndex;
-      });
+  const addOption = (qIndex) => {
+    const copy = [...quizData.questions];
+    const newOpt = { id: `${Date.now()}-opt-${copy[qIndex].options.length}`, text: "", isCorrect: false };
+    copy[qIndex].options.push(newOpt);
+    setQuizData({ ...quizData, questions: copy });
+  };
+
+  const removeOption = (qIndex, optIndex) => {
+    const copy = [...quizData.questions];
+    if (copy[qIndex].options.length <= 2) {
+      setError("Each question needs at least 2 options.");
+      return;
+    }
+    copy[qIndex].options.splice(optIndex, 1);
+    // ensure at least one correct
+    if (!copy[qIndex].options.some((o) => o.isCorrect)) {
+      copy[qIndex].options[0].isCorrect = true;
+    }
+    setQuizData({ ...quizData, questions: copy });
+    setError("");
+  };
+
+  const updateOption = (qIndex, optIndex, field, value) => {
+    const copy = [...quizData.questions];
+    const opts = copy[qIndex].options.map((opt, idx) => ({ ...opt }));
+    if (field === "isCorrect") {
+      // single-correct enforced (radio behavior)
+      opts.forEach((o, i) => (o.isCorrect = i === optIndex ? value : false));
     } else {
-      updatedQuestions[questionIndex].options[optionIndex][field] = value;
+      opts[optIndex][field] = value;
     }
-    
-    setQuizData({ ...quizData, questions: updatedQuestions });
+    copy[qIndex].options = opts;
+    setQuizData({ ...quizData, questions: copy });
   };
 
-  const deleteOption = (questionIndex, optionIndex) => {
-    const updatedQuestions = [...quizData.questions];
-    if (updatedQuestions[questionIndex].options.length <= 2) {
-      setError('Question must have at least 2 options');
-      return;
-    }
-    updatedQuestions[questionIndex].options.splice(optionIndex, 1);
-    setQuizData({ ...quizData, questions: updatedQuestions });
-  };
-
-  const handleSaveQuiz = async () => {
+  const validateQuiz = () => {
     if (!quizData.title.trim()) {
-      setError('Quiz title is required');
-      return;
+      setError("Quiz title is required.");
+      return false;
     }
-
-    // Validate questions
     for (let i = 0; i < quizData.questions.length; i++) {
-      const question = quizData.questions[i];
-      if (!question.questionText.trim()) {
-        setError(`Question ${i + 1} text is required`);
-        return;
+      const q = quizData.questions[i];
+      if (!q.questionText.trim()) {
+        setError(`Question ${i + 1}: text is required.`);
+        return false;
       }
-      
-      const validOptions = question.options.filter(opt => opt.text.trim() !== '');
+      const validOptions = q.options.filter((o) => o.text.trim() !== "");
       if (validOptions.length < 2) {
-        setError(`Question ${i + 1} must have at least 2 valid options`);
-        return;
+        setError(`Question ${i + 1}: at least 2 options required.`);
+        return false;
       }
-
-      const correctAnswers = question.options.filter(opt => opt.isCorrect);
-      if (correctAnswers.length === 0) {
-        setError(`Question ${i + 1} must have one correct answer`);
-        return;
+      if (!q.options.some((o) => o.isCorrect)) {
+        setError(`Question ${i + 1}: mark one correct answer.`);
+        return false;
       }
-      
-      if (correctAnswers.length > 1) {
-        setError(`Question ${i + 1} can only have one correct answer`);
-        return;
+      if (q.options.filter((o) => o.isCorrect).length > 1) {
+        setError(`Question ${i + 1}: only one correct answer allowed.`);
+        return false;
       }
     }
+    setError("");
+    return true;
+  };
 
+  const handleSave = async () => {
+    if (!validateQuiz()) return;
     setLoading(true);
     try {
-      // Clean up the data before sending to backend
-      const cleanQuizData = {
+      const payload = {
         title: quizData.title,
         description: quizData.description,
-        timeLimit: quizData.timeLimit,
-        passingScore: quizData.passingScore,
-        maxAttempts: quizData.maxAttempts,
-        shuffleQuestions: quizData.shuffleQuestions,
-        isPublished: quizData.isPublished,
-        questions: quizData.questions.map(question => ({
-          questionText: question.questionText,
-          questionType: question.questionType,
-          points: question.points,
-          options: question.options.map(option => ({
-            text: option.text,
-            isCorrect: option.isCorrect
-          }))
-        }))
+        timeLimit: Number(quizData.timeLimit) || 0,
+        passingScore: Number(quizData.passingScore) || 0,
+        maxAttempts: Number(quizData.maxAttempts) || 1,
+        shuffleQuestions: !!quizData.shuffleQuestions,
+        isPublished: !!quizData.isPublished,
+        questions: quizData.questions.map((q) => ({
+          questionText: q.questionText,
+          questionType: q.questionType,
+          points: Number(q.points) || 1,
+          options: q.options.map((o) => ({ text: o.text, isCorrect: !!o.isCorrect })),
+        })),
       };
 
-      console.log('Cleaned quiz data:', cleanQuizData);
-      
       if (isEditing) {
-        await axiosInstance.put(`/quizzes/quiz/${quizId}`, cleanQuizData);
+        await axiosInstance.put(`/quizzes/quiz/${quizId}`, payload);
       } else {
-        await axiosInstance.post(`/quizzes/${courseId}`, cleanQuizData);
+        await axiosInstance.post(`/quizzes/${courseId}`, payload);
       }
-      
       navigate(`/tutor/course/${courseId}/quizzes`);
     } catch (err) {
-      console.error('API Error:', err);
-      console.error('Error details:', err.response?.data);
-      setError(err.response?.data?.message || 'Failed to save quiz');
+      console.error("Save error:", err);
+      setError(err.response?.data?.message || "Failed to save quiz");
     } finally {
       setLoading(false);
     }
   };
 
-  // Check if quiz is valid for saving
-  const isQuizValid = () => {
-    if (!quizData.title.trim()) return false;
-    
-    return quizData.questions.every(question => 
-      question.questionText.trim() &&
-      question.options.filter(opt => opt.text.trim() !== '').length >= 2 &&
-      question.options.some(opt => opt.isCorrect)
-    );
-  };
+  const totalPoints = quizData.questions.reduce((s, q) => s + (Number(q.points) || 0), 0);
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          {isEditing ? 'Edit Quiz' : 'Create New Quiz'}
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
+        <Box>
+          <Typography variant="h4" fontWeight={700}>
+            {isEditing ? "Edit Quiz" : "Create New Quiz"}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Build assessments to test learners. Clean UI inspired by top platforms.
+          </Typography>
+        </Box>
+
+        <Stack direction="row" spacing={2}>
           <Button
-            variant="outlined"
+            startIcon={<CancelIcon />}
             onClick={() => navigate(`/tutor/course/${courseId}/quizzes`)}
-            startIcon={<Cancel />}
+            variant="outlined"
           >
             Cancel
           </Button>
           <Button
+            startIcon={<SaveIcon />}
+            onClick={handleSave}
             variant="contained"
-            onClick={handleSaveQuiz}
-            disabled={loading || !isQuizValid()}
-            startIcon={<Save />}
+            disabled={loading || loadingQuiz}
           >
-            {loading ? 'Saving...' : 'Save Quiz'}
+            {loading ? "Saving..." : "Save Quiz"}
           </Button>
-        </Box>
+        </Stack>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       <Grid container spacing={3}>
-        {/* Left Column - Quiz Settings */}
+        {/* Left column - settings & summary */}
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
                 Quiz Settings
               </Typography>
 
               <TextField
-                fullWidth
                 label="Quiz Title"
+                variant="outlined"
+                fullWidth
+                sx={{ mb: 2 }}
                 value={quizData.title}
                 onChange={(e) => setQuizData({ ...quizData, title: e.target.value })}
-                margin="normal"
-                required
               />
 
               <TextField
+                label="Description"
+                variant="outlined"
                 fullWidth
                 multiline
                 rows={3}
-                label="Description"
+                sx={{ mb: 2 }}
                 value={quizData.description}
                 onChange={(e) => setQuizData({ ...quizData, description: e.target.value })}
-                margin="normal"
               />
 
-              <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid container spacing={1}>
                 <Grid item xs={6}>
                   <TextField
-                    fullWidth
+                    label="Time (mins)"
                     type="number"
-                    label="Time Limit (minutes)"
+                    fullWidth
                     value={quizData.timeLimit}
-                    onChange={(e) => setQuizData({ ...quizData, timeLimit: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => setQuizData({ ...quizData, timeLimit: e.target.value })}
                   />
                 </Grid>
                 <Grid item xs={6}>
                   <TextField
-                    fullWidth
+                    label="Pass %"
                     type="number"
-                    label="Passing Score %"
+                    fullWidth
                     value={quizData.passingScore}
-                    onChange={(e) => setQuizData({ ...quizData, passingScore: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => setQuizData({ ...quizData, passingScore: e.target.value })}
+                  />
+                </Grid>
+                <Grid item xs={6} sx={{ mt: 1 }}>
+                  <TextField
+                    label="Max Attempts"
+                    type="number"
+                    fullWidth
+                    value={quizData.maxAttempts}
+                    onChange={(e) => setQuizData({ ...quizData, maxAttempts: e.target.value })}
+                  />
+                </Grid>
+                <Grid item xs={6} sx={{ mt: 1 }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={quizData.shuffleQuestions}
+                        onChange={(e) => setQuizData({ ...quizData, shuffleQuestions: e.target.checked })}
+                      />
+                    }
+                    label="Shuffle"
                   />
                 </Grid>
               </Grid>
 
-              <TextField
-                fullWidth
-                type="number"
-                label="Max Attempts"
-                value={quizData.maxAttempts}
-                onChange={(e) => setQuizData({ ...quizData, maxAttempts: parseInt(e.target.value) || 1 })}
-                margin="normal"
-              />
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={quizData.shuffleQuestions}
-                    onChange={(e) => setQuizData({ ...quizData, shuffleQuestions: e.target.checked })}
-                  />
-                }
-                label="Shuffle Questions"
-                sx={{ mt: 2 }}
-              />
+              <Divider sx={{ my: 2 }} />
 
               <FormControlLabel
                 control={
@@ -315,263 +379,196 @@ export default function CreateEditQuiz() {
                     onChange={(e) => setQuizData({ ...quizData, isPublished: e.target.checked })}
                   />
                 }
-                label="Publish Quiz"
-                sx={{ mt: 1 }}
+                label="Publish quiz"
               />
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="subtitle2" color="text.secondary">
+                Summary
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
+                <Chip label={`Questions: ${quizData.questions.length}`} size="small" />
+                <Chip label={`Total points: ${totalPoints}`} size="small" />
+                <Chip label={quizData.isPublished ? "Published" : "Draft"} size="small" color={quizData.isPublished ? "success" : "default"} />
+              </Box>
             </CardContent>
           </Card>
 
-          {/* Quiz Validation Check */}
-          <Card sx={{ mt: 3 }}>
+          <Card sx={{ mt: 3, borderRadius: 2, boxShadow: 3 }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Quiz Validation Check
+              <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
+                Validation
               </Typography>
-              
-              {quizData.questions.map((question, index) => {
-                const hasCorrectAnswer = question.options.some(opt => opt.isCorrect);
-                const validOptions = question.options.filter(opt => opt.text.trim() !== '');
-                
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Quick checks before saving
+              </Typography>
+
+              {quizData.questions.map((q, i) => {
+                const validOptions = q.options.filter((o) => o.text.trim() !== "");
+                const hasCorrect = q.options.some((o) => o.isCorrect);
+                const ok = validOptions.length >= 2 && hasCorrect && q.questionText.trim();
                 return (
-                  <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                    {hasCorrectAnswer && validOptions.length >= 2 ? (
-                      <CheckCircle color="success" />
-                    ) : (
-                      <CancelIcon color="error" />
-                    )}
-                    <Typography variant="body2">
-                      Question {index + 1}: {hasCorrectAnswer ? '✓ Has correct answer' : '✗ Missing correct answer'}
+                  <Box key={q.id} sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                    <Chip label={`Q${i + 1}`} size="small" color={ok ? "success" : "default"} />
+                    <Typography variant="body2" color={ok ? "success.main" : "text.secondary"}>
+                      {ok ? "OK" : "Needs attention"}
                     </Typography>
                   </Box>
                 );
               })}
-              
-              {/* Overall status */}
-              <Divider sx={{ my: 2 }} />
-              <Typography 
-                variant="body1" 
-                color={
-                  quizData.questions.every(q => 
-                    q.options.some(opt => opt.isCorrect) && 
-                    q.options.filter(opt => opt.text.trim() !== '').length >= 2
-                  ) ? 'success.main' : 'error.main'
-                }
-              >
-                {quizData.questions.every(q => 
-                  q.options.some(opt => opt.isCorrect) && 
-                  q.options.filter(opt => opt.text.trim() !== '').length >= 2
-                ) 
-                  ? '✓ All questions are valid and ready to save!' 
-                  : '✗ Some questions need attention before saving'
-                }
-              </Typography>
-            </CardContent>
-          </Card>
-
-          {/* Quiz Summary */}
-          <Card sx={{ mt: 3 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Quiz Summary
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body2" component="span">
-                    Questions:
-                  </Typography>
-                  <Chip label={quizData.questions.length} size="small" />
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body2" component="span">
-                    Total Points:
-                  </Typography>
-                  <Chip label={quizData.questions.reduce((sum, q) => sum + q.points, 0)} size="small" />
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body2" component="span">
-                    Status:
-                  </Typography>
-                  <Chip 
-                    label={quizData.isPublished ? 'Published' : 'Draft'} 
-                    color={quizData.isPublished ? 'success' : 'default'} 
-                    size="small" 
-                  />
-                </Box>
-              </Box>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Right Column - Questions */}
+        {/* Right column - questions builder */}
         <Grid item xs={12} md={8}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6" component="h2">
-              Questions ({quizData.questions.length})
+          <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography variant="h6" fontWeight={700}>
+              Questions
             </Typography>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={addQuestion}
-            >
-              Add Question
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button startIcon={<AddIcon />} variant="contained" onClick={addQuestion}>
+                Add Question
+              </Button>
+            </Stack>
           </Box>
 
-          {quizData.questions.map((question, questionIndex) => {
-            const hasCorrectAnswer = question.options.some(opt => opt.isCorrect);
-            
-            return (
-              <Card key={questionIndex} sx={{ mb: 3 }}>
-                <CardContent>
-                  {/* Question Header */}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="h6" component="h3">
-                        Question {questionIndex + 1}
-                      </Typography>
-                      <Chip label={`${question.points} pt${question.points !== 1 ? 's' : ''}`} size="small" />
-                      
-                      {/* Warning if no correct answer */}
-                      {!hasCorrectAnswer && (
-                        <Chip
-                          label="Missing correct answer!"
-                          color="error"
-                          size="small"
-                          variant="outlined"
-                        />
-                      )}
-                    </Box>
-                    <IconButton
-                      color="error"
-                      onClick={() => deleteQuestion(questionIndex)}
-                      disabled={quizData.questions.length <= 1}
-                    >
-                      <Delete />
-                    </IconButton>
+          {/* Questions (Accordion per question) */}
+          {quizData.questions.map((question, qIndex) => (
+            <Accordion
+              key={question.id}
+              expanded={openQuestion === qIndex}
+              onChange={() => setOpenQuestion(openQuestion === qIndex ? -1 : qIndex)}
+              sx={{ mb: 2, borderRadius: 2, boxShadow: 2 }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box sx={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      {`Q${qIndex + 1}. ${question.questionText ? question.questionText.slice(0, 60) : "New question"}`}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {question.questionType} • {question.options.length} options • {question.points} pt
+                    </Typography>
                   </Box>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <Tooltip title="Delete question">
+                      <IconButton color="error" onClick={(e) => { e.stopPropagation(); removeQuestion(qIndex); }}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+              </AccordionSummary>
 
-                  {/* Question Text */}
+              <AccordionDetails>
+                <Box>
                   <TextField
+                    label={`Question ${qIndex + 1} text`}
                     fullWidth
                     multiline
                     rows={2}
-                    label="Question Text"
                     value={question.questionText}
-                    onChange={(e) => updateQuestion(questionIndex, 'questionText', e.target.value)}
-                    margin="normal"
-                    required
+                    onChange={(e) => updateQuestionField(qIndex, "questionText", e.target.value)}
+                    sx={{ mb: 2 }}
                   />
 
-                  {/* Question Settings */}
-                  <Grid container spacing={2} sx={{ mt: 1, mb: 2 }}>
-                    <Grid item xs={6}>
+                  <Grid container spacing={2} sx={{ mb: 2 }}>
+                    <Grid item xs={12} sm={6}>
                       <FormControl fullWidth>
-                        <InputLabel>Question Type</InputLabel>
+                        <InputLabel>Type</InputLabel>
                         <Select
                           value={question.questionType}
-                          label="Question Type"
-                          onChange={(e) => updateQuestion(questionIndex, 'questionType', e.target.value)}
+                          label="Type"
+                          onChange={(e) => updateQuestionField(qIndex, "questionType", e.target.value)}
                         >
-                          <MenuItem value="multiple-choice">Multiple Choice</MenuItem>
-                          <MenuItem value="true-false">True/False</MenuItem>
+                          <MenuItem value="multiple-choice">Multiple choice</MenuItem>
+                          <MenuItem value="true-false">True / False</MenuItem>
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid item xs={12} sm={6}>
                       <TextField
-                        fullWidth
                         type="number"
                         label="Points"
+                        fullWidth
                         value={question.points}
-                        onChange={(e) => updateQuestion(questionIndex, 'points', parseInt(e.target.value) || 1)}
+                        onChange={(e) => updateQuestionField(qIndex, "points", Number(e.target.value) || 1)}
                       />
                     </Grid>
                   </Grid>
 
-                  <Divider sx={{ my: 2 }} />
+                  <Divider sx={{ mb: 2 }} />
 
-                  {/* Options */}
-                  <Typography variant="subtitle2" component="p" gutterBottom>
-                    Options (Select the correct answer):
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Options
                   </Typography>
 
-                  {question.options.map((option, optionIndex) => (
-                    <Box
-                      key={optionIndex}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2,
-                        mb: 1,
-                        p: 2,
-                        border: '1px solid',
-                        borderColor: option.isCorrect ? 'success.main' : 'divider',
-                        borderRadius: 1,
-                        backgroundColor: option.isCorrect ? 'success.light' : 'background.paper',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      <Radio
-                        checked={option.isCorrect}
-                        onChange={(e) => updateOption(questionIndex, optionIndex, 'isCorrect', e.target.checked)}
-                      />
-                      <TextField
-                        fullWidth
-                        size="small"
-                        placeholder={`Option ${optionIndex + 1}`}
-                        value={option.text}
-                        onChange={(e) => updateOption(questionIndex, optionIndex, 'text', e.target.value)}
-                        error={option.isCorrect && !option.text.trim()}
-                        helperText={option.isCorrect && !option.text.trim() ? 'Correct answer cannot be empty' : ''}
-                      />
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => deleteOption(questionIndex, optionIndex)}
-                        disabled={question.options.length <= 2}
+                  <Stack spacing={1}>
+                    {question.options.map((opt, optIndex) => (
+                      <Box
+                        key={opt.id}
+                        sx={{
+                          display: "flex",
+                          gap: 1,
+                          alignItems: "center",
+                          p: 1,
+                          borderRadius: 1,
+                          border: "1px solid",
+                          borderColor: opt.isCorrect ? "success.light" : "divider",
+                          bgcolor: opt.isCorrect ? "success.50" : "background.paper",
+                        }}
                       >
-                        <Delete />
-                      </IconButton>
-                      
-                      {/* Badge for correct answer */}
-                      {option.isCorrect && (
-                        <Chip
-                          label="Correct Answer"
+                        <IconButton
                           size="small"
-                          color="success"
-                          variant="outlined"
-                          sx={{ ml: 1 }}
-                        />
-                      )}
-                    </Box>
-                  ))}
+                          onClick={() => updateOption(qIndex, optIndex, "isCorrect", true)}
+                          sx={{ color: opt.isCorrect ? "success.main" : "text.secondary" }}
+                        >
+                          {opt.isCorrect ? <RadioCheckedIcon /> : <RadioIcon />}
+                        </IconButton>
 
-                  <Button
-                    variant="outlined"
-                    startIcon={<Add />}
-                    onClick={() => addOption(questionIndex)}
-                    sx={{ mt: 1 }}
-                    disabled={question.options.length >= 6}
-                  >
-                    Add Option ({question.options.length}/6)
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
+                        <TextField
+                          placeholder={`Option ${optIndex + 1}`}
+                          fullWidth
+                          size="small"
+                          value={opt.text}
+                          onChange={(e) => updateOption(qIndex, optIndex, "text", e.target.value)}
+                          error={opt.isCorrect && !opt.text.trim()}
+                          helperText={opt.isCorrect && !opt.text.trim() ? "Correct answer cannot be empty" : ""}
+                        />
+
+                        <Tooltip title="Remove option">
+                          <span>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => removeOption(qIndex, optIndex)}
+                              disabled={question.options.length <= 2}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      </Box>
+                    ))}
+                  </Stack>
+
+                  <Box sx={{ mt: 2 }}>
+                    <Button startIcon={<AddIcon />} onClick={() => addOption(qIndex)} variant="outlined" disabled={question.options.length >= 8}>
+                      Add option ({question.options.length}/8)
+                    </Button>
+                  </Box>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          ))}
 
           {quizData.questions.length === 0 && (
-            <Paper sx={{ p: 4, textAlign: 'center' }}>
-              <Typography variant="h6" component="h3" color="text.secondary" gutterBottom>
-                No Questions Added Yet
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Start by adding your first question to create the quiz.
-              </Typography>
-              <Button variant="contained" startIcon={<Add />} onClick={addQuestion}>
-                Add First Question
-              </Button>
-            </Paper>
+            <Card sx={{ p: 4, textAlign: "center" }}>
+              <Typography variant="h6" color="text.secondary">No questions yet</Typography>
+              <Button sx={{ mt: 2 }} variant="contained" startIcon={<AddIcon />} onClick={addQuestion}>Add first question</Button>
+            </Card>
           )}
         </Grid>
       </Grid>
