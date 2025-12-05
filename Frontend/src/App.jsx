@@ -23,7 +23,6 @@ import TutorProfileWrapper from "./Components/TutorProfileWrapper";
 import EditCourse from "./pages/Tutor/EditCourse";
 
 import Dashboard from "./pages/Student/Dashboard";
-import EnrolledCourses from "./pages/Student/EnrolledCourses";
 import WishList from "./pages/Student/WishList";
 import Reviews from "./pages/Student/Reviews";
 import PurchaseHistory from "./pages/Student/PurchaseHistory";
@@ -34,6 +33,8 @@ import EditQuiz from "./pages/Tutor/EditQuiz";
 import CreateQuiz from "./pages/Tutor/CreateQuiz";
 import { useAuth } from "./Context/authContext";
 import QuizPreview from "./pages/Tutor/QuizPreview";
+import MyLearning from "./pages/Student/MyLearning";
+import CourseLearn from "./pages/Student/CourseLearn";  
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -48,7 +49,8 @@ function AppRoutes() {
       {/* Student Routes */}
       <Route path="/student" element={<StudentDashboardLayout />}>
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="mylearning" element={<EnrolledCourses />} />
+        <Route path="mylearning" element={<MyLearning />} />
+        <Route path="course/:courseId/learn" element={<CourseLearn />} />
         <Route path="wishlist" element={<WishList />} />
         <Route path="review" element={<Reviews />} />
         <Route path="purchaseHistory" element={<PurchaseHistory />} />
