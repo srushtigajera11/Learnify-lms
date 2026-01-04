@@ -76,3 +76,102 @@ exports.getEnrolledCourses = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
+
+// In studentController.js - Fix the sorting
+exports.getCourseDetails = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    // Find course with all details
+    const course = await Course.findById(courseId)
+      .populate('createdBy', 'name email')
+      .populate('category', 'name');
+
+    if (!course) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Course not found' 
+      });
+    }
+
+    // For students: check if enrolled
+    if (userRole === 'student') {
+      const isEnrolled = await Enrollment.findOne({ 
+        courseId, 
+        studentId: userId 
+      });
+
+      // If enrolled, return course with lessons
+      if (isEnrolled) {
+        const lessons = await Lesson.find({ 
+          courseId, 
+          status: 'published' 
+        });
+        
+        // ✅ FIXED: Proper sorting
+        const sortedLessons = lessons.sort((a, b) => a.order - b.order);
+        
+        return res.status(200).json({
+          success: true,
+          course: {
+            ...course.toObject(),
+            lessons: sortedLessons,
+            isEnrolled: true
+          }
+        });
+      }
+      
+      // If not enrolled but course is published, return basic details
+      if (course.status === 'published') {
+        const totalLessons = await Lesson.countDocuments({ courseId });
+        
+        return res.status(200).json({
+          success: true,
+          course: {
+            _id: course._id,
+            title: course.title,
+            description: course.description,
+            thumbnail: course.thumbnail,
+            price: course.price,
+            level: course.level,
+            category: course.category,
+            createdBy: course.createdBy,
+            status: course.status,
+            rating: course.rating,
+            totalLessons,
+            isEnrolled: false
+          }
+        });
+      }
+    }
+
+    // For instructors/admins
+    if (userRole === 'tutor' || userRole === 'admin') {
+      const lessons = await Lesson.find({ courseId });
+      const sortedLessons = lessons.sort((a, b) => a.order - b.order); // ✅ Fixed
+      
+      return res.status(200).json({
+        success: true,
+        course: {
+          ...course.toObject(),
+          lessons: sortedLessons,
+          canEdit: true
+        }
+      });
+    }
+
+    return res.status(403).json({
+      success: false,
+      message: 'You do not have permission to view this course'
+    });
+
+  } catch (error) {
+    console.error('Error fetching course details:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server Error' 
+    });
+  }
+};

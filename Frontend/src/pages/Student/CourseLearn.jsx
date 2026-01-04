@@ -49,42 +49,66 @@ const CourseLearn = () => {
     fetchCourseData();
   }, [courseId]);
 
-  const fetchCourseData = async () => {
-    try {
-      setLoading(true);
+ // CourseLearn.jsx - Updated fetchCourseData
+const fetchCourseData = async () => {
+  try {
+    setLoading(true);
+    
+    // 1. Get course details using student-specific endpoint
+    const courseRes = await axiosInstance.get(`/students/course-details/${courseId}`);
+    
+    if (courseRes.data.success) {
+      setCourse(courseRes.data.course);
       
-      // 1. Fetch course details
-      const courseRes = await axiosInstance.get(`/courses/${courseId}`);
-      if (courseRes.data.success) {
-        setCourse(courseRes.data.course);
-      }
-
-      // 2. Fetch lessons
-      const lessonsRes = await axiosInstance.get(`/lessons/${courseId}`);
-      if (lessonsRes.data.success) {
-        setLessons(lessonsRes.data.lessons);
-        if (lessonsRes.data.lessons.length > 0) {
-          setSelectedLesson(lessonsRes.data.lessons[0]);
-        }
-      }
-
-      // 3. Fetch progress
-      try {
-        const progressRes = await axiosInstance.get(`/progress/${courseId}`);
-        if (progressRes.data.success) {
-          setUserProgress(progressRes.data.progress);
-        }
-      } catch (progressErr) {
-        console.log("No progress found yet");
+      // Check if enrolled
+      if (!courseRes.data.course.isEnrolled) {
+        setError("You need to enroll in this course first");
+        setLoading(false);
+        return;
       }
       
-    } catch (err) {
-      console.error("Error details:", err);
-      setError("Failed to load course data");
-    } finally {
-      setLoading(false);
+      // If we have lessons in the response, use them
+      if (courseRes.data.course.lessons && courseRes.data.course.lessons.length > 0) {
+        setLessons(courseRes.data.course.lessons);
+        setSelectedLesson(courseRes.data.course.lessons[0]);
+      } else {
+        // Otherwise fetch lessons separately
+        const lessonsRes = await axiosInstance.get(`/students/course/${courseId}/lessons`);
+        if (lessonsRes.data.success) {
+          setLessons(lessonsRes.data.lessons);
+          if (lessonsRes.data.lessons.length > 0) {
+            setSelectedLesson(lessonsRes.data.lessons[0]);
+          }
+        }
+      }
+    } else {
+      setError(courseRes.data.message || "Failed to load course");
     }
-  };
+
+    // 2. Try to fetch progress (optional - might not exist yet)
+    try {
+      const progressRes = await axiosInstance.get(`/progress/${courseId}`);
+      if (progressRes.data.success) {
+        setUserProgress(progressRes.data.progress);
+      }
+    } catch (progressErr) {
+      console.log('No progress data yet');
+    }
+    
+  } catch (err) {
+    console.error("Error fetching course data:", err.response?.data || err.message);
+    
+    if (err.response?.status === 403) {
+      setError("You need to enroll in this course to access learning materials");
+    } else if (err.response?.status === 404) {
+      setError("Course not found");
+    } else {
+      setError("Failed to load course. Please try again.");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   const markLessonComplete = async (lessonId) => {
     try {
