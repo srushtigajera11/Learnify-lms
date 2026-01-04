@@ -35,6 +35,7 @@ import { useAuth } from "./Context/authContext";
 import QuizPreview from "./pages/Tutor/QuizPreview";
 import MyLearning from "./pages/Student/MyLearning";
 import CourseLearn from "./pages/Student/CourseLearn";  
+import AdminProtectedRoute from "./pages/Admin/AdminProtectedRoute";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -80,12 +81,10 @@ function AppRoutes() {
       </Route>
 
       {/* Admin Route Protected */}
-      <Route
-        path="/admin/dashboard"
-        element={
-          user?.isAdmin ? <AdminDashboard /> : <Navigate to="/unauthorized" />
-        }
-      />
+      <Route element={<AdminProtectedRoute />}>
+  <Route path="/admin/dashboard" element={<AdminDashboard />} />
+</Route>
+
     </Routes>
   );
 }
