@@ -26,7 +26,7 @@ exports.createUserProfile = async (req, res) => {
 
     res.status(201).json({  success: true,  message: "User profile created"}); // ✅ Only ONE response
   } catch (error) {
-    console.error("Registration error:", error); // Logs full error
+   
     res.status(500).json({ error: error.message });
   }
 };
@@ -107,7 +107,7 @@ exports.updateProfile = async (req, res) => {
       role: updatedUser.role,
     });
   } catch (err) {
-    console.error("Profile update error:", err);
+
     res.status(500).json({ message: "Update failed" });
   }
 };

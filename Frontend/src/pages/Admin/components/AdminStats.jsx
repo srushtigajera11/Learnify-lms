@@ -18,7 +18,7 @@ const AdminStats = ({ stats }) => (
         title="Revenue"
         value={`₹${stats.totalRevenue}`}
         icon={<Payments />}
-        color="#22c55e"
+        color="#20c55e"
       />
     </Grid>
   </Grid>

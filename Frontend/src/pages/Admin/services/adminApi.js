@@ -18,3 +18,6 @@ export const rejectCourse = (id, feedback) =>
 
 export const updateCourseStatus = (id, status) =>
   axiosInstance.put(`/admin/course/${id}/status`, { status });
+export const blockUnblockUser = async (userId, block = true) => {
+  return axiosInstance.put(`/admin/user/${userId}/block`, { block });
+};

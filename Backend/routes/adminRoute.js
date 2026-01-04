@@ -14,7 +14,6 @@ router.get('/courses', isAuthenticated, isAdmin, async (req, res) => {
   const courses = await Course.find().populate('createdBy', 'name email');
   res.json(courses);
 });
-
 // Get all users
 router.get('/users', isAuthenticated, isAdmin, async (req, res) => {
   const users = await User.find().select('-password');
@@ -82,6 +81,15 @@ router.put('/course/:id/reject', isAuthenticated, isAdmin, async (req, res) => {
   res.json({ message: 'Course rejected with feedback' });
 });
 
+router.put("/user/:id/block", async (req, res) => {
+const user = await User.findById(req.params.id);
+user.isBlocked = req.body.block; // use true/false from frontend
+await user.save();
+res.json({ message: `User ${user.isBlocked ? "blocked" : "unblocked"}` });
+
+});
+
+
 router.get('/enrollments', isAuthenticated, isAdmin, async (req, res) => {
   try {
     const enrollments = await Enrollment.find()
@@ -91,11 +99,9 @@ router.get('/enrollments', isAuthenticated, isAdmin, async (req, res) => {
 
     res.json(enrollments);
   } catch (error) {
-    console.error("ADMIN ENROLLMENTS ERROR:", error);
     res.status(500).json({ message: error.message });
   }
 });
-
 
 router.get('/payments', isAuthenticated, isAdmin, async (req, res) => {
   try {
@@ -106,11 +112,10 @@ router.get('/payments', isAuthenticated, isAdmin, async (req, res) => {
 
     res.json(payments);
   } catch (error) {
-    console.error("ADMIN PAYMENTS ERROR:", error);
+  
     res.status(500).json({ message: error.message });
   }
 });
-
 // Toggle course visibility
 router.put('/course/:id/status', isAuthenticated, isAdmin, async (req, res) => {
   const course = await Course.findById(req.params.id);
