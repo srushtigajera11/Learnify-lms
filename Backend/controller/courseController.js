@@ -172,3 +172,21 @@ exports.getCourseDetails = async (req, res) => {
     res.status(500).json({ message: 'Server Error' });
   }
 };
+
+export  const submitCourseForReview = async(req,res)=>{
+  const course = await Course.findOne({
+    _id : req.params.id,
+    createdBy : req.user._id
+  });
+  if(!course){
+    return res.status(404).json({message : 'course not found'});
+  }
+
+  if(course.status !== 'draft' && course.status !== 'rejected'){
+    return res.status(400).json({message : 'Course already submitted '})
+}
+course.status ='pending';
+course.rejectionFeedback = [];
+await course.save();
+res.json({meassage : "Course submitted for review successfully"});
+}

@@ -23,6 +23,13 @@ router.get('/', isAuthenticated, courseController.getAllCourses);
 
 router.get('/:courseId', isAuthenticated, courseController.getCourseDetails);
 
+router.put(
+  '/approve/:id',
+  isAuthenticated,
+  authorizeRoles('admin'),
+  courseController.submitCourseForReview
+);
+
 // UPDATE course (tutor only)
 router.put(
   '/:id',
