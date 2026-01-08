@@ -24,6 +24,10 @@ const courseSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+   
+    submittedAt: {
+      type: Date,
+    },
 
     approvedAt: {
       type: Date,
@@ -51,5 +55,7 @@ const courseSchema = new mongoose.Schema(
 
 // Performance optimization for admin dashboards
 courseSchema.index({ status: 1 });
+courseSchema.index({ createdBy: 1, status: 1 });
+courseSchema.index({ submittedAt: -1 });
 
 module.exports = mongoose.model('Course', courseSchema);

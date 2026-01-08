@@ -20,15 +20,36 @@ router.get('/my-course/:id', isAuthenticated, authorizeRoles('tutor'), courseCon
 
 // ✅ ADD THIS MISSING ROUTE
 router.get('/', isAuthenticated, courseController.getAllCourses);
+router.get('/tutor/courses',isAuthenticated, authorizeRoles('tutor'), courseController.getCoursesByStatus);
 
-router.get('/:courseId', isAuthenticated, courseController.getCourseDetails);
+// Submit course for review
+router.put('/:id/submit', isAuthenticated, authorizeRoles('tutor'), courseController.submitForReview);
 
-router.put(
-  '/approve/:id',
-  isAuthenticated,
-  authorizeRoles('admin'),
-  courseController.submitCourseForReview
-);
+// Update course status (for fixing rejected courses)
+router.put('/:id/status', isAuthenticated, authorizeRoles('tutor'),courseController.updateCourseStatus);
+
+// Get tutor dashboard stats
+router.get('/tutor/stats', isAuthenticated, authorizeRoles('tutor'),courseController.getTutorStats);
+
+// ============================================
+// ADMIN ROUTES (requires admin role)
+// ============================================
+
+// Get pending courses for admin approval
+router.get('/admin/pending', isAuthenticated, authorizeRoles('admin'),courseController.getPendingCourses);
+
+// Approve course
+router.put('/admin/:id/approve', isAuthenticated, authorizeRoles('admin'), courseController.approveCourse);
+
+// Reject course with feedback
+router.put('/admin/:id/reject', isAuthenticated, authorizeRoles('admin'), courseController.rejectCourse);
+
+// Get admin dashboard stats
+router.get('/admin/dashboard', isAuthenticated, authorizeRoles('admin'), courseController.getAdminDashboard);
+ 
+
+
+router.get('/:courseId', isAuthenticated,courseController.getCourseDetails);
 
 // UPDATE course (tutor only)
 router.put(
@@ -46,5 +67,6 @@ router.delete(
   authorizeRoles('tutor'),
   courseController.deleteCourse
 );
+
 
 module.exports = router;

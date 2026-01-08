@@ -99,13 +99,14 @@ exports.getCourseById = async (req, res) => {
 exports.updateMyCourse = async (req, res) => {
   try {
     const courseId = req.params.id;
+    const userId = req.user.id;
 
     // Find the course
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: 'Course not found' });
 
     // Only creator can update
-    if (course.createdBy.toString() !== req.user.id.toString()) {
+    if (course.createdBy.toString() !== userId.toString()) {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 
@@ -117,14 +118,45 @@ exports.updateMyCourse = async (req, res) => {
       course.thumbnail = result.secure_url;
     }
 
-    // ✅ FIX: Update ALL fields from request body
-    const { title, description, status, category, price } = req.body;
+    // Update fields
+    const { title, description, status, category, price, objectives, requirements, level } = req.body;
 
+    // Only allow certain status transitions
+    if (status && status !== course.status) {
+      const allowedTransitions = {
+        'draft': ['pending'],
+        'rejected': ['draft']
+      };
+
+      if (allowedTransitions[course.status] && 
+          allowedTransitions[course.status].includes(status)) {
+        course.status = status;
+        if (status === 'pending') {
+          course.submittedAt = new Date();
+        }
+        if (status === 'draft' && course.status === 'rejected') {
+          course.adminFeedback = ''; // Clear feedback when resubmitting
+        }
+      }
+    }
+
+    // Update other fields
     course.title = title !== undefined ? title : course.title;
     course.description = description !== undefined ? description : course.description;
-    course.status = status !== undefined ? status : course.status;
     course.category = category !== undefined ? category : course.category;
-    course.price = price !== undefined ? parseFloat(price) : course.price; // Convert to number
+    course.price = price !== undefined ? parseFloat(price) : course.price;
+    
+    if (objectives !== undefined) {
+      course.objectives = Array.isArray(objectives) ? objectives : 
+                         objectives.split(',').map(obj => obj.trim());
+    }
+    
+    if (requirements !== undefined) {
+      course.requirements = Array.isArray(requirements) ? requirements : 
+                           requirements.split(',').map(req => req.trim());
+    }
+    
+    course.level = level !== undefined ? level : course.level;
 
     await course.save();
     res.json({ message: 'Course updated successfully', course });
@@ -173,20 +205,311 @@ exports.getCourseDetails = async (req, res) => {
   }
 };
 
-export  const submitCourseForReview = async(req,res)=>{
-  const course = await Course.findOne({
-    _id : req.params.id,
-    createdBy : req.user._id
-  });
-  if(!course){
-    return res.status(404).json({message : 'course not found'});
-  }
+// Submit course for admin review (Tutor)
+exports.submitForReview = async (req, res) => {
+  try {
+    const courseId = req.params.id;
+    const userId = req.user.id;
 
-  if(course.status !== 'draft' && course.status !== 'rejected'){
-    return res.status(400).json({message : 'Course already submitted '})
-}
-course.status ='pending';
-course.rejectionFeedback = [];
-await course.save();
-res.json({meassage : "Course submitted for review successfully"});
-}
+    // Find the course
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    // Check if user is the course creator
+    if (course.createdBy.toString() !== userId.toString()) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    // Validate course can be submitted
+    if (course.status !== 'draft') {
+      return res.status(400).json({ 
+        message: `Course is already ${course.status}. Only draft courses can be submitted.` 
+      });
+    }
+
+    // Validate required fields
+    const requiredFields = ['title', 'description', 'category'];
+    const missingFields = requiredFields.filter(field => !course[field]);
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        message: `Missing required fields: ${missingFields.join(', ')}` 
+      });
+    }
+
+    if (!course.thumbnail) {
+      return res.status(400).json({ 
+        message: 'Course thumbnail is required' 
+      });
+    }
+
+    // Update course status
+    course.status = 'pending';
+    course.submittedAt = new Date();
+    await course.save();
+
+    // TODO: Send notification to admin (implement later)
+    // sendNotificationToAdmins({
+    //   type: 'COURSE_SUBMITTED',
+    //   courseId: course._id,
+    //   tutorName: req.user.name,
+    //   courseTitle: course.title
+    // });
+
+    res.status(200).json({ 
+      message: 'Course submitted for admin approval', 
+      course 
+    });
+  } catch (error) {
+    console.error('Submit for Review Error:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Update course status (Tutor - fix rejected course)
+exports.updateCourseStatus = async (req, res) => {
+  try {
+    const courseId = req.params.id;
+    const { status } = req.body;
+    const userId = req.user.id;
+
+    // Find the course
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    // Check if user is the course creator
+    if (course.createdBy.toString() !== userId.toString()) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    // Validate status transition
+    const allowedTransitions = {
+      'rejected': ['draft'], // Rejected can only go back to draft
+      'draft': ['pending', 'draft'], // Draft can be submitted or stay draft
+    };
+
+    if (!allowedTransitions[course.status] || 
+        !allowedTransitions[course.status].includes(status)) {
+      return res.status(400).json({ 
+        message: `Cannot change status from ${course.status} to ${status}` 
+      });
+    }
+
+    // If moving from rejected to draft, clear admin feedback
+    if (course.status === 'rejected' && status === 'draft') {
+      course.adminFeedback = '';
+    }
+
+    course.status = status;
+    if (status === 'pending') {
+      course.submittedAt = new Date();
+    }
+    
+    await course.save();
+
+    res.status(200).json({ 
+      message: `Course status updated to ${status}`, 
+      course 
+    });
+  } catch (error) {
+    console.error('Update Course Status Error:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Get tutor dashboard stats
+exports.getTutorStats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const courses = await Course.find({ createdBy: userId });
+    
+    const stats = {
+      total: courses.length,
+      draft: courses.filter(c => c.status === 'draft').length,
+      pending: courses.filter(c => c.status === 'pending').length,
+      published: courses.filter(c => c.status === 'published').length,
+      rejected: courses.filter(c => c.status === 'rejected').length,
+      totalRevenue: 0, // Calculate from enrollments
+      totalStudents: 0, // Calculate from enrollments
+    };
+
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error('Get Tutor Stats Error:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Get courses by status filter (Tutor)
+exports.getCoursesByStatus = async (req, res) => {
+  try {
+    const { status } = req.query;
+    const userId = req.user.id;
+    
+    const filter = { createdBy: userId };
+    
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    const courses = await Course.find(filter)
+      .sort('-createdAt')
+      .populate('createdBy', 'name email');
+    
+    res.status(200).json(courses);
+  } catch (error) {
+    console.error('Get Courses by Status Error:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// ============================================
+// ADMIN FUNCTIONS (Create separate adminController if needed)
+// ============================================
+
+// Get all pending courses (Admin)
+exports.getPendingCourses = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const pendingCourses = await Course.find({ status: 'pending' })
+      .populate('createdBy', 'name email')
+      .sort('-submittedAt');
+
+    res.status(200).json(pendingCourses);
+  } catch (error) {
+    console.error('Get Pending Courses Error:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Approve course (Admin)
+exports.approveCourse = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const courseId = req.params.id;
+    const course = await Course.findById(courseId);
+    
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    if (course.status !== 'pending') {
+      return res.status(400).json({ 
+        message: `Course is ${course.status}, only pending courses can be approved` 
+      });
+    }
+
+    course.status = 'published';
+    course.approvedAt = new Date();
+    course.adminFeedback = ''; // Clear any previous rejection feedback
+    await course.save();
+
+    // TODO: Send notification to tutor
+    // sendNotificationToUser(course.createdBy, {
+    //   type: 'COURSE_APPROVED',
+    //   courseId: course._id,
+    //   courseTitle: course.title
+    // });
+
+    res.status(200).json({ 
+      message: 'Course approved and published successfully', 
+      course 
+    });
+  } catch (error) {
+    console.error('Approve Course Error:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Reject course (Admin)
+exports.rejectCourse = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const courseId = req.params.id;
+    const { feedback } = req.body;
+
+    if (!feedback || feedback.trim() === '') {
+      return res.status(400).json({ message: 'Rejection feedback is required' });
+    }
+
+    const course = await Course.findById(courseId);
+    
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    if (course.status !== 'pending') {
+      return res.status(400).json({ 
+        message: `Course is ${course.status}, only pending courses can be rejected` 
+      });
+    }
+
+    course.status = 'rejected';
+    course.adminFeedback = feedback.trim();
+    await course.save();
+
+    // TODO: Send notification to tutor
+    // sendNotificationToUser(course.createdBy, {
+    //   type: 'COURSE_REJECTED',
+    //   courseId: course._id,
+    //   courseTitle: course.title,
+    //   feedback: feedback
+    // });
+
+    res.status(200).json({ 
+      message: 'Course rejected successfully', 
+      course 
+    });
+  } catch (error) {
+    console.error('Reject Course Error:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Get admin dashboard stats
+exports.getAdminDashboard = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    // Get all counts
+    const [totalCourses, pendingCourses, totalUsers, totalEnrollments, totalPayments] = await Promise.all([
+      Course.countDocuments(),
+      Course.countDocuments({ status: 'pending' }),
+      // Add your User model import and count
+      // User.countDocuments(),
+      // Enrollment.countDocuments(),
+      // Payment.countDocuments(),
+    ]);
+
+    const stats = {
+      totalCourses,
+      pendingCourses,
+      totalUsers: totalUsers || 0,
+      totalEnrollments: totalEnrollments || 0,
+      totalPayments: totalPayments || 0,
+      // Add revenue calculation if you have payments
+      // totalRevenue: await Payment.aggregate([...])
+    };
+
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error('Get Admin Dashboard Error:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
