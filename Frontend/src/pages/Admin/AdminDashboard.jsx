@@ -1,13 +1,14 @@
+// frontend/src/pages/admin/AdminDashboard.jsx
 import { useEffect, useState } from "react";
 import { Box, CircularProgress, Alert } from "@mui/material";
 import AdminSidebar from "./layout/AdminSidebar";
 import AdminStats from "./components/AdminStats";
 import PendingCourses from "./components/PendingCourses";
-import TabSection from "./components/TabSection";
 import CourseList from "./pages/CourseList";
 import UserList from "./pages/UserList";
 import EnrollmentTable from "./pages/EnrollmentTable";
 import PaymentTable from "./pages/PaymentTable";
+import ActivityLog from "./components/ActivityLog"; // NEW
 import { fetchAdminDashboardData } from "./services/adminApi";
 
 const AdminDashboard = () => {
@@ -15,7 +16,6 @@ const AdminDashboard = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState("dashboard");
-  const [tab, setTab] = useState(0);
 
   const load = async () => {
     try {
@@ -41,7 +41,7 @@ const AdminDashboard = () => {
     load();
   }, []);
 
-  if (loading) return <CircularProgress sx={{ mt: 6 }} />;
+  if (loading && !data) return <CircularProgress sx={{ mt: 6 }} />;
   if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
@@ -53,25 +53,30 @@ const AdminDashboard = () => {
       <Box sx={{ flexGrow: 1, p: 3, bgcolor: "#f9fafb" }}>
         {section === "dashboard" && (
           <>
-            <AdminStats stats={data.stats} />
-            <PendingCourses courses={data.pending} refresh={load} />
+            <AdminStats stats={data?.stats || {}} />
+            <PendingCourses courses={data?.pending || []} refresh={load} />
           </>
         )}
 
         {section === "courses" && (
-          <CourseList courses={data.courses} refresh={load} />
+          <CourseList courses={data?.courses || []} refresh={load} />
         )}
 
         {section === "users" && (
-          <UserList users={data.users} />
+          <UserList users={data?.users || []} refresh={load} />
         )}
 
         {section === "payments" && (
-          <PaymentTable rows={data.payments} />
+          <PaymentTable rows={data?.payments || []} />
         )}
 
         {section === "enrollments" && (
-          <EnrollmentTable rows={data.enrollments} />
+          <EnrollmentTable rows={data?.enrollments || []} />
+        )}
+
+        {/* NEW ACTIVITY LOG SECTION */}
+        {section === "activity" && (
+          <ActivityLog />
         )}
       </Box>
     </Box>

@@ -13,6 +13,7 @@ import MenuBookIcon from "@mui/icons-material/MenuBook";
 import PeopleIcon from "@mui/icons-material/People";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import SchoolIcon from "@mui/icons-material/School";
+import HistoryIcon from "@mui/icons-material/History";
 import LogoutIcon from "@mui/icons-material/Logout";
 
 const AdminSidebar = ({ selected, onSelect }) => {
@@ -22,6 +23,7 @@ const AdminSidebar = ({ selected, onSelect }) => {
     { key: "users", label: "Users", icon: <PeopleIcon /> },
     { key: "payments", label: "Payments", icon: <PaymentsIcon /> },
     { key: "enrollments", label: "Enrollments", icon: <SchoolIcon /> },
+    { key: "activity", label: "Activity Log", icon: <HistoryIcon /> },
   ];
 
   const handleLogout = () => {

@@ -23,6 +23,7 @@
     "express-async-handler": "^1.2.0",
     "firebase": "^11.9.1",
     "joi": "^17.13.3",
+    "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
     "multer": "^2.0.0",

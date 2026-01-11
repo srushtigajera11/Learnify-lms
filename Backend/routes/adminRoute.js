@@ -7,6 +7,7 @@ const Course = require('../models/courseModel');
 const User = require('../models/User');
 const Enrollment = require('../models/Enrollment');
 const Payment = require('../models/Payment');
+const adminController = require('../controller/adminController');
 
 // Get all courses
 router.get('/courses', isAuthenticated, isAdmin, async (req, res) => {
@@ -89,6 +90,15 @@ res.json({ message: `User ${user.isBlocked ? "blocked" : "unblocked"}` });
 
 });
 
+// Activity Logs
+router.get('/activity-logs', isAuthenticated, isAdmin, adminController.getActivityLogs);
+
+// Dashboard Stats
+router.get('/dashboard-stats', isAuthenticated, isAdmin, adminController.getDashboardStats);
+
+// Export Endpoints
+router.get('/export/users', isAuthenticated, isAdmin, adminController.exportUsersCSV);
+router.get('/export/courses', isAuthenticated, isAdmin, adminController.exportCoursesCSV);
 
 router.get('/enrollments', isAuthenticated, isAdmin, async (req, res) => {
   try {
