@@ -17,7 +17,6 @@
     "@mui/material": "^7.1.0",
     "@mui/x-date-pickers": "^8.24.0",
     "@reduxjs/toolkit": "^2.7.0",
-    "@tailwindcss/vite": "^4.1.4",
     "@uploadthing/react": "^7.3.1",
     "axios": "^1.9.0",
     "cloudinary": "^1.41.3",
@@ -33,11 +32,11 @@
     "react-toastify": "^11.0.5",
     "recharts": "^2.15.4",
     "redux": "^5.0.1",
-    "tailwindcss": "^4.1.4",
     "uploadthing": "^7.7.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
+    "@tailwindcss/vite": "^4.1.18",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
@@ -45,6 +44,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "tailwindcss": "^4.1.18",
     "vite": "^6.3.1"
   }
 }

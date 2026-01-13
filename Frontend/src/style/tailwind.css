@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@import "./buttons.css";
+@import "./forms.css";
+@import "./alerts.css";
+@import "./components.css";
+@layer utilities {
+  body {
+    @apply bg-gray-50 text-gray-800 antialiased;
+  }
+}

@@ -27,8 +27,52 @@ export const blockUnblockUser = async (userId, block = true) => {
 
 // ===== NEW FUNCTIONS =====
 
-export const fetchActivityLogs = (params = {}) => 
-  axiosInstance.get("/admin/activity-logs", { params });
+// In your adminApi.js, temporarily return mock data
+export const fetchActivityLogs = async (params = {}) => {
+  try {
+    console.log('Fetching activity logs with params:', params);
+    
+    // Try real API first
+    const response = await axiosInstance.get("/admin/activity-logs", { params });
+    console.log('Real API response:', response.data);
+    return response;
+  } catch (error) {
+    console.log('API failed, using mock data:', error.message);
+    
+    // Return mock data if API fails
+    return {
+      data: {
+        success: true,
+        logs: [
+          {
+            _id: '1',
+            adminId: { email: 'admin@learnify.com' },
+            action: 'USER_BLOCKED',
+            targetType: 'user',
+            targetName: 'john@example.com',
+            ipAddress: '192.168.1.1',
+            timestamp: new Date().toISOString()
+          },
+          {
+            _id: '2',
+            adminId: { email: 'admin@learnify.com' },
+            action: 'COURSE_APPROVED',
+            targetType: 'course',
+            targetName: 'React Fundamentals',
+            ipAddress: '192.168.1.1',
+            timestamp: new Date(Date.now() - 3600000).toISOString()
+          }
+        ],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 2,
+          pages: 1
+        }
+      }
+    };
+  }
+};
 
 // Export
 // frontend/src/pages/admin/services/adminApi.js - FIX EXPORT FUNCTIONS
@@ -46,6 +90,7 @@ export const exportCoursesCSV = () =>
 // Dashboard Charts Data
 export const fetchDashboardCharts = () =>
   axiosInstance.get("/admin/dashboard-stats"); 
+// In your adminApi.js, temporarily return mock data
 
 // Bulk Operations
 export const bulkUpdateUsers = (userIds, action) =>

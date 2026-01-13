@@ -46,18 +46,18 @@ const AdminStats = ({ stats }) => {
       setLoading(true);
       setError(null);
       try {
-        console.log('Fetching chart data from /admin/dashboard-stats...');
+       
         
         // Use the correct endpoint
         const response = await fetchDashboardCharts();
-        console.log('Chart API Response:', response);
+   
         
         // Check if we got data
         if (response.data && response.data.data) {
-          console.log('Chart data received:', response.data.data);
+       
           setChartData(response.data.data);
         } else {
-          console.warn('No chart data in response');
+
           setChartData({
             dailySignups: [],
             courseStats: []

@@ -23,7 +23,7 @@ const AdminSidebar = ({ selected, onSelect }) => {
     { key: "users", label: "Users", icon: <PeopleIcon /> },
     { key: "payments", label: "Payments", icon: <PaymentsIcon /> },
     { key: "enrollments", label: "Enrollments", icon: <SchoolIcon /> },
-    { key: "activity", label: "Activity Log", icon: <HistoryIcon /> },
+
   ];
 
   const handleLogout = () => {

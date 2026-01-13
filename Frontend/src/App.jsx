@@ -21,7 +21,6 @@ import ViewLessons from "./pages/Tutor/ViewLessons";
 import EditLesson from "./pages/Tutor/EditLesson";
 import TutorProfileWrapper from "./Components/TutorProfileWrapper";
 import EditCourse from "./pages/Tutor/EditCourse";
-
 import Dashboard from "./pages/Student/Dashboard";
 import WishList from "./pages/Student/WishList";
 import Reviews from "./pages/Student/Reviews";

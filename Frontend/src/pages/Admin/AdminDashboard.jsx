@@ -1,14 +1,15 @@
 // frontend/src/pages/admin/AdminDashboard.jsx
 import { useEffect, useState } from "react";
-import { Box, CircularProgress, Alert } from "@mui/material";
+import { Box, CircularProgress, Alert, Typography } from "@mui/material";
 import AdminSidebar from "./layout/AdminSidebar";
 import AdminStats from "./components/AdminStats";
-import PendingCourses from "./components/PendingCourses";
+import EnhancedPendingCourses from "./components/EnchanedPendingCourse";
 import CourseList from "./pages/CourseList";
 import UserList from "./pages/UserList";
 import EnrollmentTable from "./pages/EnrollmentTable";
 import PaymentTable from "./pages/PaymentTable";
-import ActivityLog from "./components/ActivityLog"; // NEW
+import ExportButtons from "./components/ExportButtons";
+
 import { fetchAdminDashboardData } from "./services/adminApi";
 
 const AdminDashboard = () => {
@@ -51,20 +52,42 @@ const AdminDashboard = () => {
 
       {/* Content */}
       <Box sx={{ flexGrow: 1, p: 3, bgcolor: "#f9fafb" }}>
-        {section === "dashboard" && (
-          <>
-            <AdminStats stats={data?.stats || {}} />
-            <PendingCourses courses={data?.pending || []} refresh={load} />
-          </>
-        )}
+       {section === "dashboard" && (
+  <>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Typography variant="h5">Dashboard Overview</Typography>
+      <ExportButtons />
+    </Box>
+    <AdminStats stats={data?.stats || {}} />
+        <Box sx={{ mt: 4 }}>
+      <EnhancedPendingCourses 
+        courses={data?.pending || []} 
+        refresh={load} 
+      />
+    </Box>
+  </>
+)}
+
 
         {section === "courses" && (
-          <CourseList courses={data?.courses || []} refresh={load} />
-        )}
+  <>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Typography variant="h5">Course Management</Typography>
+      <ExportButtons />
+    </Box>
+    <CourseList courses={data?.courses || []} refresh={load} />
+  </>
+)}
 
-        {section === "users" && (
-          <UserList users={data?.users || []} refresh={load} />
-        )}
+{section === "users" && (
+  <>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Typography variant="h5">User Management</Typography>
+      <ExportButtons />
+    </Box>
+    <UserList users={data?.users || []} refresh={load} />
+  </>
+)}
 
         {section === "payments" && (
           <PaymentTable rows={data?.payments || []} />
@@ -74,10 +97,10 @@ const AdminDashboard = () => {
           <EnrollmentTable rows={data?.enrollments || []} />
         )}
 
-        {/* NEW ACTIVITY LOG SECTION */}
+        {/* NEW ACTIVITY LOG SECTION
         {section === "activity" && (
           <ActivityLog />
-        )}
+        )} */}
       </Box>
     </Box>
   );

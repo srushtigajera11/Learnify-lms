@@ -1,39 +1,15 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import {
-  TextField,
-  Button,
-  Typography,
-  Box,
-  CircularProgress,
-  Alert,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
-  Paper,
-  Grid,
-  InputAdornment,
-  Card,
-  CardMedia,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-} from "@mui/material";
-import { 
-  CloudUpload, 
-  Save, 
-  ArrowBack, 
-  Send,
-  Info,
-  CheckCircle,
-  Cancel 
-} from "@mui/icons-material";
 import axiosInstance from "../../utils/axiosInstance";
 
-const EditCourse = () => {
+const statusStyles = {
+  draft: "bg-gray-100 text-gray-700",
+  pending: "bg-yellow-100 text-yellow-700",
+  published: "bg-green-100 text-green-700",
+  rejected: "bg-red-100 text-red-700",
+};
+
+export default function EditCourse() {
   const { courseId } = useParams();
   const navigate = useNavigate();
 
@@ -44,471 +20,232 @@ const EditCourse = () => {
     category: "",
     price: 0,
     thumbnail: "",
-    objectives: [],
-    requirements: [],
+    objectives: "",
+    requirements: "",
     level: "beginner",
   });
 
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [fetchLoading, setFetchLoading] = useState(true);
-  const [success, setSuccess] = useState("");
+  const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [adminFeedback, setAdminFeedback] = useState("");
-  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
 
-  const categories = [
-    'Web Development',
-    'App Development', 
-    'MERN Stack',
-    'React',
-    'Communication',
-    'Python',
-    'UI/UX'
-  ];
-
-  const levels = ['beginner', 'intermediate', 'advanced'];
-
-  // Get status color and chip
-  const getStatusChip = (status) => {
-    const statusConfig = {
-      draft: { color: 'default', label: 'Draft', icon: <Info /> },
-      pending: { color: 'warning', label: 'Pending Review', icon: <CircularProgress size={16} /> },
-      published: { color: 'success', label: 'Published', icon: <CheckCircle /> },
-      rejected: { color: 'error', label: 'Rejected', icon: <Cancel /> },
-    };
-    
-    const config = statusConfig[status] || statusConfig.draft;
-    
-    return (
-      <Chip
-        icon={config.icon}
-        label={config.label}
-        color={config.color}
-        variant="outlined"
-        size="small"
-        sx={{ ml: 1 }}
-      />
-    );
-  };
+  const isLocked = formData.status === "pending" || formData.status === "published";
 
   useEffect(() => {
-    const fetchCourse = async () => {
-      try {
-        setFetchLoading(true);
-        const res = await axiosInstance.get(`/courses/mine/${courseId}`);
-        const { 
-          title, 
-          description, 
-          thumbnail, 
-          status, 
-          category, 
-          price,
-          objectives,
-          requirements,
-          level,
-          adminFeedback 
-        } = res.data;
-        
-        setFormData({ 
-          title, 
-          description, 
-          thumbnail, 
-          status, 
-          category, 
-          price,
-          objectives: objectives?.join('\n') || '',
-          requirements: requirements?.join('\n') || '',
-          level: level || 'beginner'
-        });
-        setThumbnailPreview(thumbnail);
-        setAdminFeedback(adminFeedback || '');
-      } catch (err) {
-        console.error("Failed to fetch course:", err);
-        setError("Failed to load course details");
-      } finally {
-        setFetchLoading(false);
-      }
-    };
-
     fetchCourse();
   }, [courseId]);
 
+  const fetchCourse = async () => {
+    try {
+      const res = await axiosInstance.get(`/courses/mine/${courseId}`);
+      const c = res.data;
+
+      setFormData({
+        title: c.title,
+        description: c.description,
+        status: c.status,
+        category: c.category,
+        price: c.price,
+        level: c.level || "beginner",
+        objectives: c.objectives?.join("\n") || "",
+        requirements: c.requirements?.join("\n") || "",
+      });
+
+      setThumbnailPreview(c.thumbnail);
+      setAdminFeedback(c.adminFeedback || "");
+    } catch {
+      setError("Failed to load course");
+    } finally {
+      setFetching(false);
+    }
+  };
+
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setSuccess("");
+    setFormData({ ...formData, [e.target.name]: e.target.value });
     setError("");
   };
 
   const handleThumbnailChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        setError('Please select a valid image file');
-        return;
-      }
-      
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size should be less than 5MB');
-        return;
-      }
-
-      setThumbnailFile(file);
-      setThumbnailPreview(URL.createObjectURL(file));
-      setError("");
+    if (!file || !file.type.startsWith("image/")) {
+      setError("Invalid image file");
+      return;
     }
+    setThumbnailFile(file);
+    setThumbnailPreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = async (e, action = 'save') => {
-    e.preventDefault();
-    
-    // Validation
+  const saveCourse = async (submit = false) => {
     if (!formData.title.trim() || !formData.description.trim()) {
       setError("Title and description are required");
       return;
     }
 
-    // If submitting for review
-    if (action === 'submit') {
-      if (!thumbnailPreview) {
-        setError("Thumbnail is required when submitting for review");
-        return;
-      }
-      if (!formData.category) {
-        setError("Category is required when submitting for review");
-        return;
-      }
+    if (submit && (!thumbnailPreview || !formData.category)) {
+      setError("Thumbnail and category required for submission");
+      return;
     }
 
     setLoading(true);
-    setError("");
-    setSuccess("");
-
     try {
-      const formToSend = new FormData();
-      formToSend.append("title", formData.title.trim());
-      formToSend.append("description", formData.description.trim());
-      formToSend.append("category", formData.category);
-      formToSend.append("price", formData.price);
-      formToSend.append("level", formData.level);
-      
-      // Handle objectives and requirements
-      if (formData.objectives) {
-        const objectivesArray = formData.objectives.split('\n').filter(obj => obj.trim());
-        objectivesArray.forEach(obj => formToSend.append('objectives', obj.trim()));
-      }
-      
-      if (formData.requirements) {
-        const requirementsArray = formData.requirements.split('\n').filter(req => req.trim());
-        requirementsArray.forEach(req => formToSend.append('requirements', req.trim()));
-      }
-      
-      if (thumbnailFile) {
-        formToSend.append("thumbnail", thumbnailFile);
-      }
-
-      // Update course
-      await axiosInstance.put(`/courses/mine/${courseId}`, formToSend, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      const fd = new FormData();
+      Object.entries(formData).forEach(([key, val]) => {
+        if (!["objectives", "requirements"].includes(key)) {
+          fd.append(key, val);
+        }
       });
 
-      // If submitting for review
-      if (action === 'submit') {
+      formData.objectives.split("\n").forEach(o => o.trim() && fd.append("objectives", o));
+      formData.requirements.split("\n").forEach(r => r.trim() && fd.append("requirements", r));
+
+      if (thumbnailFile) fd.append("thumbnail", thumbnailFile);
+
+      await axiosInstance.put(`/courses/mine/${courseId}`, fd);
+
+      if (submit) {
         await axiosInstance.put(`/courses/${courseId}/submit`);
-        setSuccess("Course submitted for admin approval!");
-        setShowSubmitDialog(false);
+        setSuccess("Course submitted for review");
       } else {
-        setSuccess("Course updated successfully!");
+        setSuccess("Course saved successfully");
       }
 
-      // Refresh course data
-      setTimeout(() => {
-        navigate(0); // Refresh page
-      }, 1500);
-      
+      setTimeout(() => navigate(0), 1200);
     } catch (err) {
-      console.error("Failed to update course:", err);
-      setError(err.response?.data?.message || "Failed to update course. Please try again.");
+      setError(err.response?.data?.message || "Update failed");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmitForReview = () => {
-    // Check if course can be submitted
-    if (formData.status !== 'draft' && formData.status !== 'rejected') {
-      setError(`Cannot submit a ${formData.status} course for review`);
-      return;
-    }
-    setShowSubmitDialog(true);
-  };
-
-  if (fetchLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (fetching) return <div className="text-center py-20">Loading...</div>;
 
   return (
-    <>
-      <Paper elevation={3} sx={{ maxWidth: 1000, mx: 'auto', mt: 3, p: 4 }}>
-        {/* Header */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Button 
-              startIcon={<ArrowBack />} 
-              onClick={() => navigate("/tutor/courses")}
-              sx={{ mr: 2 }}
-            >
-              Back
-            </Button>
-            <Typography variant="h4" component="h1" fontWeight="bold">
-              Edit Course
-            </Typography>
-            {getStatusChip(formData.status)}
-          </Box>
-          
-          {/* Show admin feedback if rejected */}
-          {formData.status === 'rejected' && adminFeedback && (
-            <Alert 
-              severity="warning" 
-              icon={<Info />}
-              sx={{ maxWidth: 400 }}
-            >
-              <Typography variant="subtitle2" fontWeight="bold">
-                Admin Feedback:
-              </Typography>
-              <Typography variant="body2">
-                {adminFeedback}
-              </Typography>
-            </Alert>
-          )}
-        </Box>
+    <div className="max-w-6xl mx-auto p-6">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="text-sm text-gray-600">
+            ← Back
+          </button>
+          <h1 className="text-2xl font-bold">Edit Course</h1>
+          <span className={`px-3 py-1 rounded-full text-xs ${statusStyles[formData.status]}`}>
+            {formData.status}
+          </span>
+        </div>
+      </div>
 
-        {/* Messages */}
-        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {adminFeedback && formData.status === "rejected" && (
+        <div className="bg-yellow-50 border border-yellow-200 p-3 rounded mb-4">
+          <strong>Admin Feedback:</strong>
+          <p className="text-sm">{adminFeedback}</p>
+        </div>
+      )}
 
-        <Box component="form" onSubmit={(e) => handleSubmit(e, 'save')}>
-          <Grid container spacing={3}>
-            {/* Left Column - Form Fields */}
-            <Grid item xs={12} md={8}>
-              <TextField
-                label="Course Title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                fullWidth
-                required
-                margin="normal"
-                placeholder="Enter course title"
-              />
+      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
+      {success && <div className="bg-green-100 text-green-700 p-3 rounded mb-4">{success}</div>}
 
-              <TextField
-                label="Course Description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                fullWidth
-                required
-                multiline
-                rows={4}
-                margin="normal"
-                placeholder="Describe what students will learn..."
-              />
+      <div className="grid md:grid-cols-3 gap-6">
+        {/* LEFT */}
+        <div className="md:col-span-2 space-y-4">
+          <input
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
+            disabled={isLocked}
+            placeholder="Course title"
+            className="input"
+          />
 
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth margin="normal">
-                    <InputLabel>Category</InputLabel>
-                    <Select
-                      name="category"
-                      value={formData.category}
-                      label="Category"
-                      onChange={handleChange}
-                    >
-                      {categories.map((category) => (
-                        <MenuItem key={category} value={category}>
-                          {category}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            disabled={isLocked}
+            rows={4}
+            placeholder="Course description"
+            className="input"
+          />
 
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth margin="normal">
-                    <InputLabel>Difficulty Level</InputLabel>
-                    <Select
-                      name="level"
-                      value={formData.level}
-                      label="Difficulty Level"
-                      onChange={handleChange}
-                    >
-                      {levels.map((level) => (
-                        <MenuItem key={level} value={level}>
-                          {level.charAt(0).toUpperCase() + level.slice(1)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
-
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Price"
-                    name="price"
-                    type="number"
-                    value={formData.price}
-                    onChange={handleChange}
-                    fullWidth
-                    margin="normal"
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                    }}
-                    inputProps={{ min: 0, step: 0.01 }}
-                  />
-                </Grid>
-              </Grid>
-
-              <TextField
-                name="objectives"
-                fullWidth
-                label="Learning Objectives"
-                multiline
-                rows={3}
-                value={formData.objectives}
-                onChange={handleChange}
-                margin="normal"
-                placeholder="Enter one objective per line..."
-                helperText="What will students learn? (One per line)"
-              />
-
-              <TextField
-                name="requirements"
-                fullWidth
-                label="Requirements"
-                multiline
-                rows={3}
-                value={formData.requirements}
-                onChange={handleChange}
-                margin="normal"
-                placeholder="Enter one requirement per line..."
-                helperText="What do students need to know beforehand? (One per line)"
-              />
-            </Grid>
-
-            {/* Right Column - Thumbnail */}
-            <Grid item xs={12} md={4}>
-              <Card sx={{ mb: 2 }}>
-                {thumbnailPreview ? (
-                  <CardMedia
-                    component="img"
-                    image={thumbnailPreview}
-                    alt="Course thumbnail"
-                    sx={{ height: 200, objectFit: 'cover' }}
-                  />
-                ) : (
-                  <Box
-                    sx={{
-                      height: 200,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: 'grey.100',
-                      color: 'grey.500',
-                    }}
-                  >
-                    <Typography>No Thumbnail</Typography>
-                  </Box>
-                )}
-              </Card>
-
-              <Button
-                variant="outlined"
-                component="label"
-                startIcon={<CloudUpload />}
-                fullWidth
-              >
-                Upload Thumbnail
-                <input 
-                  type="file" 
-                  hidden 
-                  accept="image/*" 
-                  onChange={handleThumbnailChange} 
-                />
-              </Button>
-              
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                Recommended: 400x300px, max 5MB
-              </Typography>
-
-              {/* Action Buttons */}
-              <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Button 
-                  type="submit" 
-                  variant="contained" 
-                  disabled={loading}
-                  startIcon={loading ? <CircularProgress size={20} /> : <Save />}
-                >
-                  {loading ? "Saving..." : "Save Changes"}
-                </Button>
-                
-                {(formData.status === 'draft' || formData.status === 'rejected') && (
-                  <Button 
-                    variant="outlined" 
-                    color="primary"
-                    disabled={loading || !thumbnailPreview || !formData.category}
-                    startIcon={<Send />}
-                    onClick={handleSubmitForReview}
-                  >
-                    Submit for Review
-                  </Button>
-                )}
-              </Box>
-            </Grid>
-          </Grid>
-        </Box>
-      </Paper>
-
-      {/* Submit for Review Confirmation Dialog */}
-      <Dialog open={showSubmitDialog} onClose={() => setShowSubmitDialog(false)}>
-        <DialogTitle>Submit for Review</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to submit this course for admin approval?
-          </Typography>
-          <Alert severity="info" sx={{ mt: 2 }}>
-            <Typography variant="body2">
-              • Once submitted, you cannot edit the course until it's approved or rejected<br/>
-              • Admin will review your course within 1-2 business days<br/>
-              • You will receive a notification when your course is reviewed
-            </Typography>
-          </Alert>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowSubmitDialog(false)} disabled={loading}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={(e) => handleSubmit(e, 'submit')} 
-            variant="contained" 
-            disabled={loading}
+          <select
+            name="category"
+            value={formData.category}
+            onChange={handleChange}
+            disabled={isLocked}
+            className="input"
           >
-            {loading ? "Submitting..." : "Submit for Review"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
-  );
-};
+            <option value="">Select Category</option>
+            {["Web Development","MERN Stack","React","Python"].map(c => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
 
-export default EditCourse;
+          <textarea
+            name="objectives"
+            value={formData.objectives}
+            onChange={handleChange}
+            rows={3}
+            placeholder="Objectives (one per line)"
+            className="input"
+          />
+
+          <textarea
+            name="requirements"
+            value={formData.requirements}
+            onChange={handleChange}
+            rows={3}
+            placeholder="Requirements (one per line)"
+            className="input"
+          />
+        </div>
+
+        {/* RIGHT */}
+        <div className="space-y-4">
+          <div className="border rounded overflow-hidden">
+            {thumbnailPreview ? (
+              <img src={thumbnailPreview} className="h-40 w-full object-cover" />
+            ) : (
+              <div className="h-40 flex items-center justify-center text-gray-400">
+                No Thumbnail
+              </div>
+            )}
+          </div>
+
+          {!isLocked && (
+            <label className="block">
+              <input type="file" hidden onChange={handleThumbnailChange} />
+              <div className="btn-outline w-full text-center cursor-pointer">
+                Upload Thumbnail
+              </div>
+            </label>
+          )}
+
+          {!isLocked && (
+            <>
+              <button
+                onClick={() => saveCourse(false)}
+                disabled={loading}
+                className="btn-primary w-full"
+              >
+                {loading ? "Saving..." : "Save Changes"}
+              </button>
+
+              {(formData.status === "draft" || formData.status === "rejected") && (
+                <button
+                  onClick={() => saveCourse(true)}
+                  className="btn-outline w-full"
+                >
+                  Submit for Review
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -59,6 +59,60 @@ router.put(
   uploadThumbnail.single('thumbnail'),
   courseController.updateMyCourse
 );
+// Add these to your course routes
+
+// GET /courses/:id/stats
+router.get('/:id/stats', isAuthenticated, async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id)
+      .populate({
+        path: 'sections.lessons',
+        select: 'duration'
+      });
+
+    // Calculate stats
+    let totalLessons = 0;
+    let totalDuration = 0;
+
+    if (course.sections) {
+      course.sections.forEach(section => {
+        if (section.lessons) {
+          totalLessons += section.lessons.length;
+          section.lessons.forEach(lesson => {
+            totalDuration += lesson.duration || 0;
+          });
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      stats: {
+        totalLessons,
+        totalDuration, // in minutes
+        totalSections: course.sections?.length || 0,
+        completeness: calculateCompleteness(course)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /courses/:id/feedback (for internal notes)
+router.put('/:id/feedback', isAuthenticated, async (req, res) => {
+  try {
+    const { feedback } = req.body;
+    const course = await Course.findByIdAndUpdate(
+      req.params.id,
+      { instructorNotes: feedback },
+      { new: true }
+    );
+    res.json({ success: true, course });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // DELETE course (tutor only)
 router.delete(

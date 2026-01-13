@@ -30,6 +30,109 @@ exports.createCourse = async (req, res) => {
   }
 };
 
+// backend/src/controllers/courseController.js - Add this method
+exports.getCourseStats = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id)
+      .populate('createdBy', 'name email')
+      .populate('sections.lessons');
+
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Calculate statistics
+    const stats = {
+      basicInfo: {
+        title: !!course.title,
+        description: !!course.description && course.description.length > 50,
+        category: !!course.category,
+        thumbnail: !!course.thumbnail,
+        price: course.price !== undefined
+      },
+      content: {
+        totalSections: course.sections?.length || 0,
+        totalLessons: course.totalLessons || 0,
+        totalDuration: course.totalDuration || 0,
+        hasVideoLessons: course.sections?.some(s => 
+          s.lessons?.some(l => l.videoUrl)
+        ) || false,
+        hasResources: course.sections?.some(s => 
+          s.lessons?.some(l => l.resources && l.resources.length > 0)
+        ) || false
+      },
+      completeness: {
+        // Calculate percentage
+        percentage: calculateCompleteness(course),
+        missingItems: getMissingItems(course)
+      }
+    };
+
+    res.json({
+      success: true,
+      course: {
+        _id: course._id,
+        title: course.title,
+        instructor: course.createdBy,
+        status: course.status,
+        createdAt: course.createdAt
+      },
+      stats
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Helper functions
+const calculateCompleteness = (course) => {
+  const checks = [
+    !!course.title && course.title.length >= 10,
+    !!course.description && course.description.length >= 50,
+    !!course.category,
+    !!course.thumbnail,
+    course.sections?.length >= 1,
+    course.totalLessons >= 1,
+    course.price !== undefined
+  ];
+  
+  const met = checks.filter(Boolean).length;
+  return Math.round((met / checks.length) * 100);
+};
+
+const getMissingItems = (course) => {
+  const missing = [];
+  
+  if (!course.title || course.title.length < 10) {
+    missing.push('Course title is too short (min 10 characters)');
+  }
+  
+  if (!course.description || course.description.length < 50) {
+    missing.push('Course description is too short (min 50 characters)');
+  }
+  
+  if (!course.category) {
+    missing.push('Category not selected');
+  }
+  
+  if (!course.thumbnail) {
+    missing.push('Course thumbnail missing');
+  }
+  
+  if (!course.sections || course.sections.length === 0) {
+    missing.push('No sections created');
+  }
+  
+  if (course.totalLessons === 0) {
+    missing.push('No lessons added');
+  }
+  
+  if (course.price === undefined) {
+    missing.push('Price not set');
+  }
+  
+  return missing;
+};
 // GET /api/courses/mine
 exports.getMyCourses = async (req, res) => {
   try {

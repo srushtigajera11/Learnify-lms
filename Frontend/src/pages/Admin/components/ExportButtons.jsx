@@ -6,7 +6,8 @@ import {
   MenuItem,
   IconButton,
   Tooltip,
-  CircularProgress
+  CircularProgress,
+  Box
 } from '@mui/material';
 import {
   Download,
@@ -14,7 +15,7 @@ import {
   People,
   MenuBook
 } from '@mui/icons-material';
-import { exportUsersCSV, exportCoursesCSV } from '../services/adminApi';
+import axiosInstance from '../../../utils/axiosInstance';
 
 const ExportButtons = () => {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -33,30 +34,23 @@ const ExportButtons = () => {
   const handleExport = async (type) => {
     setExporting(type);
     try {
-      let data;
-      let filename;
-
-      if (type === 'users') {
-        data = await exportUsersCSV();
-        filename = `users_export_${Date.now()}.csv`;
-      } else if (type === 'courses') {
-        data = await exportCoursesCSV();
-        filename = `courses_export_${Date.now()}.csv`;
-      }
+      const response = await axiosInstance.get(`/admin/export/${type}`, {
+        responseType: 'blob'
+      });
 
       // Create download link
-      const url = window.URL.createObjectURL(new Blob([data.data]));
+      const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', filename);
+      link.setAttribute('download', `${type}_export_${Date.now()}.csv`);
       document.body.appendChild(link);
       link.click();
       link.remove();
 
-      // Show success message (you can use a toast notification)
       console.log(`${type} exported successfully!`);
     } catch (error) {
       console.error('Export failed:', error);
+      alert(`Failed to export ${type}. Please try again.`);
     } finally {
       setExporting('');
       handleClose();
@@ -64,15 +58,16 @@ const ExportButtons = () => {
   };
 
   return (
-    <>
+    <Box>
       <Tooltip title="Export Data">
-        <IconButton
+        <Button
+          variant="contained"
+          startIcon={<Download />}
           onClick={handleClick}
-          color="primary"
           disabled={exporting !== ''}
         >
-          {exporting ? <CircularProgress size={24} /> : <Download />}
-        </IconButton>
+          {exporting ? <CircularProgress size={24} /> : 'Export'}
+        </Button>
       </Tooltip>
 
       <Menu
@@ -84,21 +79,25 @@ const ExportButtons = () => {
           onClick={() => handleExport('users')}
           disabled={exporting === 'users'}
         >
-          <People sx={{ mr: 1 }} />
-          Export Users
-          {exporting === 'users' && <CircularProgress size={16} sx={{ ml: 1 }} />}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <People fontSize="small" />
+            Export Users
+            {exporting === 'users' && <CircularProgress size={16} />}
+          </Box>
         </MenuItem>
         
         <MenuItem 
           onClick={() => handleExport('courses')}
           disabled={exporting === 'courses'}
         >
-          <MenuBook sx={{ mr: 1 }} />
-          Export Courses
-          {exporting === 'courses' && <CircularProgress size={16} sx={{ ml: 1 }} />}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <MenuBook fontSize="small" />
+            Export Courses
+            {exporting === 'courses' && <CircularProgress size={16} />}
+          </Box>
         </MenuItem>
       </Menu>
-    </>
+    </Box>
   );
 };
 

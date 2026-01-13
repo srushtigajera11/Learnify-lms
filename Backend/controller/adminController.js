@@ -6,10 +6,13 @@ const Payment = require('../models/Payment');
 const { Parser } = require('json2csv');
 
 // Get Activity Logs
+// backend/src/controllers/admin.controller.js - Activity Logs
 exports.getActivityLogs = async (req, res) => {
   try {
-    const { page = 1, limit = 20, action, startDate, endDate } = req.query;
+    const { page = 1, limit = 10, action, startDate, endDate } = req.query;
     const skip = (page - 1) * limit;
+
+    console.log('Activity logs request:', { page, limit, action, startDate, endDate });
 
     let filter = {};
     
@@ -21,14 +24,19 @@ exports.getActivityLogs = async (req, res) => {
       };
     }
 
+    console.log('Activity logs filter:', filter);
+
     const [logs, total] = await Promise.all([
       ActivityLog.find(filter)
         .sort({ timestamp: -1 })
         .skip(skip)
         .limit(parseInt(limit))
-        .populate('adminId', 'name email'),
+        .populate('adminId', 'name email')
+        .lean(),
       ActivityLog.countDocuments(filter)
     ]);
+
+    console.log(`Found ${logs.length} activity logs out of ${total}`);
 
     res.json({
       success: true,
@@ -41,7 +49,11 @@ exports.getActivityLogs = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error in getActivityLogs:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
   }
 };
 
