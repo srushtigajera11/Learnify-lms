@@ -4,19 +4,6 @@ import axios from "../utils/axiosInstance";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import {
-  TextField,
-  Button,
-  Typography,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormControl,
-  FormLabel,
-  Box,
-  Paper,
-} from "@mui/material";
-
 const Register = () => {
   const navigate = useNavigate();
   const [inputValue, setInputValue] = useState({
@@ -61,149 +48,116 @@ const Register = () => {
   };
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        minHeight: "100vh",
-        background: "linear-gradient(to right, #e3f2fd, #fce4ec)",
-      }}
-    >
+    <div className="min-h-screen flex bg-gradient-to-r from-blue-50 to-pink-50">
       {/* Left Form Side */}
-      <Box
-        sx={{
-          flex: 1,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          px: 2,
-        }}
-      >
-        <Paper
-          elevation={6}
-          sx={{
-            width: "100%",
-            maxWidth: 420,
-            p: 4,
-            borderRadius: "20px",
-            backdropFilter: "blur(10px)",
-            backgroundColor: "rgba(255,255,255,0.7)",
-          }}
-        >
-          <Typography
-            variant="h4"
-            align="center"
-            gutterBottom
-            sx={{ color: "#1e3a8a", fontWeight: 600 }}
-          >
+      <div className="flex-1 flex justify-center items-center px-2">
+        <div className="w-full max-w-md p-8 rounded-2xl backdrop-blur-sm bg-white/70 shadow-xl">
+          <h1 className="text-2xl font-bold text-blue-900 text-center mb-2">
             Create an Account
-          </Typography>
+          </h1>
+          
+          <p className="text-gray-600 text-center mb-6">
+            Join our learning community
+          </p>
 
           <form onSubmit={handleSubmit}>
-            <TextField
-              label="Name"
-              name="name"
-              value={name}
-              onChange={handleOnChange}
-              fullWidth
-              margin="normal"
-              required
-            />
-            <TextField
-              label="Email"
-              name="email"
-              type="email"
-              value={email}
-              onChange={handleOnChange}
-              fullWidth
-              margin="normal"
-              required
-            />
-            <TextField
-              label="Password"
-              name="password"
-              type="password"
-              value={password}
-              onChange={handleOnChange}
-              fullWidth
-              margin="normal"
-              required
-            />
-            <Typography variant="caption" color="textSecondary">
-  Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
-</Typography>
-
-            <FormControl margin="normal" fullWidth>
-              <FormLabel sx={{ mb: 1 }}>Select Role</FormLabel>
-              <RadioGroup
-                row
-                name="role"
-                value={role}
+            <div className="mb-4">
+              <input
+                type="text"
+                name="name"
+                value={name}
                 onChange={handleOnChange}
-              >
-                <FormControlLabel
-                  value="student"
-                  control={<Radio />}
-                  label="Student"
-                />
-                <FormControlLabel
-                  value="tutor"
-                  control={<Radio />}
-                  label="Tutor"
-                />
-              </RadioGroup>
-            </FormControl>
+                placeholder="Full Name"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
 
-            <Button
+            <div className="mb-4 relative">
+              
+              <input
+                type="email"
+                name="email"
+                value={email}
+                onChange={handleOnChange}
+                placeholder="Email Address"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+
+            <div className="mb-4">
+              <input
+                type="password"
+                name="password"
+                value={password}
+                onChange={handleOnChange}
+                placeholder="Password"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Select Role
+              </label>
+              <div className="flex space-x-6">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="role"
+                    value="student"
+                    checked={role === "student"}
+                    onChange={handleOnChange}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-gray-700">Student</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="role"
+                    value="tutor"
+                    checked={role === "tutor"}
+                    onChange={handleOnChange}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-gray-700">Tutor</span>
+                </label>
+              </div>
+            </div>
+
+            <button
               type="submit"
-              fullWidth
-              variant="contained"
-              sx={{
-                mt: 3,
-                background: "linear-gradient(to right, #4f46e5, #3b82f6)",
-                fontWeight: "bold",
-                py: 1.3,
-                fontSize: "1rem",
-                borderRadius: "12px",
-                "&:hover": {
-                  background: "linear-gradient(to right, #4338ca, #2563eb)",
-                },
-              }}
+              className="w-full py-3 bg-gradient-to-r from-indigo-600 to-blue-500 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-blue-600 transition-all shadow-lg mb-4"
             >
               Register
-            </Button>
+            </button>
 
-            <Typography
-              variant="body2"
-              align="center"
-              sx={{ mt: 2, color: "#555" }}
-            >
+            <p className="text-center text-gray-600 mt-2">
               Already have an account?{" "}
-              <Link to="/login" style={{ color: "#1e3a8a", fontWeight: 500 }}>
+              <Link 
+                to="/login" 
+                className="text-blue-900 font-medium hover:underline"
+              >
                 Login
               </Link>
-            </Typography>
+            </p>
           </form>
-        </Paper>
-      </Box>
+        </div>
+      </div>
 
       {/* Right Image Side */}
-      <Box
-        sx={{
-          flex: 1,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          background: "#f3f4f6",
-        }}
-      >
+      <div className="flex-1 flex justify-center items-center bg-gray-100">
         <img
           src="/images/login.png"
           alt="Register Illustration"
-          style={{ width: "90%", maxWidth: "500px", borderRadius: "20px" }}
+          className="w-11/12 max-w-lg rounded-2xl"
         />
-      </Box>
+      </div>
       <ToastContainer />
-    </Box>
+    </div>
   );
 };
 
