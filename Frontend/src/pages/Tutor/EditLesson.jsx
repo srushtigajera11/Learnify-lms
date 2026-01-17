@@ -1,78 +1,41 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Card,
-  CardContent,
-  Grid,
-  IconButton,
-  CircularProgress,
-  Alert,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
-  Paper,
-} from '@mui/material';
-import {
-  Delete,
-  Add,
-  ArrowBack,
-  VideoFile,
-  Description,
-  Link as LinkIcon,
-  CloudUpload,
-} from '@mui/icons-material';
-import axiosInstance from '../../utils/axiosInstance';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import axiosInstance from "../../utils/axiosInstance";
 
-const EditLesson = () => {
+export default function EditLesson() {
   const { lessonId } = useParams();
   const navigate = useNavigate();
 
   const [lessonData, setLessonData] = useState({
-    title: '',
-    description: '',
-    order: '',
-    materials: []
+    title: "",
+    description: "",
+    order: "",
+    materials: [],
   });
-  const [newMaterial, setNewMaterial] = useState({ 
-    type: 'document', 
-    file: null, 
-    url: '', 
-    name: '',
-    preview: null 
-  });
+
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
+  /* ---------------- FETCH LESSON ---------------- */
   useEffect(() => {
     const fetchLesson = async () => {
       try {
         setLoading(true);
         const res = await axiosInstance.get(`/lessons/lesson/${lessonId}`);
-        console.log("Full API response:", res.data); // Debug log
-        
-        if (res.data.success && res.data.lesson) {
-          const lesson = res.data.lesson;
-          console.log("Lesson materials:", lesson.materials); // Debug log
-          
+        if (res.data?.lesson) {
           setLessonData({
-            title: lesson.title || '',
-            description: lesson.description || '',
-            order: lesson.order || '',
-            materials: lesson.materials || [] // Ensure this is an array
+            title: res.data.lesson.title || "",
+            description: res.data.lesson.description || "",
+            order: res.data.lesson.order || "",
+            materials: res.data.lesson.materials || [],
           });
         } else {
-          setError('Failed to load lesson data');
+          setError("Failed to load lesson");
         }
-      } catch (error) {
-        console.error('Error fetching lesson:', error);
-        setError('Failed to load lesson data');
+      } catch {
+        setError("Failed to load lesson");
       } finally {
         setLoading(false);
       }
@@ -80,383 +43,213 @@ const EditLesson = () => {
     fetchLesson();
   }, [lessonId]);
 
-  
-
+  /* ---------------- HANDLERS ---------------- */
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setLessonData(prev => ({ ...prev, [name]: value }));
-    setError('');
-  };
-
-  const handleMaterialTypeChange = (e) => {
-    const type = e.target.value;
-    setNewMaterial({ 
-      type, 
-      file: null, 
-      url: '', 
-      name: '',
-      preview: null 
-    });
-  };
-
-  const handleMaterialNameChange = (e) => {
-    setNewMaterial(prev => ({ ...prev, name: e.target.value }));
-  };
-
-  const handleMaterialUrlChange = (e) => {
-    setNewMaterial(prev => ({ ...prev, url: e.target.value }));
-  };
-
-  const handleMaterialFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    // File validation
-    if (file.size > 100 * 1024 * 1024) { // 100MB limit
-      setError('File size must be less than 100MB');
-      return;
-    }
-
-    let preview = null;
-    if (file.type.startsWith('video/')) {
-      preview = URL.createObjectURL(file);
-    }
-
-    setNewMaterial(prev => ({
-      ...prev,
-      file: file,
-      name: file.name || prev.name,
-      preview: preview
-    }));
-    setError('');
-  };
-
-  const addMaterial = () => {
-    // Validation
-    if (!newMaterial.name.trim()) {
-      setError('Please provide a name for the material');
-      return;
-    }
-
-    if (newMaterial.type === 'link') {
-      if (!newMaterial.url.trim()) {
-        setError('Please provide a URL for the link');
-        return;
-      }
-      // Add link material
-      setLessonData(prev => ({
-        ...prev,
-        materials: [...prev.materials, { 
-          type: newMaterial.type, 
-          url: newMaterial.url, 
-          name: newMaterial.name 
-        }]
-      }));
-    } else {
-      if (!newMaterial.file) {
-        setError(`Please select a file for ${newMaterial.type}`);
-        return;
-      }
-      // Add file material (file will be handled in backend)
-      setLessonData(prev => ({
-        ...prev,
-        materials: [...prev.materials, { 
-          type: newMaterial.type, 
-          file: newMaterial.file, 
-          name: newMaterial.name,
-          preview: newMaterial.preview 
-        }]
-      }));
-    }
-
-    // Reset form
-    setNewMaterial({ 
-      type: 'document', 
-      file: null, 
-      url: '', 
-      name: '',
-      preview: null 
-    });
-    setError('');
+    setLessonData({ ...lessonData, [e.target.name]: e.target.value });
+    setError("");
   };
 
   const removeMaterial = (index) => {
-    setLessonData(prev => ({
+    setLessonData((prev) => ({
       ...prev,
-      materials: prev.materials.filter((_, i) => i !== index)
+      materials: prev.materials.filter((_, i) => i !== index),
     }));
   };
-  // ... (rest of your handlers remain the same)
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  // Validation
-  if (!lessonData.title.trim() || !lessonData.order) {
-    setError('Title and order are required');
-    return;
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  setUpdating(true);
-  setError('');
-  setSuccess('');
-
-  try {
-    const formData = new FormData();
-    formData.append('title', lessonData.title);
-    formData.append('description', lessonData.description);
-    formData.append('order', lessonData.order);
-
-    // Debug: Log what's being sent
-    console.log("=== EDIT LESSON FRONTEND DEBUG ===");
-    console.log("Existing materials:", lessonData.materials);
-    console.log("Materials count:", lessonData.materials.length);
-
-    // Append existing materials
-    lessonData.materials.forEach((material, index) => {
-      console.log(`Appending existing material ${index}:`, material);
-      formData.append(`materials[${index}][type]`, material.type);
-      formData.append(`materials[${index}][name]`, material.name);
-      
-      if (material.type === 'link') {
-        formData.append(`materials[${index}][url]`, material.url);
-      } else if (material.url) {
-        formData.append(`materials[${index}][url]`, material.url);
-      }
-    });
-
-    // Log FormData contents
-    console.log("FormData entries:");
-    for (let [key, value] of formData.entries()) {
-      console.log(`  ${key}:`, value);
+    if (!lessonData.title.trim() || !lessonData.order) {
+      setError("Title and order are required");
+      return;
     }
 
-    await axiosInstance.put(`/lessons/lesson/${lessonId}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    
-    setSuccess('Lesson updated successfully!');
-    
-    setTimeout(() => {
-      navigate(-1);
-    }, 1500);
-  } catch (error) {
-    console.error('Error updating lesson:', error);
-    setError(error.response?.data?.message || 'Failed to update lesson');
-  } finally {
-    setUpdating(false);
-  }
-};
+    setUpdating(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const fd = new FormData();
+      fd.append("title", lessonData.title);
+      fd.append("description", lessonData.description);
+      fd.append("order", lessonData.order);
+
+      lessonData.materials.forEach((m, i) => {
+        fd.append(`materials[${i}][type]`, m.type);
+        fd.append(`materials[${i}][name]`, m.name || "Material");
+        if (m.url) fd.append(`materials[${i}][url]`, m.url);
+      });
+
+      await axiosInstance.put(`/lessons/lesson/${lessonId}`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setSuccess("Lesson updated successfully");
+      setTimeout(() => navigate(-1), 1200);
+    } catch (err) {
+      setError(err.response?.data?.message || "Update failed");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  /* ---------------- LOADING ---------------- */
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        Loading lesson...
+      </div>
     );
   }
 
-  const getMaterialIcon = (type) => {
-    switch (type) {
-      case 'video': return <VideoFile color="error" />;
-      case 'document': return <Description color="primary" />;
-      case 'link': return <LinkIcon color="success" />;
-      default: return <Description color="action" />;
-    }
-  };
-
-  const getFileAcceptType = (type) => {
-    switch (type) {
-      case 'video': return 'video/*';
-      case 'document': return '.pdf,.doc,.docx,.txt';
-      default: return '*';
-    }
-  };
-
   return (
-    <Paper elevation={3} sx={{ maxWidth: 800, mx: 'auto', mt: 3, p: 4 }}>
+    <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <Button 
-          startIcon={<ArrowBack />} 
+      <div className="flex items-center gap-4 mb-6">
+        <button
           onClick={() => navigate(-1)}
-          sx={{ mr: 2 }}
+          className="text-sm text-gray-600 hover:underline"
         >
-          Back
-        </Button>
-        <Typography variant="h4" component="h1" fontWeight="bold">
-          Edit Lesson
-        </Typography>
-      </Box>
+          ← Back
+        </button>
+        <h1 className="text-2xl font-bold">Edit Lesson</h1>
+      </div>
 
-      {/* Debug Info */}
-      <Alert severity="info" sx={{ mb: 2 }}>
-        Materials count: {lessonData.materials.length}
-      </Alert>
+      {/* Alerts */}
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-100 px-4 py-3 text-red-700">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-4 rounded-lg bg-green-100 px-4 py-3 text-green-700">
+          {success}
+        </div>
+      )}
 
-      {/* Messages */}
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-
-      <Box component="form" onSubmit={handleSubmit}>
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Lesson Details */}
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <TextField
-              label="Lesson Title"
+        <div className="bg-white rounded-xl shadow p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Lesson Title
+            </label>
+            <input
               name="title"
               value={lessonData.title}
               onChange={handleChange}
-              fullWidth
-              required
+              className="w-full rounded-lg border px-4 py-2 focus:ring-2 focus:ring-blue-500"
               placeholder="Enter lesson title"
             />
-          </Grid>
+          </div>
 
-          <Grid item xs={12}>
-            <TextField
-              label="Description"
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Description
+            </label>
+            <textarea
               name="description"
+              rows={3}
               value={lessonData.description}
               onChange={handleChange}
-              fullWidth
-              multiline
-              rows={3}
-              placeholder="Describe what this lesson covers..."
+              className="w-full rounded-lg border px-4 py-2 focus:ring-2 focus:ring-blue-500"
+              placeholder="Lesson description"
             />
-          </Grid>
+          </div>
 
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Order"
-              name="order"
+          <div className="max-w-xs">
+            <label className="block text-sm font-medium mb-1">
+              Order
+            </label>
+            <input
               type="number"
+              name="order"
               value={lessonData.order}
               onChange={handleChange}
-              fullWidth
-              required
-              inputProps={{ min: 1 }}
-              helperText="Sequence in the course"
+              className="w-full rounded-lg border px-4 py-2 focus:ring-2 focus:ring-blue-500"
+              min={1}
             />
-          </Grid>
-        </Grid>
+          </div>
+        </div>
 
-        {/* Existing Materials */}
-        <Card sx={{ mt: 4 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Existing Materials ({lessonData.materials.length})
-            </Typography>
+        {/* Materials */}
+        <div className="bg-white rounded-xl shadow p-6">
+          <h2 className="font-semibold mb-4">
+            Materials ({lessonData.materials.length})
+          </h2>
 
-            {lessonData.materials.length === 0 ? (
-              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                No materials added yet
-              </Typography>
-            ) : (
-              <Grid container spacing={2}>
-                {lessonData.materials.map((material, index) => (
-                  <Grid item xs={12} key={index}>
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                            {getMaterialIcon(material.type)}
-                            <Typography variant="subtitle1" fontWeight="bold">
-                              {material.name || 'Unnamed Material'}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              ({material.type})
-                            </Typography>
-                          </Box>
-                          <IconButton
-                            color="error"
-                            size="small"
-                            onClick={() => removeMaterial(index)}
-                          >
-                            <Delete />
-                          </IconButton>
-                        </Box>
-                        
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          {material.url}
-                        </Typography>
+          {lessonData.materials.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-6">
+              No materials added
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {lessonData.materials.map((m, index) => (
+                <div
+                  key={index}
+                  className="flex justify-between items-start gap-4 border rounded-lg p-4"
+                >
+                  <div className="space-y-1">
+                    <p className="font-medium">
+                      {m.name || "Unnamed Material"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {m.type}
+                    </p>
 
-                        {material.type === 'video' && material.url && (
-                          <Box sx={{ mt: 1 }}>
-                            <video 
-                              controls 
-                              width="100%" 
-                              style={{ maxWidth: 400, borderRadius: 8 }}
-                            >
-                              <source src={material.url} type="video/mp4" />
-                              Your browser does not support the video tag.
-                            </video>
-                          </Box>
-                        )}
+                    {m.url && (
+                      <a
+                        href={m.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        Open resource
+                      </a>
+                    )}
 
-                        {(material.type === 'document' || material.type === 'link') && material.url && (
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            href={material.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{ mt: 1 }}
-                          >
-                            Open {material.type === 'link' ? 'Link' : 'Document'}
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </CardContent>
-        </Card>
+                    {m.type === "video" && m.url && (
+                      <video
+                        src={m.url}
+                        controls
+                        className="mt-2 w-full max-w-sm rounded-lg"
+                      />
+                    )}
+                  </div>
 
-        {/* Add New Material Section */}
-        {/* ... (your existing add material code) ... */}
+                  <button
+                    type="button"
+                    onClick={() => removeMaterial(index)}
+                    className="text-red-500 hover:text-red-700 text-sm"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* Submit Button */}
-        <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-          <Button 
-            variant="outlined" 
+        {/* Actions */}
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
             onClick={() => navigate(-1)}
-            disabled={updating}
+            className="rounded-lg border px-6 py-2 hover:bg-gray-50"
           >
             Cancel
-          </Button>
-          <Button 
-            type="submit" 
-            variant="contained" 
+          </button>
+
+          <button
+            type="submit"
             disabled={updating}
-            startIcon={updating ? <CircularProgress size={20} /> : null}
+            className="rounded-lg bg-blue-600 px-6 py-2 text-white font-semibold hover:bg-blue-700 disabled:opacity-50"
           >
-            {updating ? 'Updating...' : 'Update Lesson'}
-          </Button>
-        </Box>
-      </Box>
-    </Paper>
+            {updating ? "Updating..." : "Update Lesson"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
-};
-
-export default EditLesson;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}

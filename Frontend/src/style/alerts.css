@@ -4,18 +4,18 @@
   }
 
   .alert-success {
-    @apply alert bg-green-50 text-green-700 border-green-200;
+    @apply bg-green-50 text-green-700 border-green-200 rounded-lg p-4 text-sm border;
   }
 
   .alert-error {
-    @apply alert bg-red-50 text-red-700 border-red-200;
+    @apply bg-red-50 text-red-700 border-red-200 rounded-lg p-4 text-sm border;
   }
 
   .alert-info {
-    @apply alert bg-blue-50 text-blue-700 border-blue-200;
+    @apply bg-blue-50 text-blue-700 border-blue-200 rounded-lg p-4 text-sm border;
   }
 
   .alert-warning {
-    @apply alert bg-yellow-50 text-yellow-700 border-yellow-200;
+    @apply bg-yellow-50 text-yellow-700 border-yellow-200 rounded-lg p-4 text-sm border;
   }
 }

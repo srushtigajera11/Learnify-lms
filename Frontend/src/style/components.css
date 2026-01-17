@@ -14,26 +14,28 @@
   .divider {
     @apply border-t my-4;
   }
+  
   .badge {
-    @apply inline-flex items-center gap-1
-    px-3 py-1 rounded-full text-xs font-medium;
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium;
   }
 
   .badge-draft {
-    @apply badge bg-gray-100 text-gray-700;
+    @apply bg-gray-100 text-gray-700;
   }
 
   .badge-pending {
-    @apply badge bg-yellow-100 text-yellow-700;
+    @apply bg-yellow-100 text-yellow-700;
   }
 
   .badge-published {
-    @apply badge bg-green-100 text-green-700;
+    @apply bg-green-100 text-green-700;
   }
 
   .badge-rejected {
-    @apply badge bg-red-100 text-red-700;
-  } .modal-backdrop {
+    @apply bg-red-100 text-red-700;
+  }
+  
+  .modal-backdrop {
     @apply fixed inset-0 bg-black/40 flex items-center justify-center z-50;
   }
 

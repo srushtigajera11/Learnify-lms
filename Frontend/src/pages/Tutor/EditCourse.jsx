@@ -1,251 +1,133 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import axiosInstance from "../../utils/axiosInstance";
-
-const statusStyles = {
-  draft: "bg-gray-100 text-gray-700",
-  pending: "bg-yellow-100 text-yellow-700",
-  published: "bg-green-100 text-green-700",
-  rejected: "bg-red-100 text-red-700",
-};
+import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import axiosInstance from '../../utils/axiosInstance';
 
 export default function EditCourse() {
   const { courseId } = useParams();
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    status: "draft",
-    category: "",
-    price: 0,
-    thumbnail: "",
-    objectives: "",
-    requirements: "",
-    level: "beginner",
-  });
-
-  const [thumbnailFile, setThumbnailFile] = useState(null);
-  const [thumbnailPreview, setThumbnailPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [adminFeedback, setAdminFeedback] = useState("");
-  const [confirmSubmit, setConfirmSubmit] = useState(false);
-
-  const isLocked = formData.status === "pending" || formData.status === "published";
+  const [course, setCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [thumbnailFile, setThumbnailFile] = useState(null); // New
 
   useEffect(() => {
+    const fetchCourse = async () => {
+      try {
+        const res = await axiosInstance.get(`/courses/my-course/${courseId}`);
+        setCourse(res.data);
+      } catch (err) {
+        console.error('Fetch Course Error:', err.response?.data || err.message);
+        if (err.response?.status === 404) {
+          setError('Course not found or you do not have permission.');
+        } else {
+          setError('Failed to load course. Please try again.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchCourse();
   }, [courseId]);
 
-  const fetchCourse = async () => {
+  const handleSave = async () => {
     try {
-      const res = await axiosInstance.get(`/courses/mine/${courseId}`);
-      const c = res.data;
+      const formData = new FormData();
+      formData.append('title', course.title);
+      formData.append('description', course.description);
+      formData.append('category', course.category || '');
+      formData.append('price', course.price || 0);
+      if (thumbnailFile) formData.append('thumbnail', thumbnailFile);
 
-      setFormData({
-        title: c.title,
-        description: c.description,
-        status: c.status,
-        category: c.category,
-        price: c.price,
-        level: c.level || "beginner",
-        objectives: c.objectives?.join("\n") || "",
-        requirements: c.requirements?.join("\n") || "",
+      await axiosInstance.put(`/courses/${courseId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      setThumbnailPreview(c.thumbnail);
-      setAdminFeedback(c.adminFeedback || "");
-    } catch {
-      setError("Failed to load course");
-    } finally {
-      setFetching(false);
-    }
-  };
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError("");
-  };
-
-  const handleThumbnailChange = (e) => {
-    const file = e.target.files[0];
-    if (!file || !file.type.startsWith("image/")) {
-      setError("Invalid image file");
-      return;
-    }
-    setThumbnailFile(file);
-    setThumbnailPreview(URL.createObjectURL(file));
-  };
-
-  const saveCourse = async (submit = false) => {
-    if (!formData.title.trim() || !formData.description.trim()) {
-      setError("Title and description are required");
-      return;
-    }
-
-    if (submit && (!thumbnailPreview || !formData.category)) {
-      setError("Thumbnail and category required for submission");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const fd = new FormData();
-      Object.entries(formData).forEach(([key, val]) => {
-        if (!["objectives", "requirements"].includes(key)) {
-          fd.append(key, val);
-        }
-      });
-
-      formData.objectives.split("\n").forEach(o => o.trim() && fd.append("objectives", o));
-      formData.requirements.split("\n").forEach(r => r.trim() && fd.append("requirements", r));
-
-      if (thumbnailFile) fd.append("thumbnail", thumbnailFile);
-
-      await axiosInstance.put(`/courses/mine/${courseId}`, fd);
-
-      if (submit) {
-        await axiosInstance.put(`/courses/${courseId}/submit`);
-        setSuccess("Course submitted for review");
-      } else {
-        setSuccess("Course saved successfully");
-      }
-
-      setTimeout(() => navigate(0), 1200);
+      alert('Course updated successfully');
+      navigate('/tutor/courses');
     } catch (err) {
-      setError(err.response?.data?.message || "Update failed");
-    } finally {
-      setLoading(false);
+      console.error('Update Course Error:', err.response?.data || err.message);
+      alert('Failed to update course. Please try again.');
     }
   };
 
-  if (fetching) return <div className="text-center py-20">Loading...</div>;
+  if (loading) return <div className="flex justify-center items-center h-96">Loading course...</div>;
+  if (error) return <div className="bg-red-100 text-red-700 p-4 rounded">{error}</div>;
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="text-sm text-gray-600">
-            ← Back
-          </button>
-          <h1 className="text-2xl font-bold">Edit Course</h1>
-          <span className={`px-3 py-1 rounded-full text-xs ${statusStyles[formData.status]}`}>
-            {formData.status}
-          </span>
-        </div>
-      </div>
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <button onClick={() => navigate('/tutor/courses')} className="text-blue-600 hover:underline">
+        ← Back to Courses
+      </button>
 
-      {adminFeedback && formData.status === "rejected" && (
-        <div className="bg-yellow-50 border border-yellow-200 p-3 rounded mb-4">
-          <strong>Admin Feedback:</strong>
-          <p className="text-sm">{adminFeedback}</p>
-        </div>
-      )}
+      <h1 className="text-3xl font-bold">{course.title}</h1>
 
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
-      {success && <div className="bg-green-100 text-green-700 p-3 rounded mb-4">{success}</div>}
-
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* LEFT */}
-        <div className="md:col-span-2 space-y-4">
+      <form className="space-y-4">
+        <div>
+          <label className="block font-medium">Title</label>
           <input
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            disabled={isLocked}
-            placeholder="Course title"
-            className="input"
-          />
-
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            disabled={isLocked}
-            rows={4}
-            placeholder="Course description"
-            className="input"
-          />
-
-          <select
-            name="category"
-            value={formData.category}
-            onChange={handleChange}
-            disabled={isLocked}
-            className="input"
-          >
-            <option value="">Select Category</option>
-            {["Web Development","MERN Stack","React","Python"].map(c => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-
-          <textarea
-            name="objectives"
-            value={formData.objectives}
-            onChange={handleChange}
-            rows={3}
-            placeholder="Objectives (one per line)"
-            className="input"
-          />
-
-          <textarea
-            name="requirements"
-            value={formData.requirements}
-            onChange={handleChange}
-            rows={3}
-            placeholder="Requirements (one per line)"
-            className="input"
+            type="text"
+            value={course.title}
+            onChange={(e) => setCourse({ ...course, title: e.target.value })}
+            className="w-full border rounded p-2"
           />
         </div>
 
-        {/* RIGHT */}
-        <div className="space-y-4">
-          <div className="border rounded overflow-hidden">
-            {thumbnailPreview ? (
-              <img src={thumbnailPreview} className="h-40 w-full object-cover" />
-            ) : (
-              <div className="h-40 flex items-center justify-center text-gray-400">
-                No Thumbnail
-              </div>
-            )}
-          </div>
-
-          {!isLocked && (
-            <label className="block">
-              <input type="file" hidden onChange={handleThumbnailChange} />
-              <div className="btn-outline w-full text-center cursor-pointer">
-                Upload Thumbnail
-              </div>
-            </label>
-          )}
-
-          {!isLocked && (
-            <>
-              <button
-                onClick={() => saveCourse(false)}
-                disabled={loading}
-                className="btn-primary w-full"
-              >
-                {loading ? "Saving..." : "Save Changes"}
-              </button>
-
-              {(formData.status === "draft" || formData.status === "rejected") && (
-                <button
-                  onClick={() => saveCourse(true)}
-                  className="btn-outline w-full"
-                >
-                  Submit for Review
-                </button>
-              )}
-            </>
-          )}
+        <div>
+          <label className="block font-medium">Description</label>
+          <textarea
+            value={course.description}
+            onChange={(e) => setCourse({ ...course, description: e.target.value })}
+            className="w-full border rounded p-2"
+            rows="4"
+          />
         </div>
-      </div>
+
+        <div>
+          <label className="block font-medium">Category</label>
+          <input
+            type="text"
+            value={course.category || ''}
+            onChange={(e) => setCourse({ ...course, category: e.target.value })}
+            className="w-full border rounded p-2"
+          />
+        </div>
+
+        <div>
+          <label className="block font-medium">Price</label>
+          <input
+            type="number"
+            value={course.price || 0}
+            onChange={(e) => setCourse({ ...course, price: parseFloat(e.target.value) })}
+            className="w-full border rounded p-2"
+          />
+        </div>
+
+        <div>
+          <label className="block font-medium">Thumbnail</label>
+          {course.thumbnail && (
+            <img
+              src={course.thumbnail}
+              alt="Course Thumbnail"
+              className="w-48 h-28 object-cover rounded mb-2"
+            />
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setThumbnailFile(e.target.files[0])}
+            className="w-full border rounded p-2"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSave}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Save Changes
+        </button>
+      </form>
     </div>
   );
 }

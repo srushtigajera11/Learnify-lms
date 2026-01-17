@@ -1,323 +1,238 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import {
-  TextField, Button, Typography, Box, IconButton, MenuItem, Grid,
-  Card, CardContent, Alert, CircularProgress, Paper
-} from '@mui/material';
-import { Delete, Add, CloudUpload, ArrowBack } from '@mui/icons-material';
-import axiosInstance from '../../utils/axiosInstance';
+import React, { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import axiosInstance from "../../utils/axiosInstance";
 
 const AddLessonForm = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  
-  // Use a single formData state instead of individual states
+
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    order: ''
+    title: "",
+    description: "",
+    order: "",
   });
-const [materials, setMaterials] = useState([{ 
-  type: 'document',  // ✅ Explicitly set type
-  file: null, 
-  url: '', 
-  name: 'New Material'  // ✅ Give it a default name
-}]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [error, setError] = useState('');
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const [materials, setMaterials] = useState([
+    { type: "document", file: null, url: "", name: "New Material", preview: null },
+  ]);
+
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError("");
   };
 
- // In your AddLessonForm - when adding materials
-const handleMaterialChange = (index, field, value) => {
-  const newMaterials = [...materials];
-  newMaterials[index][field] = value;
-  setMaterials(newMaterials);
-  
-  // Debug log
-  console.log(`Material ${index} ${field} changed to: ${value}`);
-};
-
- const handleMaterialFileChange = (index, file) => {
-  if (!file) return;
-
-  const newMaterials = [...materials];
-  newMaterials[index].file = file;
-  newMaterials[index].name = file.name; // Make sure name is set
-
-  if (file.type.startsWith("video/")) {
-    newMaterials[index].preview = URL.createObjectURL(file);
-  } else {
-    newMaterials[index].preview = null;
-  }
-
-  setMaterials(newMaterials);
-  
-  // Debug log
-  console.log(`File selected for material ${index}:`, file.name);
-};
-
-  const handleAddMaterial = () => {
-    setMaterials([...materials, { type: 'document', file: null, url: '', name: '' }]);
-  };
-
-  const handleRemoveMaterial = (index) => {
+  const handleMaterialChange = (index, field, value) => {
     const updated = [...materials];
-    updated.splice(index, 1);
+    updated[index][field] = value;
     setMaterials(updated);
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsUploading(true);
-  setUploadSuccess(false);
-  setError('');
+  const handleMaterialFileChange = (index, file) => {
+    if (!file) return;
 
-  try {
-    const formDataToSend = new FormData();
-    formDataToSend.append('title', formData.title);
-    formDataToSend.append('description', formData.description);
-    formDataToSend.append('order', formData.order);
-    formDataToSend.append('courseId', courseId);
-    formDataToSend.append('materialCount', materials.length);
+    const updated = [...materials];
+    updated[index].file = file;
+    updated[index].name = file.name;
+    updated[index].preview = file.type.startsWith("video/")
+      ? URL.createObjectURL(file)
+      : null;
 
-    console.log("=== FRONTEND DEBUG ===");
-    console.log("Materials array:", materials);
+    setMaterials(updated);
+  };
 
-    // ✅ FIX: Properly append files to FormData
-    materials.forEach((mat, index) => {
-      console.log(`Material ${index}:`, mat);
+  const addMaterial = () => {
+    setMaterials([
+      ...materials,
+      { type: "document", file: null, url: "", name: "", preview: null },
+    ]);
+  };
 
-      formDataToSend.append(`materials[${index}][type]`, mat.type || 'document');
-      formDataToSend.append(`materials[${index}][name]`, mat.name || 'Unnamed');
+  const removeMaterial = (index) => {
+    if (materials.length === 1) return;
+    setMaterials(materials.filter((_, i) => i !== index));
+  };
 
-      if (mat.type === 'link') {
-        formDataToSend.append(`materials[${index}][url]`, mat.url || '');
-        console.log(`Added link: ${mat.url}`);
-      } else if (mat.file) {
-        // ✅ CRITICAL FIX: Append the file with the correct field name
-        formDataToSend.append(`materials[${index}][file]`, mat.file);
-        console.log(`Added file: ${mat.file.name}`);
-      } else if (mat.url) {
-        formDataToSend.append(`materials[${index}][url]`, mat.url);
-      }
-    });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
 
-    // ✅ Debug: Log all FormData entries
-    console.log("All FormData entries:");
-    for (let [key, value] of formDataToSend.entries()) {
-      if (value instanceof File) {
-        console.log(`  ${key}: [File] ${value.name}`);
-      } else {
-        console.log(`  ${key}: ${value}`);
-      }
+    try {
+      const fd = new FormData();
+      fd.append("title", formData.title);
+      fd.append("description", formData.description);
+      fd.append("order", formData.order);
+      fd.append("courseId", courseId);
+      fd.append("materialCount", materials.length);
+
+      materials.forEach((m, i) => {
+        fd.append(`materials[${i}][type]`, m.type);
+        fd.append(`materials[${i}][name]`, m.name || "Material");
+
+        if (m.type === "link") {
+          fd.append(`materials[${i}][url]`, m.url);
+        } else if (m.file) {
+          fd.append(`materials[${i}][file]`, m.file);
+        }
+      });
+
+      await axiosInstance.post(`/lessons/${courseId}/add-lesson`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setSuccess("Lesson created successfully!");
+      setFormData({ title: "", description: "", order: "" });
+      setMaterials([{ type: "document", file: null, url: "", name: "New Material" }]);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to add lesson");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const res = await axiosInstance.post(`/lessons/${courseId}/add-lesson`, formDataToSend, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-
-    console.log("Backend response:", res.data);
-    setUploadSuccess(true);
-    
-    // Reset form
-    setFormData({
-      title: '',
-      description: '',
-      order: ''
-    });
-    setMaterials([{ type: 'document', file: null, url: '', name: 'New Material' }]);
-    
-  } catch (err) {
-    console.error('Add Lesson Error:', err);
-    console.error('Error response:', err.response?.data);
-    setError(err.response?.data?.message || 'Failed to add lesson');
-  } finally {
-    setIsUploading(false);
-  }
-};
   return (
-    <Paper elevation={3} sx={{ maxWidth: 800, mx: 'auto', mt: 3, p: 4 }}>
+    <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <Button 
-          startIcon={<ArrowBack />} 
-          onClick={() => navigate(-1)}
-          sx={{ mr: 2 }}
+      <div className="flex items-center gap-3 mb-6">
+        <button 
+          onClick={() => navigate(-1)} 
+          className="text-sm text-gray-600 hover:text-gray-900"
         >
-          Back to Course
-        </Button>
-        <Typography variant="h4" component="h1" fontWeight="bold">
-          Add New Lesson
-        </Typography>
-      </Box>
+          ← Back
+        </button>
+        <h1 className="text-2xl font-bold">Add New Lesson</h1>
+      </div>
 
-      {/* Messages */}
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {uploadSuccess && <Alert severity="success" sx={{ mb: 2 }}>Lesson created successfully!</Alert>}
+      {error && (
+        <div className="rounded-lg p-4 text-sm border bg-red-50 text-red-700 border-red-200 mb-4">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-lg p-4 text-sm border bg-green-50 text-green-700 border-green-200 mb-4">
+          {success}
+        </div>
+      )}
 
-      <Box component="form" onSubmit={handleSubmit}>
-        <Grid container spacing={3}>
-          {/* Lesson Details */}
-          <Grid item xs={12}>
-            <TextField
-              label="Lesson Title"
-              value={formData.title}
-              onChange={(e) => handleInputChange('title', e.target.value)}
-              fullWidth
-              required
-              margin="normal"
-              placeholder="Enter lesson title"
-              disabled={isUploading}
-            />
-          </Grid>
+      <form 
+        onSubmit={handleSubmit} 
+        className="bg-white rounded-xl shadow-sm border border-gray-200 space-y-4 p-6"
+      >
+        <input
+          name="title"
+          value={formData.title}
+          onChange={handleChange}
+          placeholder="Lesson title"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          required
+        />
 
-          <Grid item xs={12}>
-            <TextField
-              label="Description"
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              fullWidth
-              multiline
-              rows={3}
-              margin="normal"
-              placeholder="Describe what students will learn..."
-              disabled={isUploading}
-            />
-          </Grid>
+        <textarea
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          rows={3}
+          placeholder="Lesson description"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
 
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Order"
-              type="number"
-              value={formData.order}
-              onChange={(e) => handleInputChange('order', e.target.value)}
-              fullWidth
-              margin="normal"
-              inputProps={{ min: 1 }}
-              disabled={isUploading}
-            />
-          </Grid>
-        </Grid>
+        <input
+          name="order"
+          type="number"
+          value={formData.order}
+          onChange={handleChange}
+          placeholder="Order"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
 
-        {/* Materials Section */}
-        <Card sx={{ mt: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Lesson Materials
-            </Typography>
+        {/* Materials */}
+        <div className="space-y-3">
+          <h3 className="font-semibold">Lesson Materials</h3>
 
-            {materials.map((mat, index) => (
-              <Card key={index} variant="outlined" sx={{ mb: 2, p: 2 }}>
-                <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={12} sm={3}>
-                    <TextField
-                      select
-                      label="Type"
-                      fullWidth
-                      value={mat.type}
-                      onChange={(e) => handleMaterialChange(index, 'type', e.target.value)}
-                      disabled={isUploading}
-                    >
-                      <MenuItem value="video">Video</MenuItem>
-                      <MenuItem value="document">Document</MenuItem>
-                      <MenuItem value="link">Link</MenuItem>
-                    </TextField>
-                  </Grid>
+          {materials.map((m, i) => (
+            <div key={i} className="border rounded-lg p-4 space-y-3">
+              <div className="grid md:grid-cols-3 gap-3">
+                <select
+                  value={m.type}
+                  onChange={(e) => handleMaterialChange(i, "type", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="video">Video</option>
+                  <option value="document">Document</option>
+                  <option value="link">Link</option>
+                </select>
 
-                  <Grid item xs={12} sm={6}>
-                    {mat.type === 'link' ? (
-                      <TextField
-                        label="URL"
-                        fullWidth
-                        value={mat.url}
-                        onChange={(e) => handleMaterialChange(index, 'url', e.target.value)}
-                        disabled={isUploading}
-                        placeholder="https://example.com"
-                      />
-                    ) : (
-                      <Button
-                        variant="outlined"
-                        component="label"
-                        fullWidth
-                        startIcon={<CloudUpload />}
-                        disabled={isUploading}
-                      >
-                        {mat.file ? mat.file.name : `Upload ${mat.type}`}
-                        <input
-                          type="file"
-                          hidden
-                          accept={mat.type === 'video' ? 'video/*' : '*'}
-                          onChange={(e) => handleMaterialFileChange(index, e.target.files[0])}
-                        />
-                      </Button>
-                    )}
-                  </Grid>
+                {m.type === "link" ? (
+                  <input
+                    value={m.url}
+                    onChange={(e) => handleMaterialChange(i, "url", e.target.value)}
+                    placeholder="https://example.com"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 col-span-2"
+                  />
+                ) : (
+                  <label className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer text-center col-span-2">
+                    {m.file ? m.file.name : `Upload ${m.type}`}
+                    <input
+                      type="file"
+                      hidden
+                      onChange={(e) =>
+                        handleMaterialFileChange(i, e.target.files[0])
+                      }
+                    />
+                  </label>
+                )}
+              </div>
 
-                  <Grid item xs={12} sm={2}>
-                    <IconButton
-                      color="error"
-                      onClick={() => handleRemoveMaterial(index)}
-                      disabled={isUploading || materials.length === 1}
-                    >
-                      <Delete />
-                    </IconButton>
-                  </Grid>
+              {m.preview && (
+                <video controls className="w-full max-w-md rounded">
+                  <source src={m.preview} />
+                </video>
+              )}
 
-                  {/* Video Preview */}
-                  {mat.preview && mat.type === 'video' && (
-                    <Grid item xs={12}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Video Preview:
-                      </Typography>
-                      <video
-                        width="100%"
-                        height="auto"
-                        controls
-                        src={mat.preview}
-                        style={{ maxWidth: 400, borderRadius: 8 }}
-                      />
-                    </Grid>
-                  )}
-                </Grid>
-              </Card>
-            ))}
+              <button
+                type="button"
+                onClick={() => removeMaterial(i)}
+                className="text-sm text-red-600 hover:text-red-800"
+                disabled={materials.length === 1}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
 
-            <Button 
-              onClick={handleAddMaterial} 
-              variant="outlined" 
-              startIcon={<Add />}
-              disabled={isUploading}
-              sx={{ mt: 1 }}
-            >
-              Add Another Material
-            </Button>
-          </CardContent>
-        </Card>
+          <button 
+            type="button" 
+            onClick={addMaterial}
+            className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 w-full"
+          >
+            + Add Material
+          </button>
+        </div>
 
-        {/* Submit Button */}
-        <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-          <Button 
-            variant="outlined" 
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <button
+            type="button"
             onClick={() => navigate(-1)}
-            disabled={isUploading}
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             Cancel
-          </Button>
-          <Button 
+          </button>
+
+          <button 
             type="submit" 
-            variant="contained" 
-            disabled={isUploading}
-            startIcon={isUploading ? <CircularProgress size={20} /> : null}
+            disabled={loading}
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isUploading ? 'Creating Lesson...' : 'Create Lesson'}
-          </Button>
-        </Box>
-      </Box>
-    </Paper>
+            {loading ? "Creating..." : "Create Lesson"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
 

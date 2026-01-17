@@ -93,10 +93,12 @@ const CourseCreate = () => {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <div className="card">
-        <div className="card-header text-xl">🎓 Create New Course</div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="px-6 py-4 border-b font-semibold text-xl">
+          🎓 Create New Course
+        </div>
 
-        <div className="card-body space-y-6">
+        <div className="px-6 py-4 space-y-6">
           {/* Progress */}
           <div>
             <div className="flex justify-between text-sm mb-1">
@@ -111,44 +113,58 @@ const CourseCreate = () => {
             </div>
           </div>
 
-          {message && <div className="alert-success">{message}</div>}
-          {error && <div className="alert-error">{error}</div>}
+          {message && (
+            <div className="rounded-lg p-4 text-sm border bg-green-50 text-green-700 border-green-200">
+              {message}
+            </div>
+          )}
+          {error && (
+            <div className="rounded-lg p-4 text-sm border bg-red-50 text-red-700 border-red-200">
+              {error}
+            </div>
+          )}
 
           <form className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Left */}
             <div className="md:col-span-2 space-y-4">
               <div>
-                <label className="label">Course Title</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Course Title
+                </label>
                 <input
                   type="text"
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
-                  className="input"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Minimum 10 characters"
                 />
               </div>
 
               <div>
-                <label className="label">Description</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
                 <textarea
                   name="description"
                   rows="4"
                   value={formData.description}
                   onChange={handleChange}
-                  className="textarea"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Minimum 50 characters"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Category</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category
+                  </label>
                   <select
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
-                    className="select"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     {categories.map((c) => (
                       <option key={c}>{c}</option>
@@ -157,12 +173,14 @@ const CourseCreate = () => {
                 </div>
 
                 <div>
-                  <label className="label">Level</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Level
+                  </label>
                   <select
                     name="level"
                     value={formData.level}
                     onChange={handleChange}
-                    className="select"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     {levels.map((l) => (
                       <option key={l} value={l}>
@@ -174,35 +192,41 @@ const CourseCreate = () => {
               </div>
 
               <div>
-                <label className="label">Price</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Price
+                </label>
                 <input
                   type="number"
                   name="price"
                   value={formData.price}
                   onChange={handleChange}
-                  className="input"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="label">Learning Objectives</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Learning Objectives
+                </label>
                 <textarea
                   name="objectives"
                   rows="3"
                   value={formData.objectives}
                   onChange={handleChange}
-                  className="textarea"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="label">Requirements</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Requirements
+                </label>
                 <textarea
                   name="requirements"
                   rows="3"
                   value={formData.requirements}
                   onChange={handleChange}
-                  className="textarea"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -223,8 +247,8 @@ const CourseCreate = () => {
                 )}
               </div>
 
-              <label className="btn-outline w-full cursor-pointer text-center">
-                Upload Thumbnail
+              <label className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer w-full">
+                📷 Upload Thumbnail
                 <input
                   type="file"
                   hidden
@@ -236,11 +260,11 @@ const CourseCreate = () => {
           </form>
 
           {/* Actions */}
-          <div className="flex gap-4 justify-end">
+          <div className="flex gap-4 justify-end pt-4 border-t">
             <button
               onClick={(e) => handleSubmit(e, 'draft')}
               disabled={loading}
-              className="btn-secondary"
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               💾 Save Draft
             </button>
@@ -248,7 +272,7 @@ const CourseCreate = () => {
             <button
               onClick={(e) => handleSubmit(e, 'submit')}
               disabled={loading || progress < 70}
-              className="btn-primary"
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Submitting…' : 'Submit for Review'}
             </button>

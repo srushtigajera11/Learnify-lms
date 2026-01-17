@@ -1,34 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
-import {
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  CardMedia,
-  CircularProgress,
-  Alert,
-  Box,
-  Button,
-  Chip,
-  Stack,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
-  Tooltip,
-} from '@mui/material';
-import {
-  Edit,
-  Delete,
-  Visibility,
-  Add,
-  Category,
-  MonetizationOn,
-  Person,
-} from '@mui/icons-material';
+import { FavoriteBorder, Delete, Visibility, Add, Category, MonetizationOn, Person } from '@mui/icons-material';
 
 const MyCourses = () => {
   const [courses, setCourses] = useState([]);
@@ -37,36 +10,26 @@ const MyCourses = () => {
   const [deleteDialog, setDeleteDialog] = useState({ open: false, course: null });
   const navigate = useNavigate();
 
-  const handleDeleteClick = (course) => {
-    setDeleteDialog({ open: true, course });
-  };
+  const handleDeleteClick = (course) => setDeleteDialog({ open: true, course });
+  const handleDeleteCancel = () => setDeleteDialog({ open: false, course: null });
 
   const handleDeleteConfirm = async () => {
     if (!deleteDialog.course) return;
-
     try {
       await axiosInstance.delete(`/courses/${deleteDialog.course._id}`);
-      setCourses((prev) => prev.filter((c) => c._id !== deleteDialog.course._id));
+      setCourses(prev => prev.filter(c => c._id !== deleteDialog.course._id));
       setDeleteDialog({ open: false, course: null });
     } catch (err) {
-      console.error('Error deleting course:', err);
       alert(err.response?.data?.message || 'Failed to delete course');
     }
-  };
-
-  const handleDeleteCancel = () => {
-    setDeleteDialog({ open: false, course: null });
   };
 
   const fetchCourses = async () => {
     try {
       setLoading(true);
       const res = await axiosInstance.get('/courses/my-course');
-      if (Array.isArray(res.data)) {
-        setCourses(res.data);
-      } else {
-        setError('Invalid data format received from server');
-      }
+      if (Array.isArray(res.data)) setCourses(res.data);
+      else setError('Invalid data format received from server');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch courses');
     } finally {
@@ -74,206 +37,96 @@ const MyCourses = () => {
     }
   };
 
-  useEffect(() => {
-    fetchCourses();
-  }, []);
+  useEffect(() => { fetchCourses(); }, []);
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (loading)
+    return <div className="flex justify-center items-center min-h-[400px]"><div className="loader">Loading...</div></div>;
 
-  if (error) {
-    return (
-      <Alert severity="error" sx={{ mt: 5 }}>
-        {error}
-      </Alert>
-    );
-  }
+  if (error)
+    return <div className="mt-10 text-center text-red-600">{error}</div>;
 
   return (
-    <Box sx={{ p: 3 }}>
+    <div className="p-6">
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" fontWeight="bold">
-          My Courses ({courses.length})
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">My Courses ({courses.length})</h2>
+        <button
+          className="bg-indigo-600 hover:bg-blue-900 text-white px-4 py-2 rounded flex items-center gap-1"
           onClick={() => navigate('/tutor/create-course')}
         >
-          Create New Course
-        </Button>
-      </Box>
+          <Add /> Create New Course
+        </button>
+      </div>
 
       {courses.length === 0 ? (
-        <Box sx={{ textAlign: 'center', mt: 10 }}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            You haven't created any courses yet
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
+        <div className="text-center mt-20">
+          <p className="text-gray-500 text-lg">You haven't created any courses yet</p>
+          <button
+            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-1"
             onClick={() => navigate('/tutor/create-course')}
-            sx={{ mt: 2 }}
           >
-            Create Your First Course
-          </Button>
-        </Box>
+            <Add /> Create Your First Course
+          </button>
+        </div>
       ) : (
-        <Grid container spacing={3}>
-          {courses.map((course) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={course._id}>
-              <Card
-                sx={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  transition: '0.3s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: 6,
-                  },
-                }}
-              >
-                {/* Thumbnail */}
-                <Box sx={{ height: 160, overflow: 'hidden' }}>
-                  {course.thumbnail ? (
-                    <CardMedia
-                      component="img"
-                      image={course.thumbnail}
-                      alt={course.title}
-                      sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <Box
-                      sx={{
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'grey.100',
-                        color: 'grey.500',
-                      }}
-                    >
-                      <Typography variant="body2">No Thumbnail</Typography>
-                    </Box>
-                  )}
-                </Box>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {courses.map(course => (
+            <div key={course._id} className="bg-white border rounded shadow-sm flex flex-col hover:shadow-lg transition-transform duration-200 hover:-translate-y-1">
+              {/* Thumbnail */}
+              <div className="relative h-40 overflow-hidden rounded-t">
+                {course.thumbnail ? (
+                  <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500">
+                    No Thumbnail
+                  </div>
+                )}
+                <span className={`absolute top-2 right-2 text-xs text-white px-2 py-1 rounded ${course.status === 'published' ? 'bg-green-600' : 'bg-gray-400'}`}>
+                  {course.status?.toUpperCase() || 'DRAFT'}
+                </span>
+              </div>
 
-                <CardContent sx={{ flexGrow: 1, p: 2 }}>
-                  {/* Status Chip */}
-                  <Box sx={{ mb: 1.5 }}>
-                    <Chip
-                      label={course.status?.toUpperCase() || 'DRAFT'}
-                      color={course.status === 'published' ? 'success' : 'default'}
-                      size="small"
-                      variant={course.status === 'published' ? 'filled' : 'outlined'}
-                    />
-                  </Box>
+              {/* Content */}
+              <div className="flex-1 p-4 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold line-clamp-2">{course.title || 'Untitled Course'}</h3>
 
-                  {/* Title */}
-                  <Typography
-                    variant="h6"
-                    gutterBottom
-                    sx={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      minHeight: '3rem',
-                    }}
-                  >
-                    {course.title || 'Untitled Course'}
-                  </Typography>
-
-                  {/* Course Details */}
-                  <Stack spacing={1} sx={{ mt: 1.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Category fontSize="small" color="action" />
-                      <Typography variant="body2" color="text.secondary">
-                        {course.category || 'Uncategorized'}
-                      </Typography>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <MonetizationOn fontSize="small" color="action" />
-                      <Typography variant="body2" color="text.secondary">
-                        {course.price > 0 ? `₹${course.price.toFixed(2)}` : 'Free'}
-                      </Typography>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Person fontSize="small" color="action" />
-                      <Typography variant="body2" color="text.secondary">
-                        {course.createdBy?.name || 'You'}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
+                  <div className="mt-2 space-y-1 text-gray-600 text-xs">
+                    <div className="flex items-center gap-1"><Category fontSize="small" /> {course.category || 'Uncategorized'}</div>
+                    <div className="flex items-center gap-1"><MonetizationOn fontSize="small" /> {course.price > 0 ? `₹${course.price.toFixed(2)}` : 'Free'}</div>
+                    <div className="flex items-center gap-1"><Person fontSize="small" /> {course.createdBy?.name || 'You'}</div>
+                  </div>
+                </div>
 
                 {/* Actions */}
-                <Box sx={{ p: 2, pt: 0 }}>
-                  <Stack direction="row" spacing={1} justifyContent="space-between">
-                    <Tooltip title="View Course">
-                      <IconButton
-                        color="primary"
-                        onClick={() => navigate(`/tutor/course/${course._id}`)}
-                        size="small"
-                      >
-                        <Visibility />
-                      </IconButton>
-                    </Tooltip>
-
-                    {/* <Tooltip title="Edit Course">
-                      <IconButton
-                        color="secondary"
-                        onClick={() => navigate(`/tutor/course/${course._id}/edit`)}
-                        size="small"
-                      >
-                        <Edit />
-                      </IconButton>
-                    </Tooltip> */}
-
-                    <Tooltip title="Delete Course">
-                      <IconButton
-                        color="error"
-                        onClick={() => handleDeleteClick(course)}
-                        size="small"
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
-                </Box>
-              </Card>
-            </Grid>
+                <div className="mt-4 flex justify-between">
+                  <button onClick={() => navigate(`/tutor/course/${course._id}`)} className="text-blue-600 hover:text-blue-800">
+                    <Visibility />
+                  </button>
+                  <button onClick={() => handleDeleteClick(course)} className="text-red-600 hover:text-red-800">
+                    <Delete />
+                  </button>
+                </div>
+              </div>
+            </div>
           ))}
-        </Grid>
+        </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialog.open} onClose={handleDeleteCancel}>
-        <DialogTitle>Delete Course</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete "{deleteDialog.course?.title}"? 
-            This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteCancel}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      {/* Delete Dialog */}
+      {deleteDialog.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center z-50">
+          <div className="bg-white rounded shadow-lg w-96 p-6">
+            <h3 className="text-lg font-semibold mb-4">Delete Course</h3>
+            <p>Are you sure you want to delete "{deleteDialog.course?.title}"? This action cannot be undone.</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={handleDeleteCancel} className="px-4 py-2 rounded border">Cancel</button>
+              <button onClick={handleDeleteConfirm} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

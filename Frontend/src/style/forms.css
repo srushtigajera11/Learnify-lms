@@ -7,11 +7,11 @@
   }
 
   .textarea {
-    @apply input resize-none;
+    @apply  resize-none;
   }
 
   .select {
-    @apply input bg-white;
+    @apply  bg-white;
   }
 
   .label {

@@ -1,113 +1,82 @@
 import React from "react";
-import {
-  Card,
-  CardMedia,
-  CardContent,
-  Typography,
-  Chip,
-  Box,
-  IconButton,
-} from "@mui/material";
-import { FavoriteBorder } from "@mui/icons-material";
+import { Heart } from "lucide-react";
 import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
 
 const statusColors = {
-  Published: "success",
-  Draft: "warning",
-  "AI Pick": "info",
+  Published: "bg-green-100 text-green-800 border-green-200",
+  Draft: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  "AI Pick": "bg-blue-100 text-blue-800 border-blue-200",
+  default: "bg-gray-100 text-gray-800 border-gray-200",
 };
 
 const CourseCard = ({ course }) => {
   const navigate = useNavigate();
 
+  const getStatusColor = (status) => {
+    return statusColors[status] || statusColors.default;
+  };
+
   return (
-    <Card
-      elevation={2}
-      sx={{
-        cursor: "pointer",
-        height: 330, // ✅ fixed height for uniform layout
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        transition: "transform 0.2s ease, box-shadow 0.2s ease",
-        "&:hover": { transform: "translateY(-4px)", boxShadow: 4 },
-      }}
+    <div
+      className="group bg-white rounded-lg shadow-sm border border-gray-200 
+                 hover:shadow-md hover:-translate-y-1 transition-all duration-200 
+                 cursor-pointer h-[330px] flex flex-col overflow-hidden"
       onClick={() => navigate(`/course/${course.id}`)}
     >
       {/* Thumbnail */}
-      <Box sx={{ position: "relative", height: 150, overflow: "hidden" }}>
-        <CardMedia
-          component="img"
-          height="150"
-          image={course.imageUrl}
+      <div className="relative h-[150px] overflow-hidden">
+        <img
+          src={course.imageUrl}
           alt={course.title}
-          sx={{ objectFit: "cover", width: "100%" }}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
-        <Chip
-          label={course.status}
-          color={statusColors[course.status] || "default"}
-          size="small"
-          sx={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            color: "white",
-            bgcolor: `${statusColors[course.status]}.dark`,
-          }}
-        />
-      </Box>
+        <span
+          className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+            course.status
+          )}`}
+        >
+          {course.status}
+        </span>
+      </div>
 
       {/* Content */}
-      <CardContent sx={{ flexGrow: 1, px: 2, pb: 1 }}>
-        <Typography
-          gutterBottom
-          variant="subtitle1"
-          fontWeight={600}
-          sx={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
+      <div className="flex-1 p-4 flex flex-col">
+        <h3
+          className="font-semibold text-gray-900 mb-2 
+                     truncate text-sm md:text-base"
+          title={course.title}
         >
           {course.title}
-        </Typography>
+        </h3>
 
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            minHeight: 36,
-          }}
+        <p
+          className="text-gray-600 text-sm flex-1 
+                     line-clamp-2 min-h-[2.5rem]"
+          title={course.description}
         >
           {course.description || "No description available."}
-        </Typography>
-      </CardContent>
+        </p>
 
-      {/* Price & Favorite */}
-      <Box
-        sx={{
-          px: 2,
-          pb: 1.5,
-          mt: "auto",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Typography variant="h6" fontWeight="bold" color="text.primary">
-          ₹{course.price?.toLocaleString() || 0}
-        </Typography>
-        <IconButton aria-label="add to favorites" size="small">
-          <FavoriteBorder />
-        </IconButton>
-      </Box>
-    </Card>
+        {/* Price & Favorite */}
+        <div className="flex justify-between items-center mt-4 pt-3 border-t">
+          <span className="font-bold text-lg text-gray-900">
+            ₹{course.price?.toLocaleString() || 0}
+          </span>
+          <button
+            className="p-2 text-gray-400 hover:text-red-500 
+                       hover:bg-red-50 rounded-full transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              // Add favorite logic here
+            }}
+            aria-label="Add to favorites"
+          >
+            <Heart className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
