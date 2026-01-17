@@ -1,42 +1,17 @@
 import React, { useState, useEffect } from "react";
-import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  TextField,
-  Button,
-  FormControl,
-  Switch,
-  Divider,
-  Chip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Select,
-  MenuItem,
-  InputLabel,
-  IconButton,
-  Alert,
-  Stack,
-  FormControlLabel,   // <— Correct import here
-} from "@mui/material";
-
-import {
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  Save as SaveIcon,
-  Cancel as CancelIcon,
-  ExpandMore as ExpandMoreIcon,
-  RadioButtonUnchecked as RadioIcon,
-  RadioButtonChecked as RadioCheckedIcon,
-} from "@mui/icons-material";
-
+import { 
+  Plus, 
+  Trash2, 
+  Save, 
+  X, 
+  ChevronDown, 
+  Circle, 
+  CheckCircle2,
+  AlertCircle,
+  Loader2
+} from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import axiosInstance from "../../utils/axiosInstance";
-
-
 
 export default function EditQuiz() {
   const { courseId, quizId } = useParams();
@@ -211,259 +186,357 @@ export default function EditQuiz() {
     }
   };
 
-  if (loading) return <Typography sx={{ p: 3 }}>Loading...</Typography>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
   
-  if (!quizData) return <Alert severity="error">Quiz not found</Alert>;
+  if (!quizData) {
+    return (
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <p className="text-red-700">Quiz not found</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const totalPoints = quizData.questions.reduce((s, q) => s + q.points, 0);
 
   return (
-    <Box sx={{ p: 3 }}>
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
       {/* HEADER */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-        <Typography variant="h4" fontWeight={700}>
-          Edit Quiz
-        </Typography>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Edit Quiz</h1>
+        </div>
 
-        <Stack direction="row" spacing={2}>
-          <Button
-            variant="outlined"
-            startIcon={<CancelIcon />}
+        <div className="flex gap-3">
+          <button
             onClick={() => navigate(`/tutor/course/${courseId}/quizzes`)}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center gap-2"
           >
+            <X className="w-4 h-4" />
             Cancel
-          </Button>
+          </button>
 
-          <Button
-            variant="contained"
-            startIcon={<SaveIcon />}
+          <button
             onClick={saveQuiz}
             disabled={saving}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            {saving ? "Saving..." : "Update Quiz"}
-          </Button>
-        </Stack>
-      </Box>
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Update Quiz
+              </>
+            )}
+          </button>
+        </div>
+      </div>
 
-      {error && <Alert sx={{ mb: 2 }} severity="error">{error}</Alert>}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <p className="text-red-700">{error}</p>
+          </div>
+        </div>
+      )}
 
-      <Grid container spacing={3}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* LEFT SIDEBAR */}
-        <Grid item xs={12} md={4}>
-          <Card sx={{ borderRadius: 2 }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight={700}>Quiz Settings</Typography>
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Quiz Settings</h2>
 
-              <TextField
-                label="Quiz Title"
-                fullWidth
-                sx={{ mt: 2 }}
-                value={quizData.title}
-                onChange={(e) => setQuizData({ ...quizData, title: e.target.value })}
-              />
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quiz Title
+                </label>
+                <input
+                  type="text"
+                  value={quizData.title}
+                  onChange={(e) => setQuizData({ ...quizData, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter quiz title"
+                />
+              </div>
 
-              <TextField
-                label="Description"
-                fullWidth
-                multiline
-                rows={3}
-                sx={{ mt: 2 }}
-                value={quizData.description}
-                onChange={(e) => setQuizData({ ...quizData, description: e.target.value })}
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={quizData.description}
+                  onChange={(e) => setQuizData({ ...quizData, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Quiz description"
+                />
+              </div>
 
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid item xs={6}>
-                  <TextField
-                    label="Time (mins)"
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Time (mins)
+                  </label>
+                  <input
                     type="number"
-                    fullWidth
                     value={quizData.timeLimit}
                     onChange={(e) => setQuizData({ ...quizData, timeLimit: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                </Grid>
+                </div>
 
-                <Grid item xs={6}>
-                  <TextField
-                    label="Passing %"
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Passing %
+                  </label>
+                  <input
                     type="number"
-                    fullWidth
                     value={quizData.passingScore}
                     onChange={(e) => setQuizData({ ...quizData, passingScore: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                </Grid>
-              </Grid>
+                </div>
+              </div>
 
-              <TextField
-                label="Max Attempts"
-                type="number"
-                fullWidth
-                sx={{ mt: 2 }}
-                value={quizData.maxAttempts}
-                onChange={(e) => setQuizData({ ...quizData, maxAttempts: e.target.value })}
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Max Attempts
+                </label>
+                <input
+                  type="number"
+                  value={quizData.maxAttempts}
+                  onChange={(e) => setQuizData({ ...quizData, maxAttempts: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
 
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={quizData.shuffleQuestions}
-                    onChange={(e) => setQuizData({ ...quizData, shuffleQuestions: e.target.checked })}
-                  />
-                }
-                label="Shuffle Questions"
-                sx={{ mt: 2 }}
-              />
+              <div className="space-y-3">
+                <label className="flex items-center cursor-pointer">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={quizData.shuffleQuestions}
+                      onChange={(e) => setQuizData({ ...quizData, shuffleQuestions: e.target.checked })}
+                      className="sr-only"
+                    />
+                    <div className={`w-10 h-6 rounded-full transition ${quizData.shuffleQuestions ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
+                    <div className={`absolute left-1 top-1 w-4 h-4 rounded-full transition-transform bg-white ${quizData.shuffleQuestions ? 'transform translate-x-4' : ''}`}></div>
+                  </div>
+                  <span className="ml-2 text-sm text-gray-700">Shuffle Questions</span>
+                </label>
 
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={quizData.isPublished}
-                    onChange={(e) => setQuizData({ ...quizData, isPublished: e.target.checked })}
-                  />
-                }
-                label="Publish Quiz"
-              />
+                <label className="flex items-center cursor-pointer">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={quizData.isPublished}
+                      onChange={(e) => setQuizData({ ...quizData, isPublished: e.target.checked })}
+                      className="sr-only"
+                    />
+                    <div className={`w-10 h-6 rounded-full transition ${quizData.isPublished ? 'bg-green-600' : 'bg-gray-300'}`}></div>
+                    <div className={`absolute left-1 top-1 w-4 h-4 rounded-full transition-transform bg-white ${quizData.isPublished ? 'transform translate-x-4' : ''}`}></div>
+                  </div>
+                  <span className="ml-2 text-sm text-gray-700">Publish Quiz</span>
+                </label>
+              </div>
 
-              <Divider sx={{ my: 2 }} />
-
-              <Typography variant="subtitle2">Summary</Typography>
-              <Chip label={`Questions: ${quizData.questions.length}`} sx={{ mr: 1, mt: 1 }} />
-              <Chip label={`Points: ${quizData.questions.reduce((s, q) => s + q.points, 0)}`} sx={{ mt: 1 }} />
-            </CardContent>
-          </Card>
-        </Grid>
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Summary</h3>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                    Questions: {quizData.questions.length}
+                  </span>
+                  <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                    Points: {totalPoints}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* RIGHT SIDE — QUESTIONS */}
-        <Grid item xs={12} md={8}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-            <Typography variant="h6" fontWeight={700}>
-              Questions
-            </Typography>
+        <div className="lg:col-span-2">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Questions</h2>
 
-            <Button startIcon={<AddIcon />} variant="contained" onClick={addQuestion}>
-              Add Question
-            </Button>
-          </Box>
-
-          {quizData.questions.map((q, qi) => (
-            <Accordion
-              key={qi}
-              expanded={openQ === qi}
-              onChange={() => setOpenQ(openQ === qi ? -1 : qi)}
-              sx={{ mb: 2, borderRadius: 2, boxShadow: 2 }}
+            <button
+              onClick={addQuestion}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
             >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography fontWeight={600}>
-                  Q{qi + 1}. {q.questionText || "Untitled question"}
-                </Typography>
-              </AccordionSummary>
+              <Plus className="w-4 h-4" />
+              Add Question
+            </button>
+          </div>
 
-              <AccordionDetails>
-                {/* Question Text */}
-                <TextField
-                  label="Question Text"
-                  fullWidth
-                  multiline
-                  rows={2}
-                  value={q.questionText}
-                  onChange={(e) => updateQuestion(qi, "questionText", e.target.value)}
-                />
-
-                {/* Question Settings */}
-                <Grid container spacing={2} sx={{ mt: 1 }}>
-                  <Grid item xs={6}>
-                    <FormControl fullWidth>
-                      <InputLabel>Type</InputLabel>
-                      <Select
-                        label="Type"
-                        value={q.questionType}
-                        onChange={(e) => updateQuestion(qi, "questionType", e.target.value)}
-                      >
-                        <MenuItem value="multiple-choice">Multiple Choice</MenuItem>
-                        <MenuItem value="true-false">True/False</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid item xs={6}>
-                    <TextField
-                      label="Points"
-                      type="number"
-                      fullWidth
-                      value={q.points}
-                      onChange={(e) => updateQuestion(qi, "points", e.target.value)}
-                    />
-                  </Grid>
-                </Grid>
-
-                <Divider sx={{ my: 2 }} />
-
-                {/* OPTIONS */}
-                <Typography fontWeight={600} sx={{ mb: 1 }}>
-                  Options
-                </Typography>
-
-                {q.options.map((o, oi) => (
-                  <Box
-                    key={o.id}
-                    sx={{
-                      display: "flex",
-                      gap: 1,
-                      p: 1,
-                      borderRadius: 1,
-                      border: "1px solid",
-                      borderColor: o.isCorrect ? "success.main" : "divider",
-                      bgcolor: o.isCorrect ? "success.50" : "background.paper",
-                      mb: 1,
-                    }}
-                  >
-                    <IconButton
-                      onClick={() => updateOption(qi, oi, "isCorrect", true)}
-                      sx={{ color: o.isCorrect ? "success.main" : "text.secondary" }}
-                    >
-                      {o.isCorrect ? <RadioCheckedIcon /> : <RadioIcon />}
-                    </IconButton>
-
-                    <TextField
-                      fullWidth
-                      size="small"
-                      placeholder={`Option ${oi + 1}`}
-                      value={o.text}
-                      onChange={(e) => updateOption(qi, oi, "text", e.target.value)}
-                    />
-
-                    <IconButton
-                      color="error"
-                      disabled={q.options.length <= 2}
-                      onClick={() => deleteOption(qi, oi)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
-                ))}
-
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={() => addOption(qi)}
+          <div className="space-y-4">
+            {quizData.questions.map((q, qi) => (
+              <div
+                key={qi}
+                className="bg-white rounded-xl border border-gray-200 overflow-hidden"
+              >
+                {/* Question Header */}
+                <div
+                  className="p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50"
+                  onClick={() => setOpenQ(openQ === qi ? -1 : qi)}
                 >
-                  Add Option
-                </Button>
+                  <div className="flex justify-between items-center">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900">
+                        Q{qi + 1}. {q.questionText || "Untitled question"}
+                      </h3>
+                    </div>
+                    <ChevronDown 
+                      className={`w-5 h-5 text-gray-400 transition-transform ${openQ === qi ? 'rotate-180' : ''}`}
+                    />
+                  </div>
+                </div>
 
-                {/* Delete Question */}
-                <Box sx={{ mt: 2, textAlign: "right" }}>
-                  <Button
-                    startIcon={<DeleteIcon />}
-                    color="error"
-                    onClick={() => deleteQuestion(qi)}
-                    disabled={quizData.questions.length <= 1}
-                  >
-                    Delete Question
-                  </Button>
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          ))}
-        </Grid>
-      </Grid>
-    </Box>
+                {/* Question Details */}
+                {openQ === qi && (
+                  <div className="p-4 space-y-4">
+                    {/* Question Text */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Question Text
+                      </label>
+                      <textarea
+                        value={q.questionText}
+                        onChange={(e) => updateQuestion(qi, "questionText", e.target.value)}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter question text"
+                      />
+                    </div>
+
+                    {/* Question Settings */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Type
+                        </label>
+                        <select
+                          value={q.questionType}
+                          onChange={(e) => updateQuestion(qi, "questionType", e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="multiple-choice">Multiple Choice</option>
+                          <option value="true-false">True/False</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Points
+                        </label>
+                        <input
+                          type="number"
+                          value={q.points}
+                          onChange={(e) => updateQuestion(qi, "points", e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Options */}
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Options</h4>
+                      <div className="space-y-2">
+                        {q.options.map((o, oi) => (
+                          <div
+                            key={o.id}
+                            className={`flex items-center gap-3 p-3 border rounded-lg ${
+                              o.isCorrect
+                                ? "border-green-300 bg-green-50"
+                                : "border-gray-200"
+                            }`}
+                          >
+                            <button
+                              onClick={() => updateOption(qi, oi, "isCorrect", true)}
+                              className="flex-shrink-0 text-gray-400 hover:text-green-600"
+                            >
+                              {o.isCorrect ? (
+                                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                              ) : (
+                                <Circle className="w-5 h-5" />
+                              )}
+                            </button>
+
+                            <input
+                              type="text"
+                              value={o.text}
+                              onChange={(e) => updateOption(qi, oi, "text", e.target.value)}
+                              className="flex-1 px-3 py-2 border-none bg-transparent focus:outline-none focus:ring-0"
+                              placeholder={`Option ${oi + 1}`}
+                            />
+
+                            <button
+                              onClick={() => deleteOption(qi, oi)}
+                              disabled={q.options.length <= 2}
+                              className="p-1 text-gray-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => addOption(qi)}
+                        className="mt-3 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Option
+                      </button>
+                    </div>
+
+                    {/* Delete Question */}
+                    <div className="pt-4 border-t">
+                      <button
+                        onClick={() => deleteQuestion(qi)}
+                        disabled={quizData.questions.length <= 1}
+                        className="px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete Question
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {quizData.questions.length === 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+              <p className="text-gray-600 mb-3">No questions added yet</p>
+              <button
+                onClick={addQuestion}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 mx-auto"
+              >
+                <Plus className="w-4 h-4" />
+                Add First Question
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

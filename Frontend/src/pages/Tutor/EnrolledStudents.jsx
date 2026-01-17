@@ -1,37 +1,14 @@
-// src/pages/tutor/EnrolledStudents.jsx
 import {
-  Card,
-  CardContent,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  CircularProgress,
-  Paper,
-  Box,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-  Grid,
-  Chip,
-  Avatar,
-  Stack,
-  alpha,
-  IconButton
-} from "@mui/material";
+  Users,
+  Mail,
+  Calendar,
+  BookOpen,
+  Download,
+  Filter,
+  Loader2
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import axiosInstance from "../../utils/axiosInstance";
-import {
-  FilterList,
-  People,
-  Email,
-  CalendarToday,
-  School,
-  Download
-} from "@mui/icons-material";
 
 const EnrolledStudents = () => {
   const [loading, setLoading] = useState(true);
@@ -72,228 +49,178 @@ const EnrolledStudents = () => {
   }, []);
 
   const CourseCard = ({ title, enrollments, course }) => (
-    <Paper
-      elevation={2}
-      sx={{
-        borderRadius: 3,
-        overflow: 'hidden',
-        border: `1px solid ${alpha('#000', 0.1)}`,
-        mb: 3,
-        transition: '0.3s',
-        '&:hover': {
-          boxShadow: 4,
-        }
-      }}
-    >
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6 hover:shadow-md transition-shadow">
       {/* Course Header */}
-      <Box sx={{ 
-        p: 3, 
-        borderBottom: `1px solid ${alpha('#000', 0.1)}`,
-        bgcolor: alpha('#6a11cb', 0.03),
-        display: 'flex',
-        alignItems: 'center',
-        gap: 3
-      }}>
-        {course?.thumbnail && (
-          <Avatar
-            src={course.thumbnail}
-            variant="rounded"
-            sx={{ 
-              width: 80, 
-              height: 80,
-              borderRadius: 2,
-              boxShadow: 2
-            }}
-          />
-        )}
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight="bold" gutterBottom>
-            {course?.title || title}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-            <Chip 
-              icon={<People />} 
-              label={`${enrollments.length} students`}
-              color="primary"
-              variant="outlined"
-              size="small"
+      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50/30 to-purple-50/30">
+        <div className="flex items-start md:items-center gap-4 md:gap-6">
+          {course?.thumbnail && (
+            <img
+              src={course.thumbnail}
+              alt={course.title}
+              className="w-20 h-20 rounded-xl object-cover border border-gray-300 shadow-sm flex-shrink-0"
             />
-            {course?.category && (
-              <Chip 
-                label={course.category}
-                size="small"
-                variant="outlined"
-              />
-            )}
-          </Box>
-        </Box>
-        <IconButton>
-          <Download />
-        </IconButton>
-      </Box>
+          )}
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {course?.title || title}
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 border border-blue-200">
+                <Users className="w-3 h-3 mr-1" />
+                {enrollments.length} students
+              </span>
+              {course?.category && (
+                <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full border border-gray-300">
+                  {course.category}
+                </span>
+              )}
+            </div>
+          </div>
+          <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+            <Download className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
 
       {/* Students Table */}
-      <Table>
-        <TableHead>
-          <TableRow sx={{ bgcolor: alpha('#6a11cb', 0.02) }}>
-            <TableCell sx={{ fontWeight: 'bold', py: 2 }}>#</TableCell>
-            <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Student</TableCell>
-            <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Contact</TableCell>
-            <TableCell sx={{ fontWeight: 'bold', py: 2 }}>Enrollment Date</TableCell>
-            <TableCell sx={{ fontWeight: 'bold', py: 2 }} align="center">Status</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {enrollments.map((enroll, index) => (
-            <TableRow 
-              key={enroll._id}
-              sx={{ 
-                '&:hover': { bgcolor: alpha('#6a11cb', 0.01) },
-                transition: '0.2s'
-              }}
-            >
-              <TableCell sx={{ py: 2 }}>
-                <Typography variant="body2" fontWeight="medium">
-                  {index + 1}
-                </Typography>
-              </TableCell>
-              <TableCell sx={{ py: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar 
-                    sx={{ 
-                      width: 32, 
-                      height: 32, 
-                      bgcolor: 'primary.main',
-                      fontSize: '0.8rem'
-                    }}
-                  >
-                    {enroll.studentId?.name ? enroll.studentId.name.charAt(0).toUpperCase() : 'S'}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body2" fontWeight="medium">
-                      {enroll.studentId?.name || "Anonymous Student"}
-                    </Typography>
-                  </Box>
-                </Box>
-              </TableCell>
-              <TableCell sx={{ py: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  {enroll.studentId?.email || "N/A"}
-                </Typography>
-              </TableCell>
-              <TableCell sx={{ py: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CalendarToday sx={{ fontSize: 16, color: 'text.secondary' }} />
-                  <Typography variant="body2">
-                    {new Date(enroll.enrolledAt).toLocaleDateString()}
-                  </Typography>
-                </Box>
-              </TableCell>
-              <TableCell align="center" sx={{ py: 2 }}>
-                <Chip 
-                  label="Active" 
-                  size="small" 
-                  color="success"
-                  variant="filled"
-                />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Paper>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-50/50">
+              <th className="py-3 px-4 text-left font-semibold text-gray-700">#</th>
+              <th className="py-3 px-4 text-left font-semibold text-gray-700">Student</th>
+              <th className="py-3 px-4 text-left font-semibold text-gray-700">Contact</th>
+              <th className="py-3 px-4 text-left font-semibold text-gray-700">Enrollment Date</th>
+              <th className="py-3 px-4 text-center font-semibold text-gray-700">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {enrollments.map((enroll, index) => (
+              <tr 
+                key={enroll._id}
+                className="border-b border-gray-100 hover:bg-gray-50/30 transition-colors"
+              >
+                <td className="py-4 px-4">
+                  <span className="font-medium text-gray-700">
+                    {index + 1}
+                  </span>
+                </td>
+                <td className="py-4 px-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-medium">
+                      {enroll.studentId?.name ? enroll.studentId.name.charAt(0).toUpperCase() : 'S'}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {enroll.studentId?.name || "Anonymous Student"}
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td className="py-4 px-4">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-600">
+                      {enroll.studentId?.email || "N/A"}
+                    </span>
+                  </div>
+                </td>
+                <td className="py-4 px-4">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-700">
+                      {new Date(enroll.enrolledAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
+                    Active
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 
   return (
-    <Box sx={{ p: 3, bgcolor: 'background.default', minHeight: '100vh' }}>
+    <div className="p-4 md:p-6 min-h-screen bg-gray-50">
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Box>
-            <Typography variant="h4" fontWeight="bold" gutterBottom>
+      <div className="mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
               Student Management
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
+            </h1>
+            <p className="text-gray-600">
               Manage and track your enrolled students across all courses
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <People color="primary" />
-            <Typography variant="h6" color="primary" fontWeight="bold">
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Users className="w-6 h-6 text-blue-600" />
+            <span className="text-lg font-bold text-blue-600">
               {enrollments.length} Total Students
-            </Typography>
-          </Box>
-        </Box>
+            </span>
+          </div>
+        </div>
 
         {/* Summary Cards */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2, bgcolor: alpha('#6a11cb', 0.05) }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <Typography variant="h4" fontWeight="bold" color="primary">
-                  {Object.keys(groupedEnrollments).length}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Active Courses
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2, bgcolor: alpha('#00c853', 0.05) }}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <Typography variant="h4" fontWeight="bold" color="success.main">
-                  {enrollments.length}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Total Enrollments
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      </Box>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 rounded-xl border border-blue-100 p-4">
+            <div className="text-center">
+              <p className="text-3xl font-bold text-blue-700">
+                {Object.keys(groupedEnrollments).length}
+              </p>
+              <p className="text-gray-600 text-sm mt-1">Active Courses</p>
+            </div>
+          </div>
+          <div className="bg-gradient-to-r from-green-50/50 to-emerald-50/50 rounded-xl border border-green-100 p-4">
+            <div className="text-center">
+              <p className="text-3xl font-bold text-green-700">
+                {enrollments.length}
+              </p>
+              <p className="text-gray-600 text-sm mt-1">Total Enrollments</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-          <CircularProgress size={60} />
-        </Box>
+        <div className="flex justify-center items-center min-h-[400px]">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
+        </div>
       ) : (
         <>
           {/* Filter */}
           {Object.keys(groupedEnrollments).length > 1 && (
-            <Paper 
-              elevation={1} 
-              sx={{ 
-                p: 2, 
-                mb: 3, 
-                borderRadius: 2,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2
-              }}
-            >
-              <FilterList color="action" />
-              <FormControl sx={{ minWidth: 200 }}>
-                <InputLabel id="course-filter-label">Filter by Course</InputLabel>
-                <Select
-                  labelId="course-filter-label"
+            <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-5 h-5 text-gray-400" />
+                  <label className="text-sm font-medium text-gray-700">
+                    Filter by Course
+                  </label>
+                </div>
+                <select
                   value={selectedCourse}
-                  label="Filter by Course"
                   onChange={(e) => setSelectedCourse(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex-1 max-w-xs"
                 >
-                  <MenuItem value="All">All Courses</MenuItem>
+                  <option value="All">All Courses</option>
                   {Object.keys(groupedEnrollments).map((title, idx) => (
-                    <MenuItem key={idx} value={title}>
+                    <option key={idx} value={title}>
                       {title}
-                    </MenuItem>
+                    </option>
                   ))}
-                </Select>
-              </FormControl>
-              <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
-                Showing {selectedCourse === "All" ? "all" : "1"} course(s)
-              </Typography>
-            </Paper>
+                </select>
+                <div className="text-sm text-gray-500 md:ml-auto">
+                  Showing {selectedCourse === "All" ? "all" : "1"} course(s)
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Courses List */}
@@ -310,27 +237,21 @@ const EnrolledStudents = () => {
 
           {/* Empty State */}
           {Object.keys(groupedEnrollments).length === 0 && !loading && (
-            <Paper 
-              elevation={2} 
-              sx={{ 
-                p: 6, 
-                textAlign: 'center', 
-                borderRadius: 3,
-                bgcolor: alpha('#6a11cb', 0.02)
-              }}
-            >
-              <School sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary" gutterBottom>
+            <div className="bg-gradient-to-r from-blue-50/20 to-purple-50/20 rounded-2xl border border-gray-200 p-8 md:p-12 text-center">
+              <div className="w-16 h-16 text-gray-300 mx-auto mb-4">
+                <BookOpen className="w-full h-full" />
+              </div>
+              <h3 className="text-xl font-medium text-gray-700 mb-2">
                 No students enrolled yet
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
+              </h3>
+              <p className="text-gray-500 max-w-md mx-auto">
                 Students will appear here once they enroll in your courses
-              </Typography>
-            </Paper>
+              </p>
+            </div>
           )}
         </>
       )}
-    </Box>
+    </div>
   );
 };
 
