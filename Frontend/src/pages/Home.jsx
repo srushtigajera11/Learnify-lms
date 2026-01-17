@@ -1,122 +1,52 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, Button, Typography } from "@mui/material";
 
 const Home = () => {
   const navigate = useNavigate();
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg, #e3f2fd 0%, #fce4ec 100%)",
-        position: "relative",
-        px: 4,
-      }}
-    >
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-pink-50 relative px-4 py-12">
       {/* Logo */}
-      <Box sx={{ position: "absolute", top: 2, left: 32 }}>
+      <div className="absolute top-4 left-8 z-10">
         <img
           src="/images/logo.png"
           alt="Logo"
-          style={{ width: "100px", height: "150px", objectFit: "contain" }}
+          className="w-24 h-36 object-contain"
         />
-      </Box>
+      </div>
 
-      <Box
-        sx={{
-          display: "flex",
-          gap: { xs: 4, md: 10 },
-          flexDirection: { xs: "column", md: "row" },
-          alignItems: "center",
-          justifyContent: "space-between",
-          maxWidth: "1200px",
-          width: "100%",
-        }}
-      >
+      <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 items-center justify-between max-w-6xl w-full">
         {/* Left Text */}
-        <Box sx={{ flex: 1 }}>
-          <Typography
-            variant="h2"
-            sx={{
-              fontWeight: "bold",
-              color: "#1e3a8a",
-              fontSize: { xs: "2.2rem", md: "3.5rem" },
-              mb: 3,
-              lineHeight: 1.2,
-            }}
-          >
+        <div className="flex-1">
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-blue-900 mb-6 leading-tight">
             Welcome to <br /> Our Learning Platform
-          </Typography>
+          </h1>
 
-          <Typography
-            sx={{
-              fontSize: "1.1rem",
-              color: "#374151",
-              maxWidth: "500px",
-              mb: 4,
-            }}
-          >
+          <p className="text-lg text-gray-700 max-w-xl mb-8">
             Empowering students and tutors to connect, learn, and grow together.
             Join Learnify to accelerate your journey today!
-          </Typography>
+          </p>
 
-          <Button
+          <button
             onClick={() => navigate("/register")}
-            sx={{
-              background: "linear-gradient(to right, #4f46e5, #3b82f6)",
-              color: "#fff",
-              px: 5,
-              py: 1.5,
-              borderRadius: "12px",
-              fontSize: "1rem",
-              fontWeight: "bold",
-              boxShadow: "0 8px 20px rgba(59,130,246,0.3)",
-              "&:hover": {
-                background: "linear-gradient(to right, #4338ca, #2563eb)",
-              },
-            }}
+            className="bg-gradient-to-r from-indigo-600 to-blue-500 text-white px-8 py-3 rounded-xl text-lg font-bold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:scale-105"
           >
             🚀 Get Started
-          </Button>
-        </Box>
+          </button>
+        </div>
 
         {/* Right Image Card */}
-        <Box
-          sx={{
-            flex: 1,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Box
-            sx={{
-              backdropFilter: "blur(8px)",
-              background: "rgba(255,255,255,0.6)",
-              borderRadius: "20px",
-              padding: "24px",
-              boxShadow: "0 4px 30px rgba(0,0,0,0.1)",
-              maxWidth: "500px",
-              width: "100%",
-            }}
-          >
+        <div className="flex-1 flex justify-center items-center">
+          <div className="backdrop-blur-sm bg-white/60 rounded-2xl p-6 shadow-2xl shadow-gray-200/50 max-w-lg w-full border border-white/30">
             <img
               src="/images/landing.jpg"
-              alt="Illustration"
-              style={{
-                width: "100%",
-                borderRadius: "12px",
-                objectFit: "cover",
-              }}
+              alt="Learning Illustration"
+              className="w-full rounded-xl object-cover"
             />
-          </Box>
-        </Box>
-      </Box>
-    </Box>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

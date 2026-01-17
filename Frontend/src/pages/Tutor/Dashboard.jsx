@@ -310,7 +310,7 @@ const Dashboard = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+      {/* <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           Quick Actions
         </h2>
@@ -344,7 +344,7 @@ const Dashboard = () => {
             Rejected Courses
           </button>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };
