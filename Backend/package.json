@@ -25,6 +25,7 @@
     "joi": "^17.13.3",
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
+    "mailtrap": "^4.4.0",
     "mongoose": "^8.13.2",
     "multer": "^2.0.0",
     "multer-storage-cloudinary": "^4.0.0",

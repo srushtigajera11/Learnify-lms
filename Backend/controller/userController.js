@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
 const { registerSchema } = require('../utils/validation');
 const { generateTokenAndSetCookie } = require('../utils/generateTokenAndSetCookie');
+const {sendVerificationEmail} = require("../mailtrap/emails.js")
 dotenv.config();
 
 
@@ -51,6 +52,7 @@ exports.signup = async (req,res)=>{
     });
     await user.save();
     generateTokenAndSetCookie(res,user._id);
+    await sendVerificationEmail(user.email,verificationToken);
     res.status(201).json({success:true,message:"user registered successfully.",user:{
       ...user._doc,
       password : undefined,
@@ -60,6 +62,28 @@ exports.signup = async (req,res)=>{
     res.status(500).json({success:false ,message:err.message});
   }
 }
+ exports.verifyEmail = async(req,res)=>{
+ const code = Number(req.body.code);
+
+  try{
+    const user = await User.findOne({
+      verificationToken:code,
+      verificationTokenExpiry:{$gt:Date.now()}
+    })
+    if(!user){
+      return res.status(400).json({success:false,message:"invaild or expired verification token"})
+    }
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpiry = undefined;
+    await user.save();
+    await user.sendWelcomeEamil(user.email ,user.name);
+    res.status(200).json({success:true,message:"email sent!",user:{...user._doc,password:undefined},});
+  }catch(error){
+    
+  }
+
+ }
 
 exports.loginUser = async (req, res) => {
      const { email, password } = req.body;
