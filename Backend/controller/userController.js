@@ -3,8 +3,8 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
-const { isAdmin } = require('../middleware/isAdmin');
 const { registerSchema } = require('../utils/validation');
+const { generateTokenAndSetCookie } = require('../utils/generateTokenAndSetCookie');
 dotenv.config();
 
 
@@ -30,6 +30,36 @@ exports.createUserProfile = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+exports.signup = async (req,res)=>{
+  const {email,password,name} = req.body;
+  try{
+    if(!email||!password||!name){
+      throw new Error("All fields are required");
+    }
+    const userAlreadyExists = await User.findOne({email});
+    if(userAlreadyExists){
+      return res.status(400).json({message : "User already exists"});
+    }
+    const hashedPassword = await bcrypt.hash(password,10);
+    const verificationToken = Math.floor(100000 + Math.random()*900000).toString();
+    const user = new User({
+      email,
+      password : hashedPassword,
+    name,
+  verificationToken,
+  verificationTokenExpiry : Date.now() + 3600000
+    });
+    await user.save();
+    generateTokenAndSetCookie(res,user._id);
+    res.status(201).json({success:true,message:"user registered successfully.",user:{
+      ...user._doc,
+      password : undefined,
+    },});
+
+  }catch(err){
+    res.status(500).json({success:false ,message:err.message});
+  }
+}
 
 exports.loginUser = async (req, res) => {
      const { email, password } = req.body;
@@ -40,19 +70,14 @@ exports.loginUser = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: "Invalid password" });
 
-        const token = jwt.sign({ id: user._id , role : user.role,isAdmin : user.isAdmin}, process.env.JWT_SECRET, { expiresIn: "4h" });
-       res.cookie('token', token, {
-                httpOnly: true,
-                sameSite: 'Lax',
-                secure: false,
-                maxAge: 60 * 60  * 1000, 
-              });
-        res.json({ success : true , message: 'Logged in', user:{user_id : user._id ,role : user.role,isAdmin : user.isAdmin} });
+        generateTokenAndSetCookie(res, user._id);
+        user.lastLogin = new Date();
+        await user.save();
+        res.status(200).json({ success : true , message: 'Logged in', user:{user_id : user._id ,role : user.role,isAdmin : user.isAdmin} });
     } catch (err) {
         res.status(500).json({ message: "Server error" });
     }
-}   
-
+}
 exports.logoutUser = (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,

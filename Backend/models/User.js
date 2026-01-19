@@ -10,10 +10,13 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  verificationToken: { type: String },
+  verificationTokenExpiry: { type: Date },
   password: {
     type: String,
     required: true
   },
+  lastLogin: { type: Date },
   isBlocked: { type: Boolean, default: false },
   role: {
     type: String,

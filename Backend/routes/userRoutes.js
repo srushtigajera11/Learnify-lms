@@ -9,12 +9,14 @@ const {
   logoutUser,
   getProfile,
   updateProfile,
+  signup,
   changePassword
 } = require('../controller/userController');
 
 
 // Routes
 router.post('/register', createUserProfile);
+router.post('/signup',signup)
 router.post('/login', loginUser);
 router.get('/profile', isAuthenticated, getProfile);
 router.put('/profile', isAuthenticated, updateProfile);
