@@ -22,7 +22,7 @@ const CourseCard = ({ course }) => {
       className="group bg-white rounded-lg shadow-sm border border-gray-200 
                  hover:shadow-md hover:-translate-y-1 transition-all duration-200 
                  cursor-pointer h-[330px] flex flex-col overflow-hidden"
-      onClick={() => navigate(`/course/${course.id}`)}
+      onClick={() => navigate(`/tutor/course/${course.id}`)}
     >
       {/* Thumbnail */}
       <div className="relative h-[150px] overflow-hidden">

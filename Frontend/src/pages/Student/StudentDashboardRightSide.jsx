@@ -1,14 +1,5 @@
 import React from "react";
 import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Divider,
-  Stack,
-  Chip,
-} from "@mui/material";
-import {
   BarChart,
   Bar,
   XAxis,
@@ -17,13 +8,12 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
+import "react-circular-progressbar/dist/styles.css";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import HistoryIcon from "@mui/icons-material/History";
 import SettingsIcon from "@mui/icons-material/Settings";
-import SpeedIcon from "@mui/icons-material/Speed";
-import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
-import "react-circular-progressbar/dist/styles.css";
 
 // Dummy data
 const skillProgressData = [
@@ -35,134 +25,124 @@ const skillProgressData = [
 
 const StudentDashboardRightSidebar = () => {
   return (
-    <Stack spacing={3}>
+    <div className="space-y-4">
       {/* Skill Progress (Circular + Bar Chart) */}
-      <Card sx={{ borderRadius: 2, boxShadow: 1 }}>
-        <CardContent>
-          <Typography variant="h6" fontWeight="bold" gutterBottom>
-            My Skill Progress
-          </Typography>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 3,
-              flexWrap: "wrap",
-            }}
-          >
-            {/* Circular XP */}
-            <Box sx={{ width: 100, height: 100 }}>
+      <div className="bg-white rounded-xl shadow-sm p-4">
+        <h3 className="text-lg font-bold text-gray-800 mb-4">
+          My Skill Progress
+        </h3>
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+          {/* Circular XP */}
+          <div className="flex flex-col items-center">
+            <div className="w-24 h-24">
               <CircularProgressbar
                 value={72}
                 text="72%"
                 styles={buildStyles({
-                  textColor: "#111",
+                  textColor: "#111827",
                   pathColor: "#6366f1",
                   trailColor: "#e5e7eb",
+                  textSize: "24px",
                 })}
               />
-              <Typography align="center" variant="body2" mt={1}>
-                Level 8
-              </Typography>
-            </Box>
+            </div>
+            <p className="text-center text-sm text-gray-600 mt-2">Level 8</p>
+          </div>
 
-            {/* Skill Bar Chart */}
-            <Box sx={{ flex: 1, height: 200 }}>
-              <ResponsiveContainer>
-                <BarChart
-                  data={skillProgressData}
-                  layout="vertical"
-                  barCategoryGap="15%"
+          {/* Skill Bar Chart */}
+          <div className="flex-1 h-48 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={skillProgressData}
+                layout="vertical"
+                barCategoryGap="15%"
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <XAxis type="number" hide domain={[0, 100]} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={80}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip
+                  cursor={{ fill: "transparent" }}
+                  formatter={(value) => [`${value}%`, "Progress"]}
+                />
+                <Bar
+                  dataKey="progress"
+                  radius={[0, 4, 4, 0]}
+                  barSize={20}
                 >
-                  <XAxis type="number" hide domain={[0, 100]} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={60}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip cursor={{ fill: "transparent" }} />
-                  <Bar
-                    dataKey="progress"
-                    radius={[0, 10, 10, 0]}
-                    barSize={20}
-                  >
-                    {skillProgressData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </Box>
-          </Box>
-        </CardContent>
-      </Card>
+                  {skillProgressData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
 
       {/* Achievements / Badges */}
-      <Card sx={{ borderRadius: 2, boxShadow: 1 }}>
-        <CardContent>
-          <Typography variant="h6" fontWeight="bold" gutterBottom>
-            Achievements
-          </Typography>
-          <Stack  sx={{ flexWrap: "wrap", gap: 1 }} direction="row" spacing={1} justifyContent="center" mt={1}>
-            <Chip
-              icon={<EmojiEventsIcon />}
-              label="Gold Badge"
-              color="warning"
-              variant="outlined"
-            />
-            <Chip
-              icon={<EmojiEventsIcon />}
-              label="Silver Badge"
-              color="default"
-              variant="outlined"
-            />
-            <Chip
-              icon={<EmojiEventsIcon />}
-              label="Diamond Badge"
-              color="info"
-              variant="outlined"
-            />
-          </Stack>
-        </CardContent>
-      </Card>
+      <div className="bg-white rounded-xl shadow-sm p-4">
+        <h3 className="text-lg font-bold text-gray-800 mb-4">
+          Achievements
+        </h3>
+        <div className="flex flex-wrap gap-2 justify-center">
+          <div className="inline-flex items-center gap-1 px-3 py-1.5 border border-yellow-300 rounded-full bg-yellow-50 text-yellow-800 text-sm font-medium">
+            <EmojiEventsIcon className="h-4 w-4" />
+            Gold Badge
+          </div>
+          <div className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded-full bg-gray-50 text-gray-800 text-sm font-medium">
+            <EmojiEventsIcon className="h-4 w-4" />
+            Silver Badge
+          </div>
+          <div className="inline-flex items-center gap-1 px-3 py-1.5 border border-blue-300 rounded-full bg-blue-50 text-blue-800 text-sm font-medium">
+            <EmojiEventsIcon className="h-4 w-4" />
+            Diamond Badge
+          </div>
+        </div>
+      </div>
 
       {/* Quick Links */}
-      <Card sx={{ borderRadius: 2, boxShadow: 1 }}>
-        <CardContent>
-          <Typography variant="h6" fontWeight="bold" gutterBottom>
-            Quick Links
-          </Typography>
-          <Stack spacing={1} mt={1}>
-            <Chip
-              icon={<FavoriteIcon sx={{ color: "#ef4444" }} />}
-              label="My Wishlist"
-              variant="outlined"
-              clickable
-              component="a"
-              href="/student/wishlist"
-            />
-            <Chip
-              icon={<HistoryIcon sx={{ color: "#34d399" }} />}
-              label="Purchase History"
-              variant="outlined"
-              clickable
-              component="a"
-              href="/student/purchaseHistory"
-            />
-            <Chip
-              icon={<SettingsIcon sx={{ color: "#f59e0b" }} />}
-              label="Settings"
-              variant="outlined"
-              clickable
-              component="a"
-              href="/student/settings"
-            />
-          </Stack>
-        </CardContent>
-      </Card>
-    </Stack>
+      <div className="bg-white rounded-xl shadow-sm p-4">
+        <h3 className="text-lg font-bold text-gray-800 mb-4">
+          Quick Links
+        </h3>
+        <div className="space-y-2">
+          <a
+            href="/student/wishlist"
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors duration-200 group"
+          >
+            <FavoriteIcon className="h-5 w-5 text-red-500" />
+            <span className="text-gray-700 group-hover:text-red-700">
+              My Wishlist
+            </span>
+          </a>
+          <a
+            href="/student/purchaseHistory"
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-green-50 hover:border-green-200 transition-colors duration-200 group"
+          >
+            <HistoryIcon className="h-5 w-5 text-green-500" />
+            <span className="text-gray-700 group-hover:text-green-700">
+              Purchase History
+            </span>
+          </a>
+          <a
+            href="/student/settings"
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-yellow-50 hover:border-yellow-200 transition-colors duration-200 group"
+          >
+            <SettingsIcon className="h-5 w-5 text-yellow-500" />
+            <span className="text-gray-700 group-hover:text-yellow-700">
+              Settings
+            </span>
+          </a>
+        </div>
+      </div>
+    </div>
   );
 };
 

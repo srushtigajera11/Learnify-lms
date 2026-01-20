@@ -4,22 +4,26 @@ const Lesson = require('../models/Lesson');
 
 exports.getAllCoursesForStudents = async (req, res) => {
   try {
-    const courses = await Course.find({ status: 'published' }).populate('createdBy', 'name');
-
-    const coursesWithLessons = await Promise.all(
-      courses.map(async (course) => {
-        const totalLessons = await Lesson.countDocuments({ courseId: course._id });
-        return {
+    const studentId = req.user.id;
+    const courses = await Course.find({status:"published"}).populate('createdBy','name');
+    const enrollments = await Enrollment.find({studentId}).select('courseId');
+    const enrollInCourseIds = enrollments.map(
+      (e)=>e.courseId.toString()
+    );
+    const courseWithMeta = await Promise.all(
+      courses.map(async(course)=>{
+        const totalLessons = await Lesson.countDocuments({
+          courseId : course._id,
+        });
+        return{
           ...course.toObject(),
           totalLessons,
-        };
+          isEnrolled:enrollInCourseIds.includes(course._id.toString()),
+        }
       })
     );
+    res.status(200).json({success:true,message:"course fetched successfully",courses:courseWithMeta,});
 
-    res.status(200).json({
-      success: true,
-      courses: coursesWithLessons,
-    });
   } catch (error) {
     console.error('Error fetching courses:', error);
     res.status(500).json({ success: false, message: 'Server Error' });

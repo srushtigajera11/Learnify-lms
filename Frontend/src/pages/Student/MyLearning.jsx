@@ -1,20 +1,4 @@
-// src/pages/Student/MyLearning.jsx
 import React, { useState, useEffect } from "react";
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  CardMedia,
-  Chip,
-  LinearProgress,
-  Button,
-  Grid,
-  Tabs,
-  Tab,
-  CircularProgress,
-  Alert,
-} from "@mui/material";
 import { PlayArrow, CheckCircle, AccessTime } from "@mui/icons-material";
 import axiosInstance from "../../utils/axiosInstance";
 import { useNavigate } from "react-router-dom";
@@ -73,143 +57,152 @@ const MyLearning = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Alert severity="error" sx={{ mt: 5 }}>
-        {error}
-      </Alert>
+      <div className="mt-20 mx-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+          {error}
+        </div>
+      </div>
     );
   }
 
-  return (
-    <Box sx={{ px: { xs: 2, md: 4 }, py: 3, bgcolor: "#f9fafb", minHeight: "100vh" }}>
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
-        My Learning
-      </Typography>
+  const tabs = ["All Courses", "In Progress", "Completed", "Not Started"];
 
-      <Tabs
-        value={activeTab}
-        onChange={(e, newValue) => setActiveTab(newValue)}
-        sx={{ mb: 4 }}
-      >
-        <Tab label="All Courses" />
-        <Tab label="In Progress" />
-        <Tab label="Completed" />
-        <Tab label="Not Started" />
-      </Tabs>
+  return (
+    <div className="px-4 md:px-8 py-6 bg-gray-50 min-h-screen">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">My Learning</h1>
+
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 mb-6">
+        {tabs.map((tab, index) => (
+          <button
+            key={index}
+            onClick={() => setActiveTab(index)}
+            className={`px-4 py-3 text-sm font-medium transition-colors duration-200 ${
+              activeTab === index
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
 
       {filteredCourses.length === 0 ? (
-        <Box sx={{ textAlign: "center", mt: 10 }}>
-          <Typography variant="h6" color="text.secondary">
+        <div className="text-center py-16">
+          <h3 className="text-xl text-gray-600 mb-4">
             {activeTab === 0
               ? "You haven't enrolled in any courses yet."
               : "No courses match this filter."}
-          </Typography>
-          <Button
-            variant="contained"
-            sx={{ mt: 3 }}
+          </h3>
+          <button
             onClick={() => navigate("/student/dashboard")}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
           >
             Browse Courses
-          </Button>
-        </Box>
+          </button>
+        </div>
       ) : (
-        <Grid container spacing={3}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map((enrollment) => {
             const course = enrollment.courseId;
             const progress = calculateProgress(enrollment);
             
             return (
-              <Grid item xs={12} md={6} lg={4} key={enrollment._id}>
-                <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-                  <CardMedia
-                    component="img"
-                    height="160"
-                    image={course.thumbnail || "/default-course.jpg"}
+              <div
+                key={enrollment._id}
+                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
+              >
+                {/* Course Thumbnail */}
+                <div className="h-40">
+                  <img
+                    src={course.thumbnail || "/default-course.jpg"}
                     alt={course.title}
-                    sx={{ objectFit: "cover" }}
+                    className="w-full h-full object-cover"
                   />
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" fontWeight="bold" gutterBottom>
-                      {course.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                      {course.description?.substring(0, 100)}...
-                    </Typography>
-                    
-                    <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                      <AccessTime sx={{ fontSize: 16, mr: 1, color: "text.secondary" }} />
-                      <Typography variant="caption" color="text.secondary">
-                        Instructor: {course.createdBy?.name || "Unknown"}
-                      </Typography>
-                    </Box>
+                </div>
 
-                    <Box sx={{ mb: 2 }}>
-                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                        <Typography variant="body2">Progress</Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {progress}%
-                        </Typography>
-                      </Box>
-                      <LinearProgress
-                        variant="determinate"
-                        value={progress}
-                        sx={{ height: 8, borderRadius: 4 }}
-                      />
-                    </Box>
-
-                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                      {progress === 100 && (
-                        <Chip
-                          icon={<CheckCircle />}
-                          label="Completed"
-                          color="success"
-                          size="small"
-                        />
-                      )}
-                      {progress > 0 && progress < 100 && (
-                        <Chip
-                          icon={<AccessTime />}
-                          label="In Progress"
-                          color="warning"
-                          size="small"
-                        />
-                      )}
-                      {progress === 0 && (
-                        <Chip label="Not Started" color="default" size="small" />
-                      )}
-                    </Box>
-                  </CardContent>
+                {/* Course Content */}
+                <div className="p-4 flex-grow">
+                  <h3 className="text-lg font-bold text-gray-800 mb-2">
+                    {course.title}
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                    {course.description?.substring(0, 100)}...
+                  </p>
                   
-                  <Box sx={{ p: 2, display: "flex", gap: 1 }}>
-                    <Button
-                      variant="contained"
-                      startIcon={<PlayArrow />}
-                      fullWidth
-                      onClick={() => handleContinueLearning(course._id)}
-                    >
-                      {progress === 0 ? "Start Learning" : "Continue"}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={() => handleViewCourse(course._id)}
-                    >
-                      View
-                    </Button>
-                  </Box>
-                </Card>
-              </Grid>
+                  {/* Instructor */}
+                  <div className="flex items-center mb-4 text-gray-500 text-sm">
+                    <AccessTime className="h-4 w-4 mr-1" />
+                    <span>Instructor: {course.createdBy?.name || "Unknown"}</span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-700">Progress</span>
+                      <span className="font-semibold text-gray-800">{progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Status Chips */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {progress === 100 && (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                        <CheckCircle className="h-3 w-3" />
+                        Completed
+                      </div>
+                    )}
+                    {progress > 0 && progress < 100 && (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                        <AccessTime className="h-3 w-3" />
+                        In Progress
+                      </div>
+                    )}
+                    {progress === 0 && (
+                      <div className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
+                        Not Started
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="p-4 border-t border-gray-100 flex gap-2">
+                  <button
+                    onClick={() => handleContinueLearning(course._id)}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors duration-200"
+                  >
+                    <PlayArrow className="h-5 w-5" />
+                    {progress === 0 ? "Start Learning" : "Continue"}
+                  </button>
+                  <button
+                    onClick={() => handleViewCourse(course._id)}
+                    className="px-4 py-2 border border-gray-300 hover:border-gray-400 text-gray-700 rounded-lg font-medium transition-colors duration-200"
+                  >
+                    View
+                  </button>
+                </div>
+              </div>
             );
           })}
-        </Grid>
+        </div>
       )}
-    </Box>
+    </div>
   );
 };
 

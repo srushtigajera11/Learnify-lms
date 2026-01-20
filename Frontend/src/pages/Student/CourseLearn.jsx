@@ -1,25 +1,5 @@
-// src/pages/Student/CourseLearn.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  Box,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  Button,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  IconButton,
-  CircularProgress,
-  Alert,
-  Paper,
-  LinearProgress,
-  Chip,
-} from "@mui/material";
 import {
   PlayCircle,
   CheckCircle,
@@ -49,66 +29,65 @@ const CourseLearn = () => {
     fetchCourseData();
   }, [courseId]);
 
- // CourseLearn.jsx - Updated fetchCourseData
-const fetchCourseData = async () => {
-  try {
-    setLoading(true);
-    
-    // 1. Get course details using student-specific endpoint
-    const courseRes = await axiosInstance.get(`/students/course-details/${courseId}`);
-    
-    if (courseRes.data.success) {
-      setCourse(courseRes.data.course);
+  const fetchCourseData = async () => {
+    try {
+      setLoading(true);
       
-      // Check if enrolled
-      if (!courseRes.data.course.isEnrolled) {
-        setError("You need to enroll in this course first");
-        setLoading(false);
-        return;
-      }
+      // 1. Get course details using student-specific endpoint
+      const courseRes = await axiosInstance.get(`/students/course-details/${courseId}`);
       
-      // If we have lessons in the response, use them
-      if (courseRes.data.course.lessons && courseRes.data.course.lessons.length > 0) {
-        setLessons(courseRes.data.course.lessons);
-        setSelectedLesson(courseRes.data.course.lessons[0]);
-      } else {
-        // Otherwise fetch lessons separately
-        const lessonsRes = await axiosInstance.get(`/students/course/${courseId}/lessons`);
-        if (lessonsRes.data.success) {
-          setLessons(lessonsRes.data.lessons);
-          if (lessonsRes.data.lessons.length > 0) {
-            setSelectedLesson(lessonsRes.data.lessons[0]);
+      if (courseRes.data.success) {
+        setCourse(courseRes.data.course);
+        
+        // Check if enrolled
+        if (!courseRes.data.course.isEnrolled) {
+          setError("You need to enroll in this course first");
+          setLoading(false);
+          return;
+        }
+        
+        // If we have lessons in the response, use them
+        if (courseRes.data.course.lessons && courseRes.data.course.lessons.length > 0) {
+          setLessons(courseRes.data.course.lessons);
+          setSelectedLesson(courseRes.data.course.lessons[0]);
+        } else {
+          // Otherwise fetch lessons separately
+          const lessonsRes = await axiosInstance.get(`/students/course/${courseId}/lessons`);
+          if (lessonsRes.data.success) {
+            setLessons(lessonsRes.data.lessons);
+            if (lessonsRes.data.lessons.length > 0) {
+              setSelectedLesson(lessonsRes.data.lessons[0]);
+            }
           }
         }
+      } else {
+        setError(courseRes.data.message || "Failed to load course");
       }
-    } else {
-      setError(courseRes.data.message || "Failed to load course");
-    }
 
-    // 2. Try to fetch progress (optional - might not exist yet)
-    try {
-      const progressRes = await axiosInstance.get(`/progress/${courseId}`);
-      if (progressRes.data.success) {
-        setUserProgress(progressRes.data.progress);
+      // 2. Try to fetch progress (optional - might not exist yet)
+      try {
+        const progressRes = await axiosInstance.get(`/progress/${courseId}`);
+        if (progressRes.data.success) {
+          setUserProgress(progressRes.data.progress);
+        }
+      } catch (progressErr) {
+        console.log('No progress data yet');
       }
-    } catch (progressErr) {
-      console.log('No progress data yet');
+      
+    } catch (err) {
+      console.error("Error fetching course data:", err.response?.data || err.message);
+      
+      if (err.response?.status === 403) {
+        setError("You need to enroll in this course to access learning materials");
+      } else if (err.response?.status === 404) {
+        setError("Course not found");
+      } else {
+        setError("Failed to load course. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
-    
-  } catch (err) {
-    console.error("Error fetching course data:", err.response?.data || err.message);
-    
-    if (err.response?.status === 403) {
-      setError("You need to enroll in this course to access learning materials");
-    } else if (err.response?.status === 404) {
-      setError("Course not found");
-    } else {
-      setError("Failed to load course. Please try again.");
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const markLessonComplete = async (lessonId) => {
     try {
@@ -159,186 +138,193 @@ const fetchCourseData = async () => {
 
   const getLessonIcon = (lesson, lessonId) => {
     if (isLessonCompleted(lessonId)) {
-      return <CheckCircle color="success" />;
+      return <CheckCircle className="h-5 w-5 text-green-500" />;
     }
     
     switch (lesson.type) {
-      case 'video': return <VideoLibrary color="primary" />;
-      case 'quiz': return <Quiz color="secondary" />;
-      case 'assignment': return <Assignment color="warning" />;
-      default: return <Description color="info" />;
+      case 'video': return <VideoLibrary className="h-5 w-5 text-blue-500" />;
+      case 'quiz': return <Quiz className="h-5 w-5 text-purple-500" />;
+      case 'assignment': return <Assignment className="h-5 w-5 text-yellow-500" />;
+      default: return <Description className="h-5 w-5 text-indigo-500" />;
     }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Alert severity="error" sx={{ mt: 5 }}>
-        {error}
-      </Alert>
+      <div className="flex justify-center items-center h-screen">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg max-w-md">
+          <h3 className="font-bold text-lg mb-2">Error</h3>
+          <p>{error}</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Box sx={{ display: "flex", height: "calc(100vh - 64px)" }}>
+    <div className="flex h-screen bg-gray-50">
       {/* Left Sidebar - Lessons */}
-      <Paper sx={{ width: 320, flexShrink: 0, overflowY: "auto" }}>
-        <Box sx={{ p: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-            <IconButton onClick={() => navigate(-1)}>
-              <ArrowBack />
-            </IconButton>
-            <Typography variant="h6" fontWeight="bold" noWrap>
+      <div className="w-80 flex-shrink-0 bg-white shadow-lg overflow-y-auto">
+        <div className="p-4">
+          <div className="flex items-center gap-3 mb-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowBack className="h-5 w-5 text-gray-600" />
+            </button>
+            <h2 className="text-lg font-bold text-gray-800 truncate">
               {course?.title}
-            </Typography>
-          </Box>
+            </h2>
+          </div>
           
           {/* Progress Bar */}
-          <Box sx={{ mb: 3 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-              <Typography variant="body2">Course Progress</Typography>
-              <Typography variant="body2" fontWeight="bold">
-                {getProgressPercentage()}%
-              </Typography>
-            </Box>
-            <LinearProgress 
-              variant="determinate" 
-              value={getProgressPercentage()} 
-              sx={{ height: 8, borderRadius: 4 }}
-            />
-          </Box>
+          <div className="mb-4">
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-600">Course Progress</span>
+              <span className="font-semibold text-gray-800">{getProgressPercentage()}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${getProgressPercentage()}%` }}
+              ></div>
+            </div>
+          </div>
           
-          <Divider sx={{ mb: 2 }} />
+          <hr className="my-3" />
           
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+          <p className="text-sm text-gray-500 mb-2">
             Lessons ({lessons.length})
-          </Typography>
-        </Box>
+          </p>
+        </div>
         
-        <List sx={{ p: 0 }}>
+        {/* Lessons List */}
+        <div className="pb-4">
           {lessons.map((lesson, index) => {
             const completed = isLessonCompleted(lesson._id);
             const isSelected = selectedLesson?._id === lesson._id;
             
             return (
-              <React.Fragment key={lesson._id}>
-                <ListItem
-                  button
-                  selected={isSelected}
+              <div key={lesson._id} className="border-b border-gray-100">
+                <button
                   onClick={() => setSelectedLesson(lesson)}
-                  sx={{
-                    borderLeft: isSelected ? 4 : 0,
-                    borderColor: "primary.main",
-                    bgcolor: isSelected ? "action.selected" : "inherit",
-                    py: 1.5,
-                  }}
+                  className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-start gap-3 ${
+                    isSelected 
+                      ? 'bg-blue-50 border-l-4 border-blue-500' 
+                      : ''
+                  }`}
                 >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
+                  <div className="flex-shrink-0 mt-1">
                     {getLessonIcon(lesson, lesson._id)}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={
-                      <Typography variant="body2" fontWeight="medium">
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-700">
                         {index + 1}. {lesson.title}
-                        {completed && (
-                          <Chip 
-                            label="Completed" 
-                            size="small" 
-                            color="success" 
-                            sx={{ ml: 1, height: 20 }}
-                          />
-                        )}
-                      </Typography>
-                    }
-                    secondary={
-                      <Typography variant="caption" color="text.secondary">
-                        {lesson.type === 'video' ? 'Video' : 'Reading'} • {lesson.duration || '5 min'}
-                      </Typography>
-                    }
-                  />
-                </ListItem>
-                <Divider />
-              </React.Fragment>
+                      </span>
+                      {completed && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Completed
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {lesson.type === 'video' ? 'Video' : 'Reading'} • {lesson.duration || '5 min'}
+                    </p>
+                  </div>
+                </button>
+              </div>
             );
           })}
-        </List>
-      </Paper>
+        </div>
+      </div>
 
       {/* Main Content */}
-      <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+      <div className="flex-1 flex flex-col">
         {/* Header with Progress */}
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>
+        <div className="bg-white shadow-sm p-6">
+          <h1 className="text-2xl font-bold text-gray-800 mb-3">
             {selectedLesson?.title}
-          </Typography>
+          </h1>
           
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-            <Chip 
-              label={selectedLesson?.type || 'Lesson'} 
-              color="primary" 
-              size="small" 
-            />
-            <Typography variant="body2" color="text.secondary">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              {selectedLesson?.type || 'Lesson'}
+            </span>
+            <span className="text-sm text-gray-500">
               Duration: {selectedLesson?.duration || '5 min'}
-            </Typography>
-          </Box>
+            </span>
+          </div>
           
-          <Typography variant="body1" color="text.secondary">
+          <p className="text-gray-600">
             {selectedLesson?.description}
-          </Typography>
-        </Paper>
+          </p>
+        </div>
 
         {/* Message Alert */}
         {message && (
-          <Alert 
-            severity={message.type} 
-            sx={{ mx: 3, mt: 2 }}
-            onClose={() => setMessage(null)}
-          >
-            {message.text}
-          </Alert>
+          <div className={`mx-6 mt-4 p-4 rounded-lg ${
+            message.type === 'success' 
+              ? 'bg-green-50 border border-green-200 text-green-700'
+              : 'bg-red-50 border border-red-200 text-red-700'
+          }`}>
+            <div className="flex justify-between items-center">
+              <span>{message.text}</span>
+              <button
+                onClick={() => setMessage(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ×
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Lesson Content */}
-        <Box sx={{ flex: 1, p: 3, overflowY: "auto" }}>
+        <div className="flex-1 p-6 overflow-y-auto">
           {selectedLesson?.type === 'video' ? (
-            <Card sx={{ mb: 3 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Video Lesson
-                </Typography>
-                <Typography variant="body2" color="text.secondary" paragraph>
-                  {selectedLesson.content || "Video content will play here."}
-                </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<PlayCircle />}
-                  onClick={() => window.open(selectedLesson.contentUrl, '_blank')}
-                >
-                  Watch Video
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                Video Lesson
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {selectedLesson.content || "Video content will play here."}
+              </p>
+              <button
+                onClick={() => window.open(selectedLesson.contentUrl, '_blank')}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors duration-200"
+              >
+                <PlayCircle className="h-5 w-5" />
+                Watch Video
+              </button>
+            </div>
           ) : (
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="body1" paragraph>
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="prose max-w-none">
                 {selectedLesson?.content || "Lesson content will appear here."}
-              </Typography>
-            </Paper>
+              </div>
+            </div>
           )}
-        </Box>
+        </div>
 
         {/* Action Buttons */}
-        <Paper sx={{ p: 2 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Button
+        <div className="bg-white shadow-lg p-4">
+          <div className="flex justify-between items-center">
+            <button
               onClick={() => {
                 const currentIndex = lessons.findIndex(l => l._id === selectedLesson?._id);
                 if (currentIndex > 0) {
@@ -346,23 +332,27 @@ const fetchCourseData = async () => {
                 }
               }}
               disabled={lessons.findIndex(l => l._id === selectedLesson?._id) === 0}
+              className={`px-4 py-2 rounded-lg ${
+                lessons.findIndex(l => l._id === selectedLesson?._id) === 0
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
             >
               ← Previous
-            </Button>
+            </button>
             
-            <Box sx={{ display: "flex", gap: 2 }}>
+            <div className="flex gap-3">
               {!isLessonCompleted(selectedLesson?._id) && (
-                <Button
-                  variant="outlined"
+                <button
                   onClick={() => markLessonComplete(selectedLesson?._id)}
-                  startIcon={<CheckCircle />}
+                  className="flex items-center gap-2 px-4 py-2 border border-green-500 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                 >
+                  <CheckCircle className="h-5 w-5" />
                   Mark Complete
-                </Button>
+                </button>
               )}
               
-              <Button
-                variant="contained"
+              <button
                 onClick={() => {
                   const currentIndex = lessons.findIndex(l => l._id === selectedLesson?._id);
                   if (currentIndex < lessons.length - 1) {
@@ -370,14 +360,19 @@ const fetchCourseData = async () => {
                   }
                 }}
                 disabled={lessons.findIndex(l => l._id === selectedLesson?._id) === lessons.length - 1}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${
+                  lessons.findIndex(l => l._id === selectedLesson?._id) === lessons.length - 1
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
               >
                 Next Lesson →
-              </Button>
-            </Box>
-          </Box>
-        </Paper>
-      </Box>
-    </Box>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
