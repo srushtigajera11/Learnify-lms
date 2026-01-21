@@ -47,17 +47,17 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
 
       {/* Student Routes */}
-      <Route path="/student" element={<StudentDashboardLayout />}>
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="mylearning" element={<MyLearning />} />
-        <Route path="course/:courseId/learn" element={<CourseLearn />} />
-        <Route path="wishlist" element={<WishList />} />
-        <Route path="review" element={<Reviews />} />
-        <Route path="purchaseHistory" element={<PurchaseHistory />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="course/:courseId" element={<CourseDetailStudent />} />
-        <Route path="*" element={<Dashboard />} />
-      </Route>
+        <Route path="/student" element={<StudentDashboardLayout />}>
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="mylearning" element={<MyLearning />} />
+          <Route path="course/:courseId/learn" element={<CourseLearn />} />
+          <Route path="wishlist" element={<WishList />} />
+          <Route path="review" element={<Reviews />} />
+          <Route path="purchaseHistory" element={<PurchaseHistory />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="course/:courseId" element={<CourseDetailStudent />} />
+          <Route path="*" element={<Dashboard />} />
+        </Route>
 
       {/* Tutor Routes */}
       <Route path="/tutor" element={<TutorDashboardLayout />}>

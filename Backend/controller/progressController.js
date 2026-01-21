@@ -1,6 +1,7 @@
 // controller/progressController.js
 const UserProgress = require('../models/UserProgress');
 const Course = require('../models/courseModel');
+const mongoose = require("mongoose");
 const Lesson = require('../models/Lesson');
 
 // Mark lesson as completed
@@ -8,6 +9,18 @@ exports.markLessonCompleted = async (req, res) => {
   try {
     const userId = req.user.id;
     const { courseId, lessonId } = req.params;
+    if (!lessonId) {
+      return res.status(400).json({
+        success: false,
+        message: "Lesson ID is missing"
+      });
+    }
+     if (!mongoose.Types.ObjectId.isValid(lessonId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Lesson ID"
+      });
+    }
 
     // Get the lesson
     const lesson = await Lesson.findById(lessonId);
@@ -81,7 +94,7 @@ exports.getCourseProgress = async (req, res) => {
     const { courseId } = req.params;
 
     let userProgress = await UserProgress.findOne({ userId, courseId })
-      .populate('completedLessons.lessonId', 'title type order duration')
+      .populate('completedLessons.lessonId', 'title lessonType order duration')
       .populate('certificateId');
 
     if (!userProgress) {

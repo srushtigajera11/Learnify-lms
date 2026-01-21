@@ -2,13 +2,18 @@ const mongoose = require('mongoose');
 const materialSchema = new mongoose.Schema({
   name: { type: String, required: true },
   url: { type: String, required: true },
-  type: { type: String, required: true, enum: ['video', 'link','document'] }
-});
+  type: { type: String, required: true, enum: ['video', 'link','document'] },
+    description: { type: String }
+},{ _id: true });
 
 const lessonSchema = new mongoose.Schema({
   courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
   title: { type: String, required: true, maxlength: 200 },
   description: { type: String },
+  content: {
+    type: String,
+    default: ''
+  },
   materials: [materialSchema],
   order: { type: Number, required: true },
   
