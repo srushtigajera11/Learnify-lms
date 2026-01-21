@@ -8,6 +8,7 @@ const User = require('../models/User');
 const Enrollment = require('../models/Enrollment');
 const Payment = require('../models/Payment');
 const adminController = require('../controller/adminController');
+const courseController = require("../controller/courseController")
 
 // Get all courses
 router.get('/courses', isAuthenticated, isAdmin, async (req, res) => {
@@ -29,6 +30,7 @@ router.get('/stats', isAuthenticated, isAdmin, async (req, res) => {
       totalInstructors,
       totalCourses,
       publishedCourses,
+      pendingCourses, // Add this line
       totalEnrollments,
       revenue
     ] = await Promise.all([
@@ -37,6 +39,7 @@ router.get('/stats', isAuthenticated, isAdmin, async (req, res) => {
       User.countDocuments({ role: 'instructor' }),
       Course.countDocuments(),
       Course.countDocuments({ status: 'published' }),
+      Course.countDocuments({ status: 'pending' }), // Add this line
       Enrollment.countDocuments(),
       Payment.aggregate([
         { $match: { status: 'success' } },
@@ -50,6 +53,7 @@ router.get('/stats', isAuthenticated, isAdmin, async (req, res) => {
       totalInstructors,
       totalCourses,
       publishedCourses,
+      pendingCourses, // Add this line
       totalEnrollments,
       totalRevenue: revenue[0]?.total || 0
     });
@@ -90,9 +94,6 @@ res.json({ message: `User ${user.isBlocked ? "blocked" : "unblocked"}` });
 
 });
 
-// Activity Logs
-router.get('/activity-logs', isAuthenticated, isAdmin, adminController.getActivityLogs);
-
 // Dashboard Stats
 router.get('/dashboard-stats', isAuthenticated, isAdmin, adminController.getDashboardStats);
 
@@ -118,20 +119,65 @@ router.get('/payments', isAuthenticated, isAdmin, async (req, res) => {
     const payments = await Payment.find()
       .populate('userId', 'name email')
       .populate('courseId', 'title price')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean(); // Use lean() for better performance
 
-    res.json(payments);
+    // Transform the data to ensure proper number format
+    const transformedPayments = payments.map(payment => ({
+      ...payment,
+      amount: Number(payment.amount) || 0, // Ensure it's a number
+      courseId: payment.courseId ? {
+        ...payment.courseId,
+        price: Number(payment.courseId?.price) || 0
+      } : null
+    }));
+
+    // Debug log
+    console.log('First payment amount:', {
+      raw: payments[0]?.amount,
+      transformed: transformedPayments[0]?.amount,
+      typeRaw: typeof payments[0]?.amount,
+      typeTransformed: typeof transformedPayments[0]?.amount
+    });
+
+    res.json(transformedPayments);
   } catch (error) {
-  
+    console.error('Error fetching payments:', error);
     res.status(500).json({ message: error.message });
   }
 });
 // Toggle course visibility
+// routes/admin.js - Fix the status update route
 router.put('/course/:id/status', isAuthenticated, isAdmin, async (req, res) => {
-  const course = await Course.findById(req.params.id);
-  course.status = req.body.status || 'draft';
-  await course.save();
-  res.json({ message: 'Status updated', course });
+  try {
+    const { status } = req.body;
+    
+    // Validate status
+    const validStatuses = ['draft', 'pending', 'published', 'rejected'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status value' });
+    }
+    
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+    
+    // Update course status
+    course.status = status;
+    await course.save();
+    
+    res.json({ 
+      success: true, 
+      message: 'Status updated successfully',
+      course 
+    });
+  } catch (error) {
+    console.error('Error updating course status:', error);
+    res.status(500).json({ message: 'Failed to update status' });
+  }
 });
+router.delete('/course/:id/delete',isAuthenticated,isAdmin,courseController.deleteCourse)
+
 
 module.exports = router;

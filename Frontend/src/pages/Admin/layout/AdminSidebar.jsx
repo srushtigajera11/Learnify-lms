@@ -40,22 +40,24 @@ const AdminSidebar = ({ selected, onSelect }) => {
       {/* Sidebar */}
       <aside className={`
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0 lg:relative
-        fixed lg:static
-        top-0 left-0 z-40
-        w-64 h-screen bg-gray-900 text-gray-200
+        lg:translate-x-0
+        fixed lg:fixed
+        top-0 left-0
+        w-64 
+        h-[100dvh] /* Changed from h-screen to h-[100dvh] for better mobile support */
+        bg-gray-900 text-gray-200
         flex flex-col
         transition-transform duration-300
-        overflow-y-auto
+        z-40
       `}>
         {/* Logo */}
-        <div className="p-6 border-b border-gray-800">
+        <div className="p-6 border-b border-gray-800 flex-shrink-0">
           <h1 className="text-xl font-bold text-indigo-400">Learnify Admin</h1>
           <p className="text-sm text-gray-400 mt-1">Control Panel</p>
         </div>
 
         {/* Menu */}
-        <nav className="flex-1 px-2 py-4">
+        <nav className="flex-1 overflow-y-auto px-2 py-4">
           <ul className="space-y-1">
             {items.map((item) => (
               <li key={item.key}>
@@ -88,7 +90,7 @@ const AdminSidebar = ({ selected, onSelect }) => {
         </nav>
 
         {/* Logout */}
-        <div className="mt-auto px-2 pb-6 pt-4 border-t border-gray-800">
+        <div className="mt-auto px-2 pb-6 pt-4 border-t border-gray-800 flex-shrink-0">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-900/20 hover:text-red-300 rounded-lg transition-colors"

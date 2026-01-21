@@ -1,1 +1,10 @@
 @import "tailwindcss";
+html, body, #root {
+  height: 100%;
+}
+
+.flex > .hidden.lg\:block {
+  height: 100vh;
+  position: sticky;
+  top: 0;
+}

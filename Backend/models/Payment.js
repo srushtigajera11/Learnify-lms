@@ -11,5 +11,7 @@ const paymentSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 
 });
+paymentSchema.set('toJSON', { getters: true });
+paymentSchema.set('toObject', { getters: true });
 
 module.exports = mongoose.model('Payment', paymentSchema);

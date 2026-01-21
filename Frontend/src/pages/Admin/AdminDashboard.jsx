@@ -57,13 +57,11 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen flex">
-      {/* Sidebar - Fixed */}
-      <div className="hidden lg:block">
-        <AdminSidebar selected={section} onSelect={setSection} />
-      </div>
+      {/* Sidebar - Always fixed */}
+      <AdminSidebar selected={section} onSelect={setSection} />
 
-      {/* Content Area */}
-      <div className="flex-1 bg-gray-50 p-6">
+      {/* Content Area - Add left margin on desktop */}
+      <div className="flex-1 min-h-screen bg-gray-50 p-4 lg:p-6 lg:ml-64 overflow-y-auto">
         {section === "dashboard" && (
           <>
             <div className="flex justify-between items-center mb-6">

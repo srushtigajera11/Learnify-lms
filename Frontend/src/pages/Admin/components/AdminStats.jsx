@@ -1,39 +1,33 @@
-// frontend/src/pages/admin/components/AdminStats.jsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
-import {
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  LinearProgress,
-} from '@mui/material';
-import {
-  People,
-  MenuBook,
-  AttachMoney,
-  PendingActions
-} from '@mui/icons-material';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { 
+  Users, 
+  BookOpen, 
+  DollarSign, 
+  Clock, 
+  AlertCircle 
+} from 'lucide-react';
+import { 
+  PieChart, Pie, Cell, 
+  BarChart, Bar, 
+  XAxis, YAxis, 
+  CartesianGrid, Tooltip, 
+  Legend, ResponsiveContainer 
+} from 'recharts';
 import { fetchDashboardCharts } from '../services/adminApi';
 
 // StatCard Component
 const StatCard = ({ title, value, icon, color }) => (
-  <Card>
-    <CardContent>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-        <Box sx={{ color, mr: 2 }}>
+  <div className="bg-white rounded border border-gray-200 shadow-sm">
+    <div className="p-4">
+      <div className="flex items-center mb-2">
+        <div className={`mr-3 ${color}`}>
           {icon}
-        </Box>
-        <Typography variant="body2" color="text.secondary">
-          {title}
-        </Typography>
-      </Box>
-      <Typography variant="h5" fontWeight="bold">
-        {value}
-      </Typography>
-    </CardContent>
-  </Card>
+        </div>
+        <p className="text-sm text-gray-600">{title}</p>
+      </div>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+    </div>
+  </div>
 );
 
 const AdminStats = ({ stats }) => {
@@ -46,18 +40,13 @@ const AdminStats = ({ stats }) => {
       setLoading(true);
       setError(null);
       try {
-       
-        
         // Use the correct endpoint
         const response = await fetchDashboardCharts();
-   
         
         // Check if we got data
         if (response.data && response.data.data) {
-       
           setChartData(response.data.data);
         } else {
-
           setChartData({
             dailySignups: [],
             courseStats: []
@@ -96,69 +85,61 @@ const AdminStats = ({ stats }) => {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
   return (
-    <Box sx={{ mb: 4 }}>
+    <div className="mb-8">
       {/* Error Message */}
       {error && (
-        <Card sx={{ mb: 3, bgcolor: '#fff3cd', borderColor: '#ffeaa7' }}>
-          <CardContent>
-            <Typography color="warning.dark">
-              Note: Using demo data. Charts API returned: {error}
-            </Typography>
-          </CardContent>
-        </Card>
+        <div className="bg-yellow-50 border border-yellow-200 rounded mb-6 p-4">
+          <p className="text-yellow-800">
+            Note: Using demo data. Charts API returned: {error}
+          </p>
+        </div>
       )}
 
-      {/* Quick Stats - FIXED GRID SYNTAX */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            title="Total Users"
-            value={stats?.totalUsers || 0}
-            icon={<People color="primary" />}
-            color="#3f51b5"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            title="Total Courses"
-            value={stats?.totalCourses || 0}
-            icon={<MenuBook color="success" />}
-            color="#4caf50"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            title="Published Courses"
-            value={stats?.publishedCourses || 0}
-            icon={<AttachMoney color="info" />}
-            color="#2196f3"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            title="Pending Courses"
-            value={stats?.pendingCourses || 0}
-            icon={<PendingActions color="warning" />}
-            color="#ff9800"
-          />
-        </Grid>
-      </Grid>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          title="Total Users"
+          value={stats?.totalUsers || 0}
+          icon={<Users className="w-6 h-6 text-blue-600" />}
+          color="text-blue-600"
+        />
+        <StatCard
+          title="Total Courses"
+          value={stats?.totalCourses || 0}
+          icon={<BookOpen className="w-6 h-6 text-green-600" />}
+          color="text-green-600"
+        />
+        <StatCard
+          title="Published Courses"
+          value={stats?.publishedCourses || 0}
+          icon={<DollarSign className="w-6 h-6 text-blue-400" />}
+          color="text-blue-400"
+        />
+        <StatCard
+          title="Pending Courses"
+          value={stats?.pendingCourses || 0}
+          icon={<Clock className="w-6 h-6 text-yellow-600" />}
+          color="text-yellow-600"
+        />
+      </div>
 
-      {/* Charts - FIXED GRID SYNTAX */}
-      <Grid container spacing={3}>
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Course Status Pie Chart */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Course Status Distribution
-              </Typography>
-              {loading ? (
-                <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <LinearProgress sx={{ width: '80%' }} />
-                </Box>
-              ) : chartData?.courseStats && chartData.courseStats.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+        <div className="bg-white rounded border border-gray-200 shadow-sm">
+          <div className="p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Course Status Distribution
+            </h3>
+            {loading ? (
+              <div className="h-64 flex items-center justify-center">
+                <div className="w-4/5 bg-gray-200 rounded-full h-2">
+                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '60%' }}></div>
+                </div>
+              </div>
+            ) : chartData?.courseStats && chartData.courseStats.length > 0 ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={chartData.courseStats}
@@ -178,28 +159,30 @@ const AdminStats = ({ stats }) => {
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (
-                <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 8 }}>
-                  No course data available
-                </Typography>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center">
+                <p className="text-gray-500 text-sm">No course data available</p>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Daily Signups Bar Chart */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Daily User Signups (Last 7 Days)
-              </Typography>
-              {loading ? (
-                <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <LinearProgress sx={{ width: '80%' }} />
-                </Box>
-              ) : chartData?.dailySignups && chartData.dailySignups.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
+        <div className="bg-white rounded border border-gray-200 shadow-sm">
+          <div className="p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Daily User Signups (Last 7 days)
+            </h3>
+            {loading ? (
+              <div className="h-64 flex items-center justify-center">
+                <div className="w-4/5 bg-gray-200 rounded-full h-2">
+                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '60%' }}></div>
+                </div>
+              </div>
+            ) : chartData?.dailySignups && chartData.dailySignups.length > 0 ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData.dailySignups}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="_id" />
@@ -209,16 +192,16 @@ const AdminStats = ({ stats }) => {
                     <Bar dataKey="count" fill="#8884d8" name="Signups" />
                   </BarChart>
                 </ResponsiveContainer>
-              ) : (
-                <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 8 }}>
-                  No signup data available
-                </Typography>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center">
+                <p className="text-gray-500 text-sm">No signup data available</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

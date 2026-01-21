@@ -124,7 +124,7 @@ const PaymentTable = ({ rows }) => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm font-medium text-gray-900">
                       <IndianRupee className="w-4 h-4 mr-1" />
-                      {payment.amount || 0}
+                      {parseInt(payment.amount) || 0}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

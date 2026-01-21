@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   CheckCircle, 
   XCircle, 
@@ -8,13 +8,19 @@ import {
   BookOpen, 
   Download,
   Hourglass,
-  AlertCircle
+  AlertCircle,
+  MoreVertical,
+  FileText,
+  BarChart
 } from 'lucide-react';
 import { approveCourse, rejectCourse } from '../services/adminApi';
+import RejectCourseDialog from './RejectCourseDialog';
 
 const EnhancedPendingCourses = ({ courses = [], refresh }) => {
+  const [rejectingCourse, setRejectingCourse] = useState(null);
+  const [expandedCourse, setExpandedCourse] = useState(null);
+
   const getCourseProgress = (course) => {
-    // Calculate completion percentage
     const checks = [
       !!course.title,
       !!course.description,
@@ -37,227 +43,185 @@ const EnhancedPendingCourses = ({ courses = [], refresh }) => {
     }
   };
 
-  const handleReject = async (id) => {
-    const feedbackText = prompt('Please provide rejection feedback:', 
-      'Course needs improvement in content quality.');
-    
-    if (feedbackText) {
-      try {
-        await rejectCourse(id, feedbackText);
-        if (refresh) refresh();
-      } catch (error) {
-        console.error('Error rejecting course:', error);
-      }
-    }
+  const handleRejectClick = (course) => {
+    setRejectingCourse(course);
   };
 
   const handlePreview = (courseId) => {
     window.open(`/course/preview/${courseId}`, '_blank');
   };
 
-  const getProgressColor = (progress) => {
-    if (progress > 70) return 'bg-green-500';
-    if (progress > 40) return 'bg-yellow-500';
-    return 'bg-red-500';
+  const getStatusColor = (progress) => {
+    if (progress > 80) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (progress > 60) return 'bg-amber-100 text-amber-700 border-amber-200';
+    return 'bg-rose-100 text-rose-700 border-rose-200';
+  };
+
+  const toggleExpand = (courseId) => {
+    setExpandedCourse(expandedCourse === courseId ? null : courseId);
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
-            <Hourglass className="w-6 h-6 text-amber-500" />
-            Pending Course Reviews
-            {courses.length > 0 && (
-              <span className="text-sm font-normal text-gray-500">
-                ({courses.length})
-              </span>
-            )}
-          </h2>
-          <p className="text-gray-600 text-sm mt-1">
-            Review and approve courses submitted by instructors
-          </p>
-        </div>
-        
-        {courses.length > 0 && (
-          <span className="px-3 py-1 bg-amber-100 text-amber-800 text-sm font-medium rounded-full">
-            {courses.length} waiting
-          </span>
-        )}
-      </div>
-
-      {/* Courses List */}
+    <>
       <div className="space-y-4">
-        {courses.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-green-500" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-700 mb-2">All caught up!</h3>
-            <p className="text-gray-500 max-w-sm mx-auto">
-              All courses have been reviewed. Check back later for new submissions.
+        {/* Minimal Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Pending Reviews
+            </h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {courses.length} course{courses.length !== 1 ? 's' : ''} awaiting review
             </p>
           </div>
-        ) : (
-          courses.map((course) => {
-            const progress = getCourseProgress(course);
-            const submittedDate = new Date(course.createdAt).toLocaleDateString();
-            
-            return (
-              <div 
-                key={course._id} 
-                className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="p-6">
-                  {/* Header Section */}
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg text-gray-900 mb-1">
-                        {course.title || "Untitled Course"}
-                      </h3>
-                      <div className="flex items-center text-gray-600 text-sm">
-                        <User className="w-4 h-4 mr-1" />
-                        <span>By: {course.createdBy?.name || "Unknown Instructor"}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="text-right">
-                      <div className="text-sm text-gray-500 mb-2">
-                        Submitted: {submittedDate}
-                      </div>
-                      <div className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-sm rounded-lg">
-                        <BookOpen className="w-4 h-4" />
-                        {course.totalLessons || 0} lessons
-                      </div>
-                    </div>
-                  </div>
+          
+          <div className="flex items-center gap-2">
+            <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+              <BarChart className="w-4 h-4" />
+            </button>
+            <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+              <FileText className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
 
-                  {/* Progress Bar */}
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Completion Status</span>
-                      <span className="font-medium">{progress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full ${getProgressColor(progress)} transition-all duration-500`}
-                        style={{ width: `${progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Quick Stats */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {course.category && (
-                      <span className="px-3 py-1 border border-gray-300 text-gray-700 text-sm rounded-lg">
-                        {course.category}
-                      </span>
-                    )}
-                    
-                    <span className="px-3 py-1 bg-blue-50 text-blue-700 text-sm rounded-lg">
-                      ${course.price || 0}
-                    </span>
-                    
-                    {course.duration && (
-                      <span className="px-3 py-1 bg-gray-50 text-gray-700 text-sm rounded-lg flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {Math.round(course.duration)} min
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Description */}
-                  {course.description && (
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                      {course.description}
-                    </p>
-                  )}
-
-                  {/* Divider */}
-                  <div className="border-t border-gray-100 pt-4 mt-4">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                      {/* Left Actions */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handlePreview(course._id)}
-                          className="px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                          Preview Course
-                        </button>
+        {/* Courses Grid - Minimal Design */}
+        <div className="grid gap-3">
+          {courses.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+              <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                <CheckCircle className="w-6 h-6 text-emerald-500" />
+              </div>
+              <h3 className="font-medium text-gray-900 mb-1">All reviewed</h3>
+              <p className="text-gray-500 text-sm">
+                No pending course reviews
+              </p>
+            </div>
+          ) : (
+            courses.map((course) => {
+              const progress = getCourseProgress(course);
+              const submittedDate = new Date(course.createdAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+              });
+              
+              return (
+                <div 
+                  key={course._id} 
+                  className="bg-white rounded-xl border border-gray-200 hover:border-gray-300 transition-all"
+                >
+                  <div className="p-4">
+                    {/* Compact Header */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium text-gray-900 truncate">
+                            {course.title || "Untitled Course"}
+                          </h3>
+                          <span className={`px-2 py-0.5 text-xs rounded-full border ${getStatusColor(progress)}`}>
+                            {progress}%
+                          </span>
+                        </div>
                         
-                        <button
-                          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Download statistics"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-3 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            {course.createdBy?.name || "Unknown"}
+                          </span>
+                          <span>•</span>
+                          <span>{submittedDate}</span>
+                          <span>•</span>
+                          <span>{course.totalLessons || 0} lessons</span>
+                        </div>
                       </div>
+                      
+                      <button
+                        onClick={() => toggleExpand(course._id)}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg ml-2"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </div>
 
-                      {/* Right Actions */}
+                    {/* Minimal Progress Bar */}
+                    <div className="mb-3">
+                      <div className="w-full bg-gray-100 rounded-full h-1.5">
+                        <div 
+                          className={`h-1.5 rounded-full ${
+                            progress > 80 ? 'bg-emerald-500' : 
+                            progress > 60 ? 'bg-amber-500' : 'bg-rose-500'
+                          }`}
+                          style={{ width: `${progress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    {/* Expanded Content */}
+                    {expandedCourse === course._id && (
+                      <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          {course.category && (
+                            <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">
+                              {course.category}
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">
+                            ${course.price || 0}
+                          </span>
+                        </div>
+                        
+                        {course.description && (
+                          <p className="text-sm text-gray-600 line-clamp-2">
+                            {course.description}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Compact Actions */}
+                    <div className="flex items-center justify-between pt-3">
+                      <div className="flex items-center gap-2">
+                        {/* <button
+                          onClick={() => handlePreview(course._id)}
+                          className="text-sm text-gray-600 hover:text-blue-600 px-2.5 py-1.5 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1.5"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Preview
+                        </button> */}
+                      </div>
+                      
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleReject(course._id)}
-                          className="px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+                          onClick={() => handleRejectClick(course)}
+                          className="text-sm text-gray-600 hover:text-rose-600 px-3 py-1.5 hover:bg-rose-50 rounded-lg transition-colors border border-gray-200 hover:border-rose-200"
                         >
-                          <XCircle className="w-4 h-4" />
                           Reject
                         </button>
-                        
                         <button
                           onClick={() => handleApprove(course._id)}
-                          className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+                          className="text-sm bg-emerald-600 text-white hover:bg-emerald-700 px-3 py-1.5 rounded-lg transition-colors"
                         >
-                          <CheckCircle className="w-4 h-4" />
                           Approve
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })
-        )}
+              );
+            })
+          )}
+        </div>
       </div>
 
-      {/* Stats Summary */}
-      {courses.length > 0 && (
-        <div className="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-6">
-          <h3 className="font-medium text-gray-900 mb-4">Review Summary</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg p-4 shadow-sm">
-              <div className="text-2xl font-bold text-gray-900">
-                {courses.length}
-              </div>
-              <div className="text-sm text-gray-600">Total Pending</div>
-            </div>
-            
-            <div className="bg-white rounded-lg p-4 shadow-sm">
-              <div className="text-2xl font-bold text-green-600">
-                {courses.filter(c => getCourseProgress(c) > 70).length}
-              </div>
-              <div className="text-sm text-gray-600">High Quality</div>
-            </div>
-            
-            <div className="bg-white rounded-lg p-4 shadow-sm">
-              <div className="text-2xl font-bold text-yellow-600">
-                {courses.filter(c => getCourseProgress(c) <= 70 && getCourseProgress(c) > 40).length}
-              </div>
-              <div className="text-sm text-gray-600">Needs Review</div>
-            </div>
-            
-            <div className="bg-white rounded-lg p-4 shadow-sm">
-              <div className="text-2xl font-bold text-red-600">
-                {courses.filter(c => getCourseProgress(c) <= 40).length}
-              </div>
-              <div className="text-sm text-gray-600">Incomplete</div>
-            </div>
-          </div>
-        </div>
+      {/* Reject Dialog */}
+      {rejectingCourse && (
+        <RejectCourseDialog
+          course={rejectingCourse}
+          onClose={() => setRejectingCourse(null)}
+          refresh={refresh}
+        />
       )}
-    </div>
+    </>
   );
 };
 

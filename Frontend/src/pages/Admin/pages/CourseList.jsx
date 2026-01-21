@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Search, 
   Filter, 
@@ -12,19 +12,67 @@ import {
   User,
   IndianRupee
 } from "lucide-react";
+import axiosInstance from "../../../utils/axiosInstance";
 
-const CourseList = ({ courses, refresh }) => {
+const CourseList = ({ courses: initialCourses, refresh }) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [courses, setCourses] = useState(initialCourses || []); // Add this state
 
-  const handleStatusChange = async (id, status) => {
-    // TODO: Implement updateCourseStatus API call
-    console.log(`Update course ${id} to ${status}`);
+  // Update local courses when prop changes
+  useEffect(() => {
+    setCourses(initialCourses || []);
+  }, [initialCourses]);
+
+const handleStatusChange = async (id, status) => {
+  try {
+    console.log('Updating status:', { id, status });
+    
+    // Add optimistic update for better UX
+    setCourses(prevCourses => 
+      prevCourses.map(course => 
+        course._id === id ? { ...course, status } : course
+      )
+    );
+
+    // CORRECT: Use PUT method and don't double-stringify
+    const response = await axiosInstance.put(`/admin/course/${id}/status`, { 
+      status 
+    });
+    
+    console.log('Response:', response.data);
+    
+    // Refresh from server if needed
     if (refresh) refresh();
-  };
+    
+    // Optional: Show success message
+    // toast.success(`Status changed to ${status}`);
+    
+  } catch (error) {
+    console.error('Full axios error:', error);
+    
+    // Log detailed error info
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      console.error('Response status:', error.response.status);
+      console.error('Response headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('No response received:', error.request);
+    }
+    
+    // Revert optimistic update
+    setCourses(initialCourses || []);
+    
+    // Show user-friendly error
+    const errorMessage = error.response?.data?.message || 
+                        error.message || 
+                        'Failed to update status';
+    alert(`Error: ${errorMessage}`);
+  }
+};
 
-  // Filter courses
-  const filteredCourses = courses?.filter(course => {
+  // Filter courses - update to use local courses state
+  const filteredCourses = courses.filter(course => {
     if (!course) return false;
     
     const matchesSearch = 
@@ -35,7 +83,7 @@ const CourseList = ({ courses, refresh }) => {
     const matchesStatus = statusFilter === "all" || course.status === statusFilter;
     
     return matchesSearch && matchesStatus;
-  }) || [];
+  });
 
   // Status configuration
   const statusConfig = {
@@ -179,30 +227,10 @@ const CourseList = ({ courses, refresh }) => {
                     onChange={(e) => handleStatusChange(course._id, e.target.value)}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm"
                   >
-                    <option value="draft">
-                      <div className="flex items-center gap-2">
-                        <EyeOff className="w-4 h-4" />
-                        Draft
-                      </div>
-                    </option>
-                    <option value="pending">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        Pending Review
-                      </div>
-                    </option>
-                    <option value="published">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4" />
-                        Published
-                      </div>
-                    </option>
-                    <option value="rejected">
-                      <div className="flex items-center gap-2">
-                        <XCircle className="w-4 h-4" />
-                        Rejected
-                      </div>
-                    </option>
+                    <option value="draft">Draft</option>
+                    <option value="pending">Pending Review</option>
+                    <option value="published">Published</option>
+                    <option value="rejected">Rejected</option>
                   </select>
                 </div>
               </div>
