@@ -86,39 +86,26 @@ exports.signup = async (req,res)=>{
  }
 
 exports.loginUser = async (req, res) => {
-  const { email, password } = req.body;
+     const { email, password } = req.body;
+    try {
+        const user = await User.findOne({ email });
+        if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-  try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(400).json({ message: "Invalid password" });
+
+        const token = jwt.sign({ id: user._id , role : user.role,isAdmin : user.isAdmin}, process.env.JWT_SECRET, { expiresIn: "4h" });
+       res.cookie('token', token, {
+                httpOnly: true,
+                sameSite: 'Lax',
+                secure: false,
+                maxAge: 60 * 60  * 1000, 
+              });
+        res.json({ success : true , message: 'Logged in', user:{user_id : user._id ,role : user.role,isAdmin : user.isAdmin} });
+    } catch (err) {
+        res.status(500).json({ message: "Server error" });
     }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid password" });
-    }
-
-    generateTokenAndSetCookie(res, user); // ✅ FIXED
-
-    user.lastLogin = new Date();
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Logged in",
-      user: {
-        user_id: user._id,
-        role: user.role,
-        isAdmin: user.isAdmin,
-      },
-    });
-  } catch (err) {
-    console.error("Login error:", err); // 👈 ADD THIS
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
+} 
 exports.logoutUser = (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,

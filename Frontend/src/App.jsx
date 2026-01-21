@@ -33,7 +33,8 @@ import CreateQuiz from "./pages/Tutor/CreateQuiz";
 import { useAuth } from "./Context/authContext";
 import QuizPreview from "./pages/Tutor/QuizPreview";
 import MyLearning from "./pages/Student/MyLearning";
-import CourseLearn from "./pages/Student/CourseLearn";  
+import CourseLearn from "./pages/Student/CourseLearn"; 
+import Unauthorized from "./pages/Unothorized"; 
 import AdminProtectedRoute from "./pages/Admin/AdminProtectedRoute";
 
 function AppRoutes() {
@@ -45,6 +46,7 @@ function AppRoutes() {
       <Route path="/" element={<HomePage />} />
       <Route path="/register" element={<Register />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/unauthorized" element={<Unauthorized />} />
 
       {/* Student Routes */}
         <Route path="/student" element={<StudentDashboardLayout />}>

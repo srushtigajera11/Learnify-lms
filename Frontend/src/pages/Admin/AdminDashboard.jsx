@@ -1,6 +1,4 @@
-// frontend/src/pages/admin/AdminDashboard.jsx
 import { useEffect, useState } from "react";
-import { Box, CircularProgress, Alert, Typography } from "@mui/material";
 import AdminSidebar from "./layout/AdminSidebar";
 import AdminStats from "./components/AdminStats";
 import EnhancedPendingCourses from "./components/EnchanedPendingCourse";
@@ -9,7 +7,6 @@ import UserList from "./pages/UserList";
 import EnrollmentTable from "./pages/EnrollmentTable";
 import PaymentTable from "./pages/PaymentTable";
 import ExportButtons from "./components/ExportButtons";
-
 import { fetchAdminDashboardData } from "./services/adminApi";
 
 const AdminDashboard = () => {
@@ -42,52 +39,66 @@ const AdminDashboard = () => {
     load();
   }, []);
 
-  if (loading && !data) return <CircularProgress sx={{ mt: 6 }} />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (loading && !data) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        {error}
+      </div>
+    );
+  }
 
   return (
-    <Box sx={{ display: "flex" }}>
-      {/* Sidebar */}
-      <AdminSidebar selected={section} onSelect={setSection} />
+    <div className="min-h-screen flex">
+      {/* Sidebar - Fixed */}
+      <div className="hidden lg:block">
+        <AdminSidebar selected={section} onSelect={setSection} />
+      </div>
 
-      {/* Content */}
-      <Box sx={{ flexGrow: 1, p: 3, bgcolor: "#f9fafb" }}>
-       {section === "dashboard" && (
-  <>
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-      <Typography variant="h5">Dashboard Overview</Typography>
-      <ExportButtons />
-    </Box>
-    <AdminStats stats={data?.stats || {}} />
-        <Box sx={{ mt: 4 }}>
-      <EnhancedPendingCourses 
-        courses={data?.pending || []} 
-        refresh={load} 
-      />
-    </Box>
-  </>
-)}
-
+      {/* Content Area */}
+      <div className="flex-1 bg-gray-50 p-6">
+        {section === "dashboard" && (
+          <>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
+              <ExportButtons />
+            </div>
+            <AdminStats stats={data?.stats || {}} />
+            <div className="mt-6">
+              <EnhancedPendingCourses 
+                courses={data?.pending || []} 
+                refresh={load} 
+              />
+            </div>
+          </>
+        )}
 
         {section === "courses" && (
-  <>
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-      <Typography variant="h5">Course Management</Typography>
-      <ExportButtons />
-    </Box>
-    <CourseList courses={data?.courses || []} refresh={load} />
-  </>
-)}
+          <>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Course Management</h1>
+              <ExportButtons />
+            </div>
+            <CourseList courses={data?.courses || []} refresh={load} />
+          </>
+        )}
 
-{section === "users" && (
-  <>
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-      <Typography variant="h5">User Management</Typography>
-      <ExportButtons />
-    </Box>
-    <UserList users={data?.users || []} refresh={load} />
-  </>
-)}
+        {section === "users" && (
+          <>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+              <ExportButtons />
+            </div>
+            <UserList users={data?.users || []} refresh={load} />
+          </>
+        )}
 
         {section === "payments" && (
           <PaymentTable rows={data?.payments || []} />
@@ -96,13 +107,8 @@ const AdminDashboard = () => {
         {section === "enrollments" && (
           <EnrollmentTable rows={data?.enrollments || []} />
         )}
-
-        {/* NEW ACTIVITY LOG SECTION
-        {section === "activity" && (
-          <ActivityLog />
-        )} */}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
 

@@ -29,9 +29,10 @@ const Login = () => {
         password,
       });
 
+
       if (data && data.user) {
         const role = data.user.role.toLowerCase();
-        const isAdmin = data.user.isAdmin;
+        const isAdmin = data.user.isAdmin; 
 
         handleSuccess(data.message || "Login successful!");
 

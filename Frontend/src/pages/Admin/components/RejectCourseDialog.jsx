@@ -1,13 +1,5 @@
 import React, { useState } from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  TextField,
-} from "@mui/material";
+import { X, AlertCircle } from "lucide-react";
 import { rejectCourse } from "../services/adminApi";
 
 const RejectCourseDialog = ({ course, onClose, refresh }) => {
@@ -18,9 +10,9 @@ const RejectCourseDialog = ({ course, onClose, refresh }) => {
     try {
       setLoading(true);
       await rejectCourse(course._id, feedback);
-      refresh();       // Refresh dashboard data
-      onClose();       // Close dialog
-      setFeedback(""); // Reset feedback
+      if (refresh) refresh();
+      onClose();
+      setFeedback("");
     } catch (err) {
       console.error("Reject failed", err);
     } finally {
@@ -28,36 +20,64 @@ const RejectCourseDialog = ({ course, onClose, refresh }) => {
     }
   };
 
+  if (!course) return null;
+
   return (
-    <Dialog open={Boolean(course)} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Reject Course</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" mb={1}>
-          Provide feedback for the instructor explaining why the course is rejected.
-        </Typography>
-        <TextField
-          multiline
-          rows={4}
-          fullWidth
-          value={feedback}
-          onChange={(e) => setFeedback(e.target.value)}
-          placeholder="Explain why the course was rejected..."
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
-          Cancel
-        </Button>
-        <Button
-          color="error"
-          variant="contained"
-          onClick={handleReject}
-          disabled={!feedback || loading}
-        >
-          {loading ? "Rejecting..." : "Reject"}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black bg-opacity-30"
+        onClick={onClose}
+      />
+      
+      {/* Dialog */}
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <h3 className="font-semibold text-gray-900">Reject Course</h3>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded"
+            disabled={loading}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4">
+          <p className="text-sm text-gray-600 mb-3">
+            Why are you rejecting "{course.title}"?
+          </p>
+          
+          <textarea
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            placeholder="Provide feedback..."
+            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm min-h-[100px]"
+            disabled={loading}
+          />
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 p-4 border-t">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg"
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleReject}
+            disabled={!feedback || loading}
+            className="px-4 py-2 text-sm bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300 rounded-lg"
+          >
+            {loading ? "Rejecting..." : "Reject"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -1,125 +1,112 @@
+// AdminSidebar.jsx - Fixed version
 import {
-  Box,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Typography,
-  Divider,
-} from "@mui/material";
-
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
-import PeopleIcon from "@mui/icons-material/People";
-import PaymentsIcon from "@mui/icons-material/Payments";
-import SchoolIcon from "@mui/icons-material/School";
-import HistoryIcon from "@mui/icons-material/History";
-import LogoutIcon from "@mui/icons-material/Logout";
+  LayoutDashboard,
+  BookOpen,
+  Users,
+  CreditCard,
+  GraduationCap,
+  LogOut,
+  Menu,
+  X
+} from "lucide-react";
+import { useState } from "react";
 
 const AdminSidebar = ({ selected, onSelect }) => {
-  const items = [
-    { key: "dashboard", label: "Dashboard", icon: <DashboardIcon /> },
-    { key: "courses", label: "Courses", icon: <MenuBookIcon /> },
-    { key: "users", label: "Users", icon: <PeopleIcon /> },
-    { key: "payments", label: "Payments", icon: <PaymentsIcon /> },
-    { key: "enrollments", label: "Enrollments", icon: <SchoolIcon /> },
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const items = [
+    { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
+    { key: "courses", label: "Courses", icon: <BookOpen className="w-5 h-5" /> },
+    { key: "users", label: "Users", icon: <Users className="w-5 h-5" /> },
+    { key: "payments", label: "Payments", icon: <CreditCard className="w-5 h-5" /> },
+    { key: "enrollments", label: "Enrollments", icon: <GraduationCap className="w-5 h-5" /> },
   ];
 
   const handleLogout = () => {
-    localStorage.removeItem("adminToken"); // or "token"
+    localStorage.removeItem("adminToken");
     window.location.href = "/login";
   };
 
   return (
-    <Box
-      sx={{
-        width: 260,
-        height: "100vh",
-        bgcolor: "#0f172a",
-        color: "#e5e7eb",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {/* Logo */}
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h6" fontWeight="bold" sx={{ color: "#6366f1" }}>
-          Learnify Admin
-        </Typography>
-        <Typography variant="caption" sx={{ color: "#94a3b8" }}>
-          Control Panel
-        </Typography>
-      </Box>
+    <>
+      {/* Mobile Toggle Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-indigo-600 text-white rounded-lg shadow-lg"
+      >
+        {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
 
-      <Divider sx={{ borderColor: "#1e293b" }} />
+      {/* Sidebar */}
+      <aside className={`
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0 lg:relative
+        fixed lg:static
+        top-0 left-0 z-40
+        w-64 h-screen bg-gray-900 text-gray-200
+        flex flex-col
+        transition-transform duration-300
+        overflow-y-auto
+      `}>
+        {/* Logo */}
+        <div className="p-6 border-b border-gray-800">
+          <h1 className="text-xl font-bold text-indigo-400">Learnify Admin</h1>
+          <p className="text-sm text-gray-400 mt-1">Control Panel</p>
+        </div>
 
-      {/* Menu */}
-      <List sx={{ px: 1, mt: 1 }}>
-        {items.map((item) => (
-          <ListItemButton
-            key={item.key}
-            onClick={() => onSelect(item.key)}
-            selected={selected === item.key}
-            sx={{
-              mb: 0.5,
-              borderRadius: 1,
-              color: "#e5e7eb",
-              "&.Mui-selected": {
-                bgcolor: "#1e293b",
-                borderLeft: "4px solid #6366f1",
-              },
-              "&:hover": { bgcolor: "#1e293b" },
-            }}
+        {/* Menu */}
+        <nav className="flex-1 px-2 py-4">
+          <ul className="space-y-1">
+            {items.map((item) => (
+              <li key={item.key}>
+                <button
+                  onClick={() => {
+                    onSelect(item.key);
+                    setSidebarOpen(false); // Close on mobile
+                  }}
+                  className={`
+                    w-full flex items-center gap-3 px-4 py-3 rounded-lg
+                    transition-all duration-200
+                    ${selected === item.key
+                      ? 'bg-gray-800 border-l-4 border-indigo-500 text-white'
+                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    }
+                  `}
+                >
+                  <div className={`
+                    ${selected === item.key ? 'text-indigo-400' : 'text-gray-400'}
+                  `}>
+                    {item.icon}
+                  </div>
+                  <span className="text-sm font-medium">
+                    {item.label}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        {/* Logout */}
+        <div className="mt-auto px-2 pb-6 pt-4 border-t border-gray-800">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-900/20 hover:text-red-300 rounded-lg transition-colors"
           >
-            <ListItemIcon
-              sx={{
-                color: selected === item.key ? "#6366f1" : "#cbd5f5",
-                minWidth: 40,
-              }}
-            >
-              {item.icon}
-            </ListItemIcon>
+            <LogOut className="w-5 h-5" />
+            <span className="text-sm font-medium">Logout</span>
+          </button>
+        </div>
+      </aside>
 
-            <ListItemText
-              primary={item.label}
-              primaryTypographyProps={{
-                fontSize: 14,
-                fontWeight: selected === item.key ? 600 : 500,
-              }}
-            />
-          </ListItemButton>
-        ))}
-      </List>
-
-      {/* Logout */}
-      <Box sx={{ mt: "auto", px: 1, pb: 2 }}>
-        <Divider sx={{ borderColor: "#1e293b", mb: 1 }} />
-
-        <ListItemButton
-          onClick={handleLogout}
-          sx={{
-            borderRadius: 1,
-            color: "#f87171",
-            "&:hover": {
-              bgcolor: "rgba(248,113,113,0.12)",
-            },
-          }}
-        >
-          <ListItemIcon sx={{ color: "#f87171", minWidth: 40 }}>
-            <LogoutIcon />
-          </ListItemIcon>
-
-          <ListItemText
-            primary="Logout"
-            primaryTypographyProps={{
-              fontSize: 14,
-              fontWeight: 500,
-            }}
-          />
-        </ListItemButton>
-      </Box>
-    </Box>
+      {/* Mobile Backdrop */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+        />
+      )}
+    </>
   );
 };
 
