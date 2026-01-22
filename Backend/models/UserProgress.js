@@ -8,16 +8,11 @@ const userProgressSchema = new mongoose.Schema({
     completedAt: { type: Date, default: Date.now }
   }],
   
-  // Progress tracking
   totalLessons: { type: Number, default: 0 },
   progressPercentage: { type: Number, default: 0 },
   isCompleted: { type: Boolean, default: false },
   completedAt: { type: Date },
-  
-  // Certificate reference
   certificateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Certificate' },
-  
-  // Quiz performance tracking
   quizResults: [{ type: mongoose.Schema.Types.ObjectId, ref: 'QuizResult' }],
   averageScore: { type: Number, default: 0 }
 }, { timestamps: true });

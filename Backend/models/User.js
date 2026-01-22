@@ -25,8 +25,6 @@ const userSchema = new mongoose.Schema({
     default: 'student'
   },
   isAdmin: { type: Boolean, default: false },
-  
-  // Essential for all users
   avatar: { type: String },
   isVerified: { type: Boolean, default: false },
   lastLogin: Date,
@@ -35,6 +33,7 @@ const userSchema = new mongoose.Schema({
   tutorProfile: {
     headline: String,
     bio: String,
+    location: String,
     expertise: [String], // ["Web Development", "JavaScript", "React"]
     experience: Number, // in years
     socialLinks: {

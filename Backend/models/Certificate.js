@@ -3,20 +3,14 @@ const mongoose = require('mongoose');
 const certificateSchema = new mongoose.Schema({
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
-  
-  // Certificate identification
+ 
   certificateId: { type: String, unique: true, required: true }, // Format: CERT-XXXX-XXXX
-  
-  // Certificate details
   title: { type: String, default: 'Certificate of Completion' },
   issuedAt: { type: Date, default: Date.now },
-  expiresAt: Date, // Optional - if certificates expire
-  
-  // Storage & Access
+  expiresAt: Date,
   downloadUrl: String,
   verificationUrl: String, // Unique URL for certificate verification
-  
-  // Performance data
+
   finalScore: Number,
   completionDate: Date,
   totalHours: Number, // Total learning hours
