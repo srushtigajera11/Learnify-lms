@@ -4,15 +4,6 @@ const studentController = require('../controller/studentController');
 const { isAuthenticated, authorizeRoles } = require('../middleware/auth');
 
 // IMPORTANT: All routes are prefixed with '/api/students' in server.js
-// So the full path becomes: /api/students/...
-
-// Get enrolled courses - Make sure this matches what MyLearning.jsx is calling
-router.get(
-  '/enrolled-courses',  // This should match what frontend calls
-  isAuthenticated,
-  authorizeRoles('student'),
-  studentController.getEnrolledCourses
-);
 
 // Get course details
 router.get(
@@ -46,6 +37,20 @@ router.post(
   studentController.markLessonComplete
 );
 
+router.get(
+  '/courses',
+  isAuthenticated,
+  authorizeRoles('student'),
+  studentController.getAvailableCourses
+);
+
+// Get enrolled courses
+router.get(
+  '/enrolled-courses',
+  isAuthenticated,
+  authorizeRoles('student'),
+  studentController.getEnrolledCourses
+);
 // Get course progress
 router.get(
   '/courses/:courseId/progress',

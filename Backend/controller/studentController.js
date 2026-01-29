@@ -1,6 +1,7 @@
 const Course = require('../models/courseModel');
 const Lesson = require('../models/Lesson');
 const Enrollment = require('../models/Enrollment');
+const Wishlist = require('../models/Wishlist');
 
 /**
  * Get enrolled courses for student
@@ -66,8 +67,78 @@ exports.getEnrolledCourses = async (req, res) => {
 };
 
 /**
- * Get course details with enrollment status
+ * Get all available courses with enrollment status
  */
+exports.getAvailableCourses = async (req, res) => {
+  try {
+    const studentId = req.user.id;
+
+    // FIXED: Remove isActive, correct field names
+    const courses = await Course.find({ 
+      status: 'published'
+    })
+    .populate('createdBy', 'name avatar')
+    .populate('category', 'name')
+    .select('title description thumbnail price level category totalLessons createdBy averageRating totalReviews')
+    .sort('-createdAt -totalReviews');
+
+    // Get enrolled courses to mark status
+    const enrollments = await Enrollment.find({ studentId });
+    const enrolledCourseIds = enrollments.map(e => e.courseId.toString());
+
+    // Get wishlist for current user
+    const wishlist = await Wishlist.find({ userId: studentId }).select('courseId');
+    const wishlistCourseIds = wishlist.map(w => w.courseId.toString());
+
+    const coursesWithStatus = await Promise.all(
+      courses.map(async (course) => {
+        // Get course progress if enrolled
+        let progress = 0;
+        if (enrolledCourseIds.includes(course._id.toString())) {
+          const enrollment = enrollments.find(e => e.courseId.toString() === course._id.toString());
+          const totalLessons = await Lesson.countDocuments({ 
+            courseId: course._id, 
+            status: 'published' 
+          });
+          progress = totalLessons > 0 
+            ? Math.round(((enrollment?.completedLessons?.length || 0) / totalLessons) * 100) 
+            : 0;
+        }
+
+        return {
+          ...course.toObject(),
+          isEnrolled: enrolledCourseIds.includes(course._id.toString()),
+          isInWishlist: wishlistCourseIds.includes(course._id.toString()),
+          progress,
+          // Use correct field names
+          averageRating: course.averageRating || 0,
+          enrollmentCount: 0 // Add this if you need it, or remove from sort
+        };
+      })
+    );
+
+    // Fix sort - remove enrollmentCount since it doesn't exist
+    coursesWithStatus.sort((a, b) => {
+      if (a.isEnrolled !== b.isEnrolled) return b.isEnrolled - a.isEnrolled;
+      if (b.averageRating !== a.averageRating) return b.averageRating - a.averageRating;
+      return 0; // Remove enrollmentCount comparison
+    });
+
+    res.status(200).json({
+      success: true,
+      courses: coursesWithStatus,
+      totalCourses: courses.length,
+      enrolledCount: enrolledCourseIds.length,
+      wishlistCount: wishlistCourseIds.length
+    });
+  } catch (error) {
+    console.error('Get available courses error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error fetching courses'
+    });
+  }
+};
 exports.getCourseDetails = async (req, res) => {
   try {
     const { courseId } = req.params;

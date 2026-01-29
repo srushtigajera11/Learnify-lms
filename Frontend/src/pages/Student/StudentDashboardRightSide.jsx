@@ -25,9 +25,9 @@ const skillProgressData = [
 
 const StudentDashboardRightSidebar = () => {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6" suppressHydrationWarning>
       {/* Skill Progress (Circular + Bar Chart) */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
         <h3 className="text-lg font-bold text-gray-800 mb-4">
           My Skill Progress
         </h3>
@@ -46,7 +46,7 @@ const StudentDashboardRightSidebar = () => {
                 })}
               />
             </div>
-            <p className="text-center text-sm text-gray-600 mt-2">Level 8</p>
+            <div className="text-center text-sm text-gray-600 mt-2">Level 8</div>
           </div>
 
           {/* Skill Bar Chart */}
@@ -87,7 +87,7 @@ const StudentDashboardRightSidebar = () => {
       </div>
 
       {/* Achievements / Badges */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
         <h3 className="text-lg font-bold text-gray-800 mb-4">
           Achievements
         </h3>
@@ -108,7 +108,7 @@ const StudentDashboardRightSidebar = () => {
       </div>
 
       {/* Quick Links */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
         <h3 className="text-lg font-bold text-gray-800 mb-4">
           Quick Links
         </h3>
