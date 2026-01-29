@@ -2,6 +2,7 @@ const Course = require('../models/courseModel');
 const Lesson = require('../models/Lesson');
 const Enrollment = require('../models/Enrollment');
 const Wishlist = require('../models/Wishlist');
+const Certificate = require('../models/Certificate');
 
 /**
  * Get enrolled courses for student
@@ -65,7 +66,51 @@ exports.getEnrolledCourses = async (req, res) => {
     });
   }
 };
-
+// controllers/statsController.js or studentController.js
+// studentController.js - Add this function
+exports.getStudentDashboardStats = async (req, res) => {
+  try {
+    const studentId = req.user.id;
+    
+    // Get enrolled courses count
+    const enrolledCount = await Enrollment.countDocuments({ studentId });
+    
+    // Get completed courses (where progress is 100%)
+    const enrollments = await Enrollment.find({ studentId });
+    let completedCount = 0;
+    
+    for (const enrollment of enrollments) {
+      const totalLessons = await Lesson.countDocuments({ 
+        courseId: enrollment.courseId 
+      });
+      
+      if (totalLessons > 0) {
+        const progress = Math.round((enrollment.completedLessons?.length / totalLessons) * 100);
+        if (progress === 100) {
+          completedCount++;
+        }
+      }
+    }
+    
+    // Get certificates count
+    const certificatesCount = await Certificate.countDocuments({ studentId });
+    
+    res.status(200).json({
+      success: true,
+      stats: {
+        enrolledCourses: enrolledCount,
+        completedCourses: completedCount,
+        certificates: certificatesCount || 0
+      }
+    });
+  } catch (error) {
+    console.error("Get dashboard stats error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching dashboard stats"
+    });
+  }
+};
 /**
  * Get all available courses with enrollment status
  */

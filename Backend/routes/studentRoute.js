@@ -20,6 +20,13 @@ router.get(
   authorizeRoles('student'),
   studentController.getCourseLessons
 );
+// studentRoutes.js - Add this route
+router.get(
+  '/dashboard-stats',
+  isAuthenticated,
+  authorizeRoles('student'),
+  studentController.getStudentDashboardStats
+);
 
 // Get single lesson with navigation
 router.get(
