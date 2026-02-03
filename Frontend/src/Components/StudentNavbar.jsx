@@ -39,14 +39,14 @@ const StudentNavbar = ({ user }) => {
       return;
     }
 
-    console.log("Searching for:", query); // Debug log
+
     
     setIsSearching(true);
     try {
       // Make API call with search query
       const response = await axiosInstance.get(`/students/courses?q=${encodeURIComponent(query)}`);
       
-      console.log("API Response:", response.data); // Debug log
+    
       
       if (response.data?.success) {
         setSearchResults(response.data.courses || []);
@@ -90,7 +90,7 @@ const StudentNavbar = ({ user }) => {
   };
 
   const handleCourseClick = (courseId) => {
-    navigate(`/student/courses/${courseId}`);
+    navigate(`/student/course/${courseId}`);
     setShowResults(false);
     setSearchTerm("");
   };
@@ -114,15 +114,14 @@ const StudentNavbar = ({ user }) => {
       sessionStorage.removeItem("token");
       navigate("/login");
     } catch (err) {
-      console.error("Logout failed:", err);
     } finally {
       handleMenuClose();
     }
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-gray-900 border-b border-gray-800 shadow-lg py-2">
-      <div className="container mx-auto px-4 flex items-center justify-between gap-4">
+    <nav className="sticky top-0 z-50 bg-gray-900 border-b border-gray-800 shadow-lg py-2 ">
+      <div className="flex px-4 items-center justify-between gap-6">
         {/* Logo */}
         <div 
           onClick={() => navigate("/student/dashboard")}
@@ -232,7 +231,7 @@ const StudentNavbar = ({ user }) => {
         </div>
 
         {/* Right Section */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-end pl-9 gap-3">
           <button
             onClick={() => navigate("/student/mylearning")}
             className="text-gray-300 hover:text-white text-sm font-medium transition-colors whitespace-nowrap px-2 py-1 rounded hover:bg-gray-800"
@@ -252,7 +251,8 @@ const StudentNavbar = ({ user }) => {
           <div className="relative">
             <button
               onClick={handleMenuOpen}
-              className="flex items-center justify-center w-9 h-9 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-full hover:opacity-90 transition-opacity text-sm"
+             className="flex items-center justify-center px-2.5 py-2 bg-indigo-600 !  rounded-full text-white font-bold"
+
             >
               {initials}
             </button>
@@ -260,11 +260,11 @@ const StudentNavbar = ({ user }) => {
             {/* Dropdown Menu */}
             {anchorEl && (
               <div className="absolute right-0 mt-1 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 overflow-hidden z-50">
-                <div className="px-3 py-2 border-b border-gray-700 bg-gray-900">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                <div className="px-2 py-1.5 border-b border-gray-700 bg-gray-900">
+                  <div className="flex items-center gap-2 ">
+                    {/* <div className="w-7 h-7 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full p-2 flex items-center justify-center text-white font-bold text-xs">
                       {initials}
-                    </div>
+                    </div> */}
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-white truncate">
                         {user?.name || "Student"}
