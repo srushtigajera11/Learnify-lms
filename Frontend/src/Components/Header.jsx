@@ -1,59 +1,13 @@
 import React, { useState } from "react";
-import {
-  AppBar,
-  Toolbar,
-  Box,
-  IconButton,
-  Menu,
-  MenuItem,
-  InputBase,
-  Badge,
-  Typography,
-  Avatar,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
-import { useAuth } from "../context/AuthContext"; // Import your auth context
 import { useNavigate } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import LogoutIcon from "@mui/icons-material/Logout";
-
-const Search = styled("div")(() => ({
-  position: "relative",
-  borderRadius: 8,
-  backgroundColor: "#f3f4f6", // Light gray for search box
-  marginLeft: 0,
-  flex: 1,
-  maxWidth: 328,
-}));
-
-const SearchIconWrapper = styled("div")(() => ({
-  padding: "0 12px",
-  height: "100%",
-  position: "absolute",
-  pointerEvents: "none",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "#6b7280", // Gray for icon
-}));
-
-const StyledInputBase = styled(InputBase)(() => ({
-  color: "#1f2937", // Dark gray input text
-  width: "100%",
-  "& .MuiInputBase-input": {
-    padding: "10px 10px 10px 0",
-    paddingLeft: `calc(1em + 32px)`,
-    "&::placeholder": {
-      color: "#9ca3af", // Lighter placeholder
-      opacity: 1,
-    },
-  },
-}));
+import { useAuth } from "../context/AuthContext";
 
 const Header = () => {
   const [anchorEl, setAnchorEl] = useState(null);
-  const { user, logout } = useAuth(); // Get user and logout from auth context
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   // Get initials from user's name
@@ -84,118 +38,76 @@ const Header = () => {
   };
 
   return (
-    <AppBar
-      position="static"
-      elevation={0}
-      sx={{ 
-        bgcolor: "#ffffff", 
-        color: "black", 
-        borderBottom: "1px solid #e5e7eb",
-        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)"
-      }}
-    >
-      <Toolbar sx={{ display: "flex", justifyContent: "space-between", py: 1.5, px: 3 }}>
+    <header className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="flex justify-between items-center px-4 md:px-6 py-3">
         {/* Left: Search */}
-        <Search>
-          <SearchIconWrapper>
-            <SearchIcon />
-          </SearchIconWrapper>
-          <StyledInputBase placeholder="Search courses, students..." />
-        </Search>
+        <div className="relative flex-1 max-w-md">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <SearchIcon className="h-5 w-5 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search courses, students..."
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
 
         {/* Right: Notification + Profile */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <div className="flex items-center space-x-4">
           {/* Notification Bell */}
-          <IconButton sx={{ color: "#4b5563" }}>
-            <Badge badgeContent={3} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
+          <button className="relative p-2 text-gray-600 hover:text-gray-900">
+            <NotificationsIcon className="h-6 w-6" />
+            <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+          </button>
 
-          {/* Profile Avatar with Initials */}
-          <IconButton
-            onClick={handleMenuOpen}
-            sx={{
-              p: 0,
-              "&:hover": { opacity: 0.8 },
-            }}
-          >
-            <Avatar
-              sx={{
-                bgcolor: "#6366f1",
-                color: "white",
-                width: 40,
-                height: 40,
-                fontSize: "14px",
-                fontWeight: "bold",
-                border: "2px solid #e5e7eb"
-              }}
+          {/* Profile Avatar with Dropdown */}
+          <div className="relative">
+            <button
+              onClick={handleMenuOpen}
+              className="flex items-center space-x-2 focus:outline-none hover:opacity-80"
             >
-              {user ? getInitials(user.name) : "TU"}
-            </Avatar>
-          </IconButton>
+              <div className="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm border-2 border-gray-100">
+                {user ? getInitials(user.name) : "TU"}
+              </div>
+            </button>
 
-          {/* Dropdown Menu - Only Logout */}
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={handleMenuClose}
-            PaperProps={{
-              elevation: 3,
-              sx: {
-                mt: 1.5,
-                borderRadius: 2,
-                minWidth: 140,
-                "& .MuiMenuItem-root": {
-                  px: 2,
-                  py: 1,
-                  fontSize: "0.9rem",
-                },
-              },
-            }}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-          >
-            <MenuItem onClick={handleProfileClick}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
-                <Avatar 
-                  sx={{ 
-                    width: 24, 
-                    height: 24, 
-                    fontSize: '12px',
-                    bgcolor: '#6366f1' 
-                  }}
+            {/* Dropdown Menu */}
+            {anchorEl && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                {/* User Info */}
+                <div 
+                  onClick={handleProfileClick}
+                  className="px-4 py-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50"
                 >
-                  {user ? getInitials(user.name) : "TU"}
-                </Avatar>
-                <Box>
-                  <Typography variant="body2" fontWeight="bold">
-                    {user?.name || "Tutor"}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {user?.email || "tutor@email.com"}
-                  </Typography>
-                </Box>
-              </Box>
-            </MenuItem>
-            
-            <MenuItem 
-              onClick={handleLogout}
-              sx={{ 
-                color: "#dc2626",
-                "&:hover": { 
-                  backgroundColor: "#fef2f2",
-                  color: "#dc2626"
-                }
-              }}
-            >
-              <LogoutIcon sx={{ fontSize: 18, mr: 1.5 }} />
-              Logout
-            </MenuItem>
-          </Menu>
-        </Box>
-      </Toolbar>
-    </AppBar>
+                  <div className="flex items-center space-x-3">
+                    <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-xs">
+                      {user ? getInitials(user.name) : "TU"}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {user?.name || "Tutor"}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {user?.email || "tutor@email.com"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logout Button */}
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogoutIcon className="h-5 w-5 mr-3" />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
   );
 };
 

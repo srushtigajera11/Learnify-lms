@@ -58,6 +58,7 @@ router.get(
   authorizeRoles('student'),
   studentController.getEnrolledCourses
 );
+
 // Get course progress
 router.get(
   '/courses/:courseId/progress',

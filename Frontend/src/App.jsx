@@ -36,6 +36,7 @@ import MyLearning from "./pages/Student/MyLearning";
 import CourseLearn from "./pages/Student/CourseLearn"; 
 import Unauthorized from "./pages/Unothorized"; 
 import AdminProtectedRoute from "./pages/Admin/AdminProtectedRoute";
+import { AuthProvider } from "./context/AuthContext";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -92,9 +93,11 @@ function AppRoutes() {
 
 function App() {
   return (
-    <Router>
-      <AppRoutes />
-    </Router>
+     <AuthProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </AuthProvider>
   );
 }
 
