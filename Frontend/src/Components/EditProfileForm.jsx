@@ -1,7 +1,16 @@
-import { Box, TextField, Button, Stack, Card, CardContent, Typography, Avatar, Chip, IconButton } from "@mui/material";
 import { useState } from "react";
 import axiosInstance from "../utils/axiosInstance";
-import { Save, Person, Email, Work, LocationOn, Language, Code, Add, Close } from "@mui/icons-material";
+import { 
+  Save, 
+  Person, 
+  Email, 
+  Work, 
+  LocationOn, 
+  Language, 
+  Code, 
+  Add, 
+  Close 
+} from "@mui/icons-material";
 
 const EditProfileForm = ({ user }) => {
   const [formData, setFormData] = useState({
@@ -63,103 +72,130 @@ const EditProfileForm = ({ user }) => {
   const skillSuggestions = ["React", "Python", "UI/UX", "Data Science", "Machine Learning", "DevOps", "Cloud Computing", "Mobile Development"];
 
   return (
-    <Stack spacing={2}>
-      <Card variant="outlined" sx={{ borderRadius: 2 }}>
-        <CardContent sx={{ p: 2.5 }}>
-          <Stack spacing={2}>
-            <TextField
-              label="Full Name"
-              value={formData.name}
-              onChange={handleChange('name')}
-              required
-              fullWidth
-              variant="outlined"
-              size="small"
-            />
-            
-            <TextField
-              label="Email Address"
-              type="email"
-              value={formData.email}
-              onChange={handleChange('email')}
-              required
-              fullWidth
-              variant="outlined"
-              size="small"
-            />
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="p-6">
+          <div className="space-y-6">
+            {/* Full Name */}
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name
+              </label>
+              <input
+                id="name"
+                type="text"
+                value={formData.name}
+                onChange={handleChange('name')}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter your full name"
+              />
+            </div>
 
-            <TextField
-              label="Professional Headline"
-              value={formData.headline}
-              onChange={handleChange('headline')}
-              fullWidth
-              variant="outlined"
-              size="small"
-              placeholder="e.g., Senior Full Stack Developer"
-            />
+            {/* Email Address */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange('email')}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter your email address"
+              />
+            </div>
 
-            <TextField
-              label="Location"
-              value={formData.location}
-              onChange={handleChange('location')}
-              fullWidth
-              variant="outlined"
-              size="small"
-              placeholder="e.g., San Francisco, CA"
-            />
+            {/* Professional Headline */}
+            <div>
+              <label htmlFor="headline" className="block text-sm font-medium text-gray-700 mb-1">
+                Professional Headline
+              </label>
+              <input
+                id="headline"
+                type="text"
+                value={formData.headline}
+                onChange={handleChange('headline')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., Senior Full Stack Developer"
+              />
+            </div>
 
-            <TextField
-              label="Website/Portfolio"
-              value={formData.website}
-              onChange={handleChange('website')}
-              fullWidth
-              variant="outlined"
-              size="small"
-              placeholder="https://your-portfolio.com"
-            />
+            {/* Location */}
+            <div>
+              <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+                Location
+              </label>
+              <input
+                id="location"
+                type="text"
+                value={formData.location}
+                onChange={handleChange('location')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., San Francisco, CA"
+              />
+            </div>
+
+            {/* Website/Portfolio */}
+            <div>
+              <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-1">
+                Website/Portfolio
+              </label>
+              <input
+                id="website"
+                type="url"
+                value={formData.website}
+                onChange={handleChange('website')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="https://your-portfolio.com"
+              />
+            </div>
 
             {/* Enhanced Area of Expertise Section */}
-            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2, bgcolor: 'background.default' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Code color="primary" fontSize="small" />
-                <Typography variant="subtitle1" fontWeight="bold" color="primary">
+            <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+              <div className="flex items-center gap-2 mb-4">
+                <Code className="text-blue-600" fontSize="small" />
+                <h3 className="text-lg font-semibold text-blue-600">
                   Areas of Expertise
-                </Typography>
-              </Box>
+                </h3>
+              </div>
               
               {/* Skills Input with Add Button */}
-              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                <TextField
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
                   value={newSkill}
                   onChange={(e) => setNewSkill(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Add your skills (e.g., React, Python, UI/UX)"
-                  fullWidth
-                  variant="outlined"
-                  size="small"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-                <Button 
-                  variant="contained" 
+                <button
+                  type="button"
                   onClick={handleAddSkill}
                   disabled={!newSkill.trim()}
-                  startIcon={<Add />}
-                  size="small"
-                  sx={{ minWidth: 'auto', px: 2 }}
+                  className={`px-4 py-2 rounded-md font-medium flex items-center gap-1 ${
+                    !newSkill.trim()
+                      ? 'bg-gray-300 cursor-not-allowed text-gray-500'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
                 >
+                  <Add fontSize="small" />
                   Add
-                </Button>
-              </Box>
+                </button>
+              </div>
 
               {/* Quick Skill Suggestions */}
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+              <p className="text-xs text-gray-500 mb-2">
                 Quick add:
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+              </p>
+              <div className="flex flex-wrap gap-1 mb-4">
                 {skillSuggestions.map((skill, index) => (
-                  <Chip
+                  <button
                     key={index}
-                    label={skill}
-                    size="small"
+                    type="button"
                     onClick={() => {
                       if (!formData.expertise.includes(skill)) {
                         setFormData(prev => ({
@@ -168,71 +204,81 @@ const EditProfileForm = ({ user }) => {
                         }));
                       }
                     }}
-                    variant={formData.expertise.includes(skill) ? "filled" : "outlined"}
-                    color={formData.expertise.includes(skill) ? "primary" : "default"}
-                    sx={{ fontSize: '0.7rem', cursor: 'pointer' }}
-                  />
+                    className={`px-2 py-1 text-xs rounded-full border ${
+                      formData.expertise.includes(skill)
+                        ? 'bg-blue-100 text-blue-800 border-blue-300'
+                        : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                    }`}
+                  >
+                    {skill}
+                  </button>
                 ))}
-              </Box>
+              </div>
 
               {/* Current Skills Display */}
               {formData.expertise.length > 0 ? (
-                <Box>
-                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">
                     Your skills ({formData.expertise.length}):
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  </p>
+                  <div className="flex flex-wrap gap-2">
                     {formData.expertise.map((skill, index) => (
-                      <Chip
+                      <div
                         key={index}
-                        label={skill}
-                        size="small"
-                        onDelete={() => handleRemoveSkill(skill)}
-                        variant="filled"
-                        color="primary"
-                        sx={{ fontSize: '0.7rem' }}
-                      />
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                      >
+                        {skill}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSkill(skill)}
+                          className="text-blue-600 hover:text-blue-800 ml-1"
+                        >
+                          <Close fontSize="small" />
+                        </button>
+                      </div>
                     ))}
-                  </Box>
-                </Box>
+                  </div>
+                </div>
               ) : (
-                <Typography variant="caption" color="text.secondary" fontStyle="italic">
+                <p className="text-sm text-gray-500 italic">
                   No skills added yet. Add your areas of expertise to showcase your knowledge.
-                </Typography>
+                </p>
               )}
-            </Box>
+            </div>
 
-            <TextField
-              label="Professional Bio"
-              value={formData.bio}
-              onChange={handleChange('bio')}
-              multiline
-              rows={3}
-              fullWidth
-              variant="outlined"
-              size="small"
-              placeholder="Share your story, expertise, and what students can expect from your courses..."
-            />
-          </Stack>
-        </CardContent>
-      </Card>
+            {/* Professional Bio */}
+            <div>
+              <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
+                Professional Bio
+              </label>
+              <textarea
+                id="bio"
+                value={formData.bio}
+                onChange={handleChange('bio')}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Share your story, expertise, and what students can expect from your courses..."
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <Button 
-        variant="contained" 
-        type="submit" 
+      {/* Save Button */}
+      <button
+        type="button"
         disabled={loading}
         onClick={handleSubmit}
-        startIcon={<Save />}
-        size="medium"
-        sx={{ 
-          alignSelf: 'flex-start',
-          px: 3,
-          py: 1
-        }}
+        className={`px-6 py-2 rounded-md font-medium flex items-center gap-2 ${
+          loading
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-blue-600 hover:bg-blue-700 text-white'
+        }`}
       >
+        <Save fontSize="small" />
         {loading ? "Saving..." : "Save Profile"}
-      </Button>
-    </Stack>
+      </button>
+    </div>
   );
 };
 

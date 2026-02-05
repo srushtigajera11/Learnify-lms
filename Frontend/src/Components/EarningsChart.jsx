@@ -8,7 +8,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { CircularProgress, Box, Typography } from "@mui/material";
 import axiosInstance from "../utils/axiosInstance"; // adjust import path if needed
 
 const EarningsChart = () => {
@@ -43,48 +42,50 @@ const EarningsChart = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "40vh" }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center items-center h-[40vh]">
+        <div className="relative">
+          <div className="w-12 h-12 rounded-full border-4 border-gray-200"></div>
+          <div className="absolute top-0 left-0 w-12 h-12 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+        </div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Typography color="error" align="center">
+      <div className="text-red-600 text-center py-4">
         {error}
-      </Typography>
+      </div>
     );
   }
 
   if (chartData.length === 0) {
     return (
-      <Typography align="center" sx={{ mt: 3 }}>
+      <div className="text-center text-gray-600 mt-12 py-4">
         No earnings data available yet.
-      </Typography>
+      </div>
     );
   }
 
   return (
-    <Box
-      sx={{
-        width: "100%",
-        height: "55vh",
-        minWidth: "700px", // ✅ fixed minimum width for consistency
-        overflowX: "auto", // scrolls horizontally if many months
-        p: 1,
-      }}
+    <div
+      className="w-full h-[55vh] min-w-[700px] overflow-x-auto p-4"
     >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={chartData}
           margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
         >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-          <YAxis
-            tickFormatter={(value) => `₹${value.toLocaleString()}`} // ✅ Currency formatting
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <XAxis 
+            dataKey="month" 
             tick={{ fontSize: 12 }}
+            stroke="#6b7280"
+          />
+          <YAxis
+            tickFormatter={(value) => `₹${value.toLocaleString()}`}
+            tick={{ fontSize: 12 }}
+            stroke="#6b7280"
           />
           <Tooltip
             formatter={(value) => [`₹${value.toLocaleString()}`, "Earnings"]}
@@ -92,6 +93,11 @@ const EarningsChart = () => {
               backgroundColor: "#ffffff",
               borderRadius: "8px",
               boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              border: "1px solid #e5e7eb",
+            }}
+            labelStyle={{
+              color: "#374151",
+              fontWeight: "600",
             }}
           />
           <Line
@@ -99,11 +105,22 @@ const EarningsChart = () => {
             dataKey="earnings"
             stroke="#6366f1"
             strokeWidth={2.5}
-            dot={{ r: 4, fill: "#6366f1" }}
+            dot={{ 
+              r: 4, 
+              fill: "#6366f1",
+              stroke: "#ffffff",
+              strokeWidth: 2
+            }}
+            activeDot={{ 
+              r: 6, 
+              fill: "#4f46e5",
+              stroke: "#ffffff",
+              strokeWidth: 2
+            }}
           />
         </LineChart>
       </ResponsiveContainer>
-    </Box>
+    </div>
   );
 };
 

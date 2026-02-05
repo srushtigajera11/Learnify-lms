@@ -1,80 +1,171 @@
 import React from "react";
 import { Link as RouterLink } from "react-router-dom";
-import {
-  Box,
-  Grid,
-  Typography,
-  Link,
-  Divider,
-  Stack,
-  Container,
-} from "@mui/material";
 
 function Footer() {
   return (
-    <Box
-      sx={{
-        bgcolor: "#0f172a",
-        color: "#ffffffcc",
-        mt: 5,
-        pt: 5,
-        pb: 3,
-        px: { xs: 2, md: 6 },
-      }}
-    >
-      <Container maxWidth="lg">
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={3}>
-            <Typography variant="h6" color="#fff" gutterBottom>
-              Learnify
-            </Typography>
-            <Typography variant="body2" sx={{ color: "#ffffff99" }}>
-              Master new skills and grow your career.
-            </Typography>
-          </Grid>
-          <Grid item xs={6} md={3}>
-            <Typography fontWeight="bold" gutterBottom color="#fff">
+    <footer className="bg-gradient-to-b from-gray-900 to-gray-950 text-gray-300 mt-auto pt-12 pb-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Main Footer Content */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+          
+          {/* Brand Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold">L</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white tracking-tight">
+                Learnify
+              </h3>
+            </div>
+            <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
+              Master new skills and grow your career with our interactive learning platform.
+            </p>
+          </div>
+
+          {/* Company Links */}
+          <div>
+            <h4 className="text-lg font-semibold text-white mb-5 pb-1 border-b border-gray-800">
               Company
-            </Typography>
-            <Stack spacing={0.5}>
-              <Link to="/about" component={RouterLink} color="inherit">About</Link>
-              <Link to="/blog" component={RouterLink} color="inherit">Blog</Link>
-            </Stack>
-          </Grid>
-          <Grid item xs={6} md={3}>
-            <Typography fontWeight="bold" gutterBottom color="#fff">
+            </h4>
+            <nav className="flex flex-col space-y-3">
+              <RouterLink 
+                to="/about" 
+                className="text-gray-400 hover:text-white transition-all duration-200 hover:translate-x-1 inline-flex items-center group"
+              >
+                <span className="w-1 h-1 bg-blue-500 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                About
+              </RouterLink>
+              <RouterLink 
+                to="/blog" 
+                className="text-gray-400 hover:text-white transition-all duration-200 hover:translate-x-1 inline-flex items-center group"
+              >
+                <span className="w-1 h-1 bg-blue-500 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                Blog
+              </RouterLink>
+              <RouterLink 
+                to="/careers" 
+                className="text-gray-400 hover:text-white transition-all duration-200 hover:translate-x-1 inline-flex items-center group"
+              >
+                <span className="w-1 h-1 bg-blue-500 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                Careers
+              </RouterLink>
+            </nav>
+          </div>
+
+          {/* Support Links */}
+          <div>
+            <h4 className="text-lg font-semibold text-white mb-5 pb-1 border-b border-gray-800">
               Support
-            </Typography>
-            <Stack spacing={0.5}>
-              <Link to="/help" component={RouterLink} color="inherit">Help Center</Link>
-              <Link to="/faq" component={RouterLink} color="inherit">FAQs</Link>
-            </Stack>
-          </Grid>
-          <Grid item xs={6} md={3}>
-            <Typography fontWeight="bold" gutterBottom color="#fff">
+            </h4>
+            <nav className="flex flex-col space-y-3">
+              <RouterLink 
+                to="/help" 
+                className="text-gray-400 hover:text-white transition-all duration-200 hover:translate-x-1 inline-flex items-center group"
+              >
+                <span className="w-1 h-1 bg-blue-500 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                Help Center
+              </RouterLink>
+              <RouterLink 
+                to="/faq" 
+                className="text-gray-400 hover:text-white transition-all duration-200 hover:translate-x-1 inline-flex items-center group"
+              >
+                <span className="w-1 h-1 bg-blue-500 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                FAQs
+              </RouterLink>
+              <RouterLink 
+                to="/contact" 
+                className="text-gray-400 hover:text-white transition-all duration-200 hover:translate-x-1 inline-flex items-center group"
+              >
+                <span className="w-1 h-1 bg-blue-500 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                Contact Us
+              </RouterLink>
+            </nav>
+          </div>
+
+          {/* Legal Links */}
+          <div>
+            <h4 className="text-lg font-semibold text-white mb-5 pb-1 border-b border-gray-800">
               Legal
-            </Typography>
-            <Stack spacing={0.5}>
-              <Link to="/terms" component={RouterLink} color="inherit">Terms</Link>
-              <Link to="/privacy" component={RouterLink} color="inherit">Privacy</Link>
-            </Stack>
-          </Grid>
-        </Grid>
+            </h4>
+            <nav className="flex flex-col space-y-3">
+              <RouterLink 
+                to="/terms" 
+                className="text-gray-400 hover:text-white transition-all duration-200 hover:translate-x-1 inline-flex items-center group"
+              >
+                <span className="w-1 h-1 bg-blue-500 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                Terms of Service
+              </RouterLink>
+              <RouterLink 
+                to="/privacy" 
+                className="text-gray-400 hover:text-white transition-all duration-200 hover:translate-x-1 inline-flex items-center group"
+              >
+                <span className="w-1 h-1 bg-blue-500 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                Privacy Policy
+              </RouterLink>
+              <RouterLink 
+                to="/cookies" 
+                className="text-gray-400 hover:text-white transition-all duration-200 hover:translate-x-1 inline-flex items-center group"
+              >
+                <span className="w-1 h-1 bg-blue-500 rounded-full mr-2 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                Cookie Policy
+              </RouterLink>
+            </nav>
+          </div>
+        </div>
 
-        <Divider sx={{ my: 3, borderColor: "#ffffff22" }} />
+        {/* Divider */}
+        <div className="border-t border-gray-800 my-8"></div>
 
-        <Box display="flex" justifyContent="space-between" flexWrap="wrap">
-          <Typography variant="caption" color="#ffffff88">
-            © {new Date().getFullYear()} Learnify Inc.
-          </Typography>
-          <Stack direction="row" spacing={2}>
-            <Link href="https://facebook.com" target="_blank" color="inherit">Facebook</Link>
-            <Link href="https://linkedin.com" target="_blank" color="inherit">LinkedIn</Link>
-            <Link href="https://twitter.com" target="_blank" color="inherit">Twitter</Link>
-          </Stack>
-        </Box>
-      </Container>
-    </Box>
+        {/* Bottom Section */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="text-gray-500 text-sm">
+            © {new Date().getFullYear()} Learnify Inc. All rights reserved.
+          </div>
+          
+          <div className="flex items-center space-x-6">
+            <span className="text-gray-500 text-sm hidden md:block">
+              Follow us:
+            </span>
+            <div className="flex space-x-4">
+              <a 
+                href="https://facebook.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-blue-400 transition-colors duration-200"
+                aria-label="Facebook"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </a>
+              <a 
+                href="https://linkedin.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-blue-500 transition-colors duration-200"
+                aria-label="LinkedIn"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+              </a>
+              <a 
+                href="https://twitter.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-sky-400 transition-colors duration-200"
+                aria-label="Twitter"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.213c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
   );
 }
 

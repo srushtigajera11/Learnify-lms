@@ -1,35 +1,53 @@
 import React from 'react';
-import { Card, CardContent, Typography, List, ListItem, ListItemIcon, ListItemText, Box } from '@mui/material';
-import { People, CheckCircle, Help, TrendingUp, Star } from '@mui/icons-material';
+import { 
+  People, 
+  CheckCircle, 
+  Help, 
+  TrendingUp, 
+  Star 
+} from '@mui/icons-material';
 
 const stats = [
-  { icon: <People color="primary" />, value: '12', label: 'New Enrollments', trend: '+8%' },
-  { icon: <CheckCircle color="success" />, value: '7', label: 'Course Completions', trend: '+3%' },
-  { icon: <Help color="secondary" />, value: '23', label: 'New Questions', trend: '+15%' },
-  { icon: <Star color="warning" />, value: '5', label: 'Positive Reviews', trend: '+10%' },
+  { icon: <People className="text-blue-600" />, value: '12', label: 'New Enrollments', trend: '+8%' },
+  { icon: <CheckCircle className="text-green-600" />, value: '7', label: 'Course Completions', trend: '+3%' },
+  { icon: <Help className="text-purple-600" />, value: '23', label: 'New Questions', trend: '+15%' },
+  { icon: <Star className="text-yellow-600" />, value: '5', label: 'Positive Reviews', trend: '+10%' },
 ];
 
 const QuickStatsChart = () => {
   return (
-    <Card elevation={2}>
-      <CardContent>
-        <Typography variant="h6" component="h2" gutterBottom>
+    <div className="bg-white rounded-lg shadow-md border border-gray-200">
+      <div className="p-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
           This Week's Activity
-        </Typography>
-        <List>
+        </h2>
+        <div className="space-y-4">
           {stats.map((stat, index) => (
-            <ListItem key={index} disablePadding>
-              <ListItemIcon>{stat.icon}</ListItemIcon>
-              <ListItemText primary={stat.value} secondary={stat.label} />
-              <Box sx={{ display: 'flex', alignItems: 'center', color: 'success.main' }}>
-                <TrendingUp sx={{ mr: 0.5 }} />
-                <Typography variant="body2">{stat.trend}</Typography>
-              </Box>
-            </ListItem>
+            <div key={index} className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  {stat.icon}
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {stat.value}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {stat.label}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center text-green-600">
+                <TrendingUp className="mr-1" fontSize="small" />
+                <span className="text-sm font-medium">
+                  {stat.trend}
+                </span>
+              </div>
+            </div>
           ))}
-        </List>
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 };
 

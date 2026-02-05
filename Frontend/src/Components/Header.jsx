@@ -38,7 +38,7 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 shadow-sm">
+    <header className="bg-blue-950 border-b border-gray-200 shadow-sm">
       <div className="flex justify-between items-center px-4 md:px-6 py-3">
         {/* Left: Search */}
         <div className="relative flex-1 max-w-md">

@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { Box } from "@mui/material";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Header from "../Components/Header";
-import WelcomeBanner from "../Components/tutor_Welcome";
 import Sidebar from "../Components/Sidebar";
 import Footer from "../Components/Footer";
 import { useAuth } from "../context/AuthContext";
@@ -32,7 +31,7 @@ const TutorDashboardLayout = () => {
         flexDirection: "column",
         width: 'calc(100vw - 240px)' // Adjust based on sidebar width
       }}>
-        <WelcomeBanner user={user} />
+        {/* <WelcomeBanner user={user} /> */}
         <Header />
         
         {/* Main content area - REDUCED PADDING */}
