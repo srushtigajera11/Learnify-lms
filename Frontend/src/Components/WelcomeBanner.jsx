@@ -4,7 +4,7 @@ import { useAuth } from "../Context/AuthContext";
 
 const WelcomeBanner = () => {
     const { user } = useAuth();
-    console.log("Auth user in WelcomeBanner:", user);
+
   const [stats, setStats] = useState({
     courses: 0,
     completed: 0,
