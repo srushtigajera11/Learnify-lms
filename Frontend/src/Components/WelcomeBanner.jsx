@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../utils/axiosInstance";
+import { useAuth } from "../Context/AuthContext";
 
-const WelcomeBanner = ({ user }) => {
+const WelcomeBanner = () => {
+    const { user } = useAuth();
+    console.log("Auth user in WelcomeBanner:", user);
   const [stats, setStats] = useState({
     courses: 0,
     completed: 0,

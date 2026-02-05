@@ -1,11 +1,9 @@
-// src/layouts/TutorDashboardLayout.jsx
 import React, { useState } from "react";
-import { Box } from "@mui/material";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Header from "../Components/Header";
 import Sidebar from "../Components/Sidebar";
 import Footer from "../Components/Footer";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../Context/AuthContext";
 
 const TutorDashboardLayout = () => {
   const navigate = useNavigate();
@@ -19,40 +17,30 @@ const TutorDashboardLayout = () => {
   };
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+    <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar onSelect={handleSelect} selectedRoute={selectedRoute} />
+      <div className="fixed inset-y-0 left-0 z-30">
+        <Sidebar onSelect={handleSelect} selectedRoute={selectedRoute} />
+      </div>
 
-      {/* Main section - FIXED SPACING */}
-      <Box sx={{ 
-        flexGrow: 1, 
-        minWidth: 0, 
-        display: "flex", 
-        flexDirection: "column",
-        width: 'calc(100vw - 240px)' // Adjust based on sidebar width
-      }}>
-        {/* <WelcomeBanner user={user} /> */}
-        <Header />
+      {/* Main section - with sidebar offset */}
+      <div className="flex-1 flex flex-col ml-64 min-w-0">
+        {/* Header */}
+        <div className="sticky top-0 z-20">
+          <Header />
+        </div>
         
-        {/* Main content area - REDUCED PADDING */}
-        <Box 
-          component="main" 
-          sx={{ 
-            flex: 1, 
-            p: 0, // Reduced from p:4 to p:2 (16px instead of 32px)
-            bgcolor: "#f9fafb", 
-            minWidth: 0,
-            width: '100%',
-            maxWidth: '100%',
-            overflow: 'auto' // Allow scrolling if content is too tall
-          }}
-        >
-          <Outlet context={user} />
-        </Box>
+        {/* Main content area */}
+        <main className="flex-1 p-4 md:p-6 min-w-0 overflow-y-auto">
+          <div className="max-w-7xl mx-auto">
+            <Outlet context={user} />
+          </div>
+        </main>
         
+        {/* Footer */}
         <Footer />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
 

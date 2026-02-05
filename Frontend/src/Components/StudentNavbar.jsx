@@ -10,8 +10,11 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import BookIcon from "@mui/icons-material/MenuBook";
 import SchoolIcon from "@mui/icons-material/School";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { useAuth } from "../Context/AuthContext";
 
-const StudentNavbar = ({ user }) => {
+
+const StudentNavbar = () => {
+   const { user, logout } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
@@ -38,9 +41,6 @@ const StudentNavbar = ({ user }) => {
       setSearchResults([]);
       return;
     }
-
-
-    
     setIsSearching(true);
     try {
       // Make API call with search query
@@ -107,17 +107,12 @@ const StudentNavbar = ({ user }) => {
   const handleMenuOpen = (e) => setAnchorEl(e.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
 
+
   const handleLogout = async () => {
-    try {
-      await axiosInstance.post("/users/logout");
-      localStorage.removeItem("token");
-      sessionStorage.removeItem("token");
-      navigate("/login");
-    } catch (err) {
-    } finally {
-      handleMenuClose();
-    }
+    await logout();
+    navigate("/login");
   };
+
 
   return (
     <nav className="sticky top-0 z-50 bg-gray-900 border-b border-gray-800 shadow-lg py-2 ">

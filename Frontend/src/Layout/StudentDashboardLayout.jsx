@@ -1,45 +1,23 @@
-import React, { useState, useEffect } from "react";
-import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
 import StudentNavbar from "../Components/StudentNavbar";
 import Footer from "../Components/Footer";
 import WelcomeBanner from "../Components/WelcomeBanner";
-import axiosInstance from "../utils/axiosInstance";
+import { useAuth } from "../Context/AuthContext";
 
 const StudentDashboardLayout = () => {
-  const [user, setUser] = useState(null);
+  const { loading } = useAuth();
 
-  useEffect(() => {
-    const getProfile = async () => {
-      try {
-        const response = await axiosInstance.get("/users/profile");
-        if (response?.data?.user) {
-          setUser(response.data.user);
-        }
-      } catch (err) {
-        console.error("Error fetching user profile:", err);
-        setUser(null);
-      }
-    };
-    getProfile();
-  }, []);
+  if (loading) return null; // or spinner
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Hero Banner (Welcome + Stats) */}
-      <WelcomeBanner user={user} />
-
-      {/* Navbar sits below banner */}
-      <StudentNavbar user={user} />
-
-      <Box component="main">
-    <Outlet />
-  </Box>
-
-  <Footer />
-
-
-    </Box>
+    <div className="min-h-screen flex flex-col">
+      <WelcomeBanner />
+      <StudentNavbar />
+      <main className="flex-1">
+        <Outlet />
+      </main>
+      <Footer />
+    </div>
   );
 };
 
