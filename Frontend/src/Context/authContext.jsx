@@ -1,57 +1,61 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import axiosInstance from "../utils/axiosInstance";
 
-const AuthContext = createContext(null);
+const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem("token");
-      console.log("Auth token:", token); // 👈 DEBUG
+  const checkAuth = async () => {
+    try {
+      const res = await axiosInstance.get("/users/profile");
 
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const res = await axiosInstance.get("/users/profile");
-        console.log("Profile response:", res.data); // 👈 DEBUG
+      // 🔥 IMPORTANT: your API returns { user }
+      if (res.data?.user) {
         setUser(res.data.user);
-      } catch (err) {
-        console.error("Profile fetch failed", err);
+        setIsAuthenticated(true);
+      } else {
         setUser(null);
-        localStorage.removeItem("token");
-      } finally {
-        setLoading(false);
+        setIsAuthenticated(false);
       }
-    };
-
-    initAuth();
-  }, []);
-
-  const login = (userData, token) => {
-    localStorage.setItem("token", token);
-    setUser(userData);
+    } catch (error) {
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    setUser(null);
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const logout = async () => {
+    try {
+      await axiosInstance.post("/users/logout");
+    } catch (err) {
+      console.error("Logout error", err);
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        loading,
+        logout,
+        refreshUser: checkAuth,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
-};
+export const useAuth = () => useContext(AuthContext);

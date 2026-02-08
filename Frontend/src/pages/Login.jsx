@@ -12,6 +12,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login: setUser } = useAuth();
+  const { refreshUser } = useAuth();
 
   const handleError = (err) =>
     toast.error(err, { position: "bottom-left" });
@@ -19,48 +20,39 @@ const Login = () => {
   const handleSuccess = (msg) =>
     toast.success(msg, { position: "bottom-left" });
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const { data } = await axiosInstance.post("/users/login", {
-        email: email.trim(),
-        password,
-      });
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
+  try {
+    const { data } = await axiosInstance.post("/users/login", {
+      email: email.trim(),
+      password,
+    });
 
-      if (data && data.user) {
-        const role = data.user.role.toLowerCase();
-        const isAdmin = data.user.isAdmin; 
+    toast.success(data.message || "Login successful");
 
-        handleSuccess(data.message || "Login successful!");
+    // 🔥 Let AuthContext re-check cookie & set user
+    await refreshUser();
 
-        setUser({
-          user_id: data.user.user_id,
-          role,
-          isAdmin,
-        });
-        
-        if (isAdmin) {
-          navigate("/admin/dashboard");
-        } else if (role === "student") {
-          navigate("/student/dashboard");
-        } else if (role === "tutor") {
-          navigate("/tutor/dashboard");
-        } else {
-          handleError("Unknown user role");
-        }
-      } else {
-        handleError(data.message || "Login failed");
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      handleError(error.response?.data?.message || "Login failed");
-    } finally {
-      setLoading(false);
+    const role = data.user.role.toLowerCase();
+    const isAdmin = data.user.isAdmin;
+
+    if (isAdmin) {
+      navigate("/admin/dashboard");
+    } else if (role === "student") {
+      navigate("/student/dashboard");
+    } else if (role === "tutor") {
+      navigate("/tutor/dashboard");
     }
-  };
+  } catch (error) {
+    console.error("Login error:", error);
+    toast.error(error.response?.data?.message || "Login failed");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-gradient-to-r from-blue-50 to-pink-50">

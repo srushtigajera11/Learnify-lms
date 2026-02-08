@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Header from "../Components/Header";
 import Sidebar from "../Components/Sidebar";
 import Footer from "../Components/Footer";
-import { useAuth } from "../Context/AuthContext";
+import { useAuth } from "../Context/authContext";
 
 const TutorDashboardLayout = () => {
   const navigate = useNavigate();
