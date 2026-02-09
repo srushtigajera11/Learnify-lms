@@ -3,7 +3,7 @@ const Lesson = require('../models/Lesson');
 const Enrollment = require('../models/Enrollment');
 const Wishlist = require('../models/Wishlist');
 const Certificate = require('../models/Certificate');
-
+const mongoose = require('mongoose')
 /**
  * Get enrolled courses for student
  */
@@ -149,62 +149,65 @@ exports.getCourseDetails = async (req, res) => {
     const { courseId } = req.params;
     const studentId = req.user.id;
 
-    // Get course with instructor details
-    const course = await Course.findById(courseId)
-      .populate('createdBy', 'name email avatar')
-      .populate('category', 'name');
-
-    if (!course) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Course not found' 
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid course ID"
       });
     }
 
-    // Check if student is enrolled
-    const enrollment = await Enrollment.findOne({ 
-      courseId, 
-      studentId 
-    });
-
-    const isEnrolled = !!enrollment;
-
-    // Get published lessons count
-    const totalLessons = await Lesson.countDocuments({ 
-      courseId, 
-      status: 'published' 
-    });
-
-    // If enrolled, get first lesson for navigation
-    let firstLesson = null;
-    if (isEnrolled) {
-      firstLesson = await Lesson.findOne({ 
-        courseId, 
-        status: 'published' 
-      })
-      .sort('order')
-      .select('_id title');
+    let course;
+    try {
+      course = await Course.findById(courseId)
+        .populate('createdBy', 'name email avatar')
+        .lean();
+    } catch (dbError) {
+      console.error("MongoDB error:", dbError);
+      return res.status(500).json({
+        success: false,
+        message: "Database error"
+      });
     }
 
-    const courseData = {
-      ...course.toObject(),
-      totalLessons,
-      isEnrolled,
-      firstLesson: firstLesson ? {
-        _id: firstLesson._id,
-        title: firstLesson.title
-      } : null
-    };
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found"
+      });
+    }
+
+    const enrollment = await Enrollment.findOne({
+      courseId,
+      studentId
+    });
+
+    const totalLessons = await Lesson.countDocuments({
+      courseId,
+      status: "published"
+    });
+
+    let firstLesson = null;
+    if (enrollment) {
+      firstLesson = await Lesson.findOne({
+        courseId,
+        status: "published"
+      }).sort("order").select("_id title");
+    }
 
     res.status(200).json({
       success: true,
-      course: courseData
+      course: {
+        ...course,
+        isEnrolled: !!enrollment,
+        totalLessons,
+        firstLesson
+      }
     });
   } catch (error) {
-    console.error('Get course details error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error fetching course details' 
+    console.error("Get course details error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching course details"
     });
   }
 };

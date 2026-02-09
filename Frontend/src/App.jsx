@@ -26,7 +26,7 @@ import WishList from "./pages/Student/WishList";
 import Reviews from "./pages/Student/Reviews";
 import PurchaseHistory from "./pages/Student/PurchaseHistory";
 import Profile from "./pages/Student/Profile";
-import CourseDetailStudent from "./pages/Student/CourseDetail";
+// import CourseDetailStudent from "./pages/Student/CourseDetail";
 import ViewQuiz from "./pages/Tutor/ViewQuiz";
 import EditQuiz from "./pages/Tutor/EditQuiz";
 import CreateQuiz from "./pages/Tutor/CreateQuiz";
@@ -36,7 +36,7 @@ import MyLearning from "./pages/Student/MyLearning";
 import CourseLearn from "./pages/Student/CourseLearn"; 
 import Unauthorized from "./pages/Unothorized"; 
 import AdminProtectedRoute from "./pages/Admin/AdminProtectedRoute";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider } from "./Context/authContext";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -58,7 +58,6 @@ function AppRoutes() {
           <Route path="review" element={<Reviews />} />
           <Route path="purchaseHistory" element={<PurchaseHistory />} />
           <Route path="profile" element={<Profile />} />
-          <Route path="course/:courseId" element={<CourseDetailStudent />} />
           <Route path="*" element={<Dashboard />} />
         </Route>
 

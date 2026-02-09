@@ -26,8 +26,7 @@ const MyLearning = () => {
       setError('');
       
       const response = await axiosInstance.get('/students/enrolled-courses');
-      
-      console.log('Enrolled courses response:', response.data);
+    
       
       if (response.data.success) {
         setEnrolledCourses(response.data.enrollments || []);
