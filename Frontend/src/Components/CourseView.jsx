@@ -9,36 +9,6 @@ import {
   AllInclusive
 } from '@mui/icons-material';
 
-const myCourses = [
-  {
-    id: 1,
-    title: 'Communication : lessons for Better interaction',
-    description: 'Master the art of effective communication for personal and professional success. This course covers verbal, non-verbal, and written communication skills for interviews, presentations, and everyday interactions.',
-    category: 'Communication',
-    imageUrl: 'https://images.unsplash.com/photo-1543269865-cbf427effbad?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=600',
-    price: 2399.00,
-    status: 'Published'
-  },
-  {
-    id: 2,
-    title: 'Intro to Python',
-    description: 'A comprehensive introduction to Python for beginners. Learn the fundamentals of programming, data structures, and algorithms with hands-on projects and exercises.',
-    category: 'Python',
-    imageUrl: 'https://images.unsplash.com/photo-1599819095817-a068a0a104f6?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=600',
-    price: 1230.00,
-    status: 'Published'
-  },
-  {
-    id: 3,
-    title: 'Advanced UI/UX Design Principles',
-    description: 'Go beyond the basics and explore advanced UI/UX design principles. This course focuses on creating intuitive, user-centered designs for complex applications and systems.',
-    category: 'Design',
-    imageUrl: 'https://images.unsplash.com/photo-1587440871875-191322ee64b0?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=600',
-    price: 3500.00,
-    status: 'Draft'
-  }
-];
-
 const CourseView = () => {
   const [activeTab, setActiveTab] = useState(0);
   const { courseId } = useParams();

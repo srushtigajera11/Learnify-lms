@@ -5,6 +5,22 @@ const { isAuthenticated, authorizeRoles } = require('../middleware/auth');
 
 // IMPORTANT: All routes are prefixed with '/api/students' in server.js
 
+// Get enrolled courses
+router.get(
+  '/enrolled-courses',
+  isAuthenticated,
+  authorizeRoles('student'),
+  studentController.getEnrolledCourses
+);
+
+// Get dashboard stats
+router.get(
+  '/dashboard-stats',
+  isAuthenticated,
+  authorizeRoles('student'),
+  studentController.getStudentDashboardStats
+);
+
 // Get course details
 router.get(
   '/course-details/:courseId',
@@ -15,22 +31,15 @@ router.get(
 
 // Get all lessons for a course
 router.get(
-  '/courses/:courseId/lessons',  // Changed from /course/:courseId/lessons
+  '/courses/:courseId/lessons',
   isAuthenticated,
   authorizeRoles('student'),
   studentController.getCourseLessons
 );
-// studentRoutes.js - Add this route
-router.get(
-  '/dashboard-stats',
-  isAuthenticated,
-  authorizeRoles('student'),
-  studentController.getStudentDashboardStats
-);
 
 // Get single lesson with navigation
 router.get(
-  '/courses/:courseId/lessons/:lessonId',  // Changed from /course/:courseId/lesson/:lessonId
+  '/courses/:courseId/lessons/:lessonId',
   isAuthenticated,
   authorizeRoles('student'),
   studentController.getLesson
@@ -44,19 +53,12 @@ router.post(
   studentController.markLessonComplete
 );
 
+// Get available courses
 router.get(
   '/courses',
   isAuthenticated,
   authorizeRoles('student'),
   studentController.getAvailableCourses
-);
-
-// Get enrolled courses
-router.get(
-  '/enrolled-courses',
-  isAuthenticated,
-  authorizeRoles('student'),
-  studentController.getEnrolledCourses
 );
 
 // Get course progress
@@ -65,6 +67,14 @@ router.get(
   isAuthenticated,
   authorizeRoles('student'),
   studentController.getCourseProgress
+);
+
+// Search courses
+router.get(
+  '/search-courses',
+  isAuthenticated,
+  authorizeRoles('student'),
+  studentController.getSearchCourse
 );
 
 module.exports = router;

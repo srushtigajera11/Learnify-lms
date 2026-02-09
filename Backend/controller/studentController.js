@@ -3,7 +3,8 @@ const Lesson = require('../models/Lesson');
 const Enrollment = require('../models/Enrollment');
 const Wishlist = require('../models/Wishlist');
 const Certificate = require('../models/Certificate');
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
+
 /**
  * Get enrolled courses for student
  */
@@ -33,8 +34,7 @@ exports.getEnrolledCourses = async (req, res) => {
     const enrollmentsWithProgress = await Promise.all(
       enrollments.map(async (enrollment) => {
         const totalLessons = await Lesson.countDocuments({
-          courseId: enrollment.courseId._id,
-          status: 'published'
+          courseId: enrollment.courseId._id
         });
         
         const completedLessons = enrollment.completedLessons?.length || 0;
@@ -66,7 +66,7 @@ exports.getEnrolledCourses = async (req, res) => {
     });
   }
 };
-// controllers/statsController.js or studentController.js
+
 // studentController.js - Add this function
 exports.getStudentDashboardStats = async (req, res) => {
   try {
@@ -111,6 +111,7 @@ exports.getStudentDashboardStats = async (req, res) => {
     });
   }
 };
+
 /**
  * Get all available courses with enrollment status
  */
@@ -142,7 +143,6 @@ exports.getAvailableCourses = async (req, res) => {
     });
   }
 };
-
 
 exports.getCourseDetails = async (req, res) => {
   try {
@@ -182,15 +182,13 @@ exports.getCourseDetails = async (req, res) => {
     });
 
     const totalLessons = await Lesson.countDocuments({
-      courseId,
-      status: "published"
+      courseId
     });
 
     let firstLesson = null;
     if (enrollment) {
       firstLesson = await Lesson.findOne({
-        courseId,
-        status: "published"
+        courseId
       }).sort("order").select("_id title");
     }
 
@@ -221,30 +219,21 @@ exports.getCourseLessons = async (req, res) => {
     const studentId = req.user.id;
 
     // Check enrollment
-    const enrollment = await Enrollment.findOne({ 
-      courseId, 
-      studentId 
-    });
-    
+    const enrollment = await Enrollment.findOne({ courseId, studentId });
     if (!enrollment) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Enroll in this course to view lessons' 
+      return res.status(403).json({
+        success: false,
+        message: "Enroll in this course to view lessons"
       });
     }
 
-    // Get published lessons
-    const lessons = await Lesson.find({ 
-      courseId, 
-      status: 'published' 
-    })
-    .sort('order')
-    .select('_id title description lessonType order duration isPreview materials');
+    // ✅ FETCH ALL LESSONS (NO STATUS FILTER)
+    const lessons = await Lesson.find({ courseId })
+      .sort("order")
+      .select("_id title description lessonType order duration isPreview materials content");
 
-    // Get completed lesson IDs
     const completedLessonIds = enrollment.completedLessons || [];
 
-    // Add completion status to lessons
     const lessonsWithStatus = lessons.map(lesson => ({
       ...lesson.toObject(),
       isCompleted: completedLessonIds.includes(lesson._id.toString())
@@ -257,179 +246,129 @@ exports.getCourseLessons = async (req, res) => {
       completedLessons: completedLessonIds.length
     });
   } catch (error) {
-    console.error('Get course lessons error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error fetching lessons' 
+    console.error("Get course lessons error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching lessons"
     });
   }
 };
-exports.getSearchCourse = async(req,res)=>{
-   try {
-      const { q = "", limit = 20 } = req.query;
 
-      const searchQuery = q.trim()
-        ? {
-            $or: [
-              { title: { $regex: q, $options: "i" } },
-              { description: { $regex: q, $options: "i" } },
-              { category: { $regex: q, $options: "i" } },
-            ],
-          }
-        : {};
+exports.getSearchCourse = async(req, res) => {
+  try {
+    const { q = "", limit = 20 } = req.query;
 
-      const courses = await Course.find(searchQuery)
-        .limit(Number(limit))
-        .select("title description category price thumbnail level rating");
+    const searchQuery = q.trim()
+      ? {
+          $or: [
+            { title: { $regex: q, $options: "i" } },
+            { description: { $regex: q, $options: "i" } },
+            { category: { $regex: q, $options: "i" } },
+          ],
+        }
+      : {};
 
-      res.status(200).json({
-        success: true,
-        totalCourses: courses.length,
-        courses,
-      });
-    } catch (error) {
-      console.error("Course search error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to search courses",
-      });
-    }
-}
-/**
- * Get single lesson with navigation
- */
-// controllers/studentController.js - Update getLesson function
+    const courses = await Course.find(searchQuery)
+      .limit(Number(limit))
+      .select("title description category price thumbnail level rating");
+
+    res.status(200).json({
+      success: true,
+      totalCourses: courses.length,
+      courses,
+    });
+  } catch (error) {
+    console.error("Course search error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to search courses",
+    });
+  }
+};
 
 exports.getLesson = async (req, res) => {
   try {
     const { courseId, lessonId } = req.params;
     const studentId = req.user.id;
 
-    console.log('=== GET LESSON REQUEST ===');
-    console.log('Course ID:', courseId);
-    console.log('Lesson ID:', lessonId);
-    console.log('Student ID:', studentId);
-
     // Check enrollment
-    const enrollment = await Enrollment.findOne({ 
-      courseId, 
-      studentId 
+    const enrollment = await Enrollment.findOne({
+      courseId,
+      studentId
     });
-
-    console.log('Enrollment found:', !!enrollment);
-    console.log('Enrollment data:', enrollment);
 
     if (!enrollment) {
       return res.status(403).json({
         success: false,
-        message: 'Enroll in this course to view this lesson'
+        message: "Enroll in this course to view this lesson"
       });
     }
 
-    // Get the requested lesson
+    // ✅ REMOVE status filter
     const lesson = await Lesson.findOne({
       _id: lessonId,
-      courseId,
-      status: 'published'
-    }).select('-__v');
-
-    console.log('Lesson found:', !!lesson);
-    console.log('Lesson data:', lesson);
+      courseId
+    }).select("_id title description content lessonType materials order duration isPreview");
 
     if (!lesson) {
       return res.status(404).json({
         success: false,
-        message: 'Lesson not found or not published'
+        message: "Lesson not found"
       });
     }
 
     // Get all lessons for navigation
-    const allLessons = await Lesson.find({ 
-      courseId, 
-      status: 'published' 
-    })
-    .sort('order')
-    .select('_id title');
+    const allLessons = await Lesson.find({ courseId })
+      .sort("order")
+      .select("_id title");
 
-    console.log('All lessons count:', allLessons.length);
+    const currentIndex = allLessons.findIndex(
+      l => l._id.toString() === lessonId
+    );
 
-    const currentIndex = allLessons.findIndex(l => l._id.toString() === lessonId);
-    console.log('Current index:', currentIndex);
+    const previousLesson =
+      currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+
+    const nextLesson =
+      currentIndex < allLessons.length - 1
+        ? allLessons[currentIndex + 1]
+        : null;
+
+    const isCompleted =
+      enrollment.completedLessons?.includes(lessonId) || false;
+
+    // ✅ Ensure materials array exists and is properly formatted
+    const lessonData = lesson.toObject();
     
-    // Get previous and next lessons
-    const previousLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
-    const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
-
-    console.log('Previous lesson:', previousLesson);
-    console.log('Next lesson:', nextLesson);
-
-    // Check if lesson is completed
-    const isCompleted = enrollment.completedLessons?.includes(lessonId) || false;
-    console.log('Is completed:', isCompleted);
-
-    // Auto-detect lesson type
-    let lessonType = lesson.lessonType;
-    if (!lessonType) {
-      if (lesson.materials && lesson.materials.length > 0) {
-        const hasVideo = lesson.materials.some(m => 
-          m.type === 'video' || 
-          (m.url && (m.url.includes('youtube') || m.url.includes('vimeo')))
-        );
-        if (hasVideo) {
-          lessonType = 'video';
-        } else if (lesson.materials.some(m => m.type === 'document' || m.type === 'pdf')) {
-          lessonType = 'document';
-        } else {
-          lessonType = 'text';
-        }
-      } else if (lesson.content && lesson.content.trim().length > 0) {
-        lessonType = 'text';
-      } else if (lesson.description && lesson.description.trim().length > 0) {
-        lessonType = 'text';
-      } else {
-        lessonType = 'document';
-      }
+    // Format materials for frontend
+    if (lessonData.materials && Array.isArray(lessonData.materials)) {
+      lessonData.materials = lessonData.materials.map(material => ({
+        _id: material._id || material.id,
+        name: material.name || 'Untitled Material',
+        url: material.url || '',
+        type: material.type || 'document',
+        description: material.description || ''
+      }));
     }
-
-    console.log('Detected lesson type:', lessonType);
-
-    const lessonData = {
-      _id: lesson._id,
-      title: lesson.title,
-      description: lesson.description || '',
-      content: lesson.content || '',
-      materials: lesson.materials || [],
-      order: lesson.order,
-      lessonType: lessonType,
-      duration: lesson.duration,
-      isPreview: lesson.isPreview || false,
-      isCompleted,
-      navigation: {
-        currentIndex: currentIndex + 1,
-        totalLessons: allLessons.length,
-        previousLesson: previousLesson ? {
-          _id: previousLesson._id,
-          title: previousLesson.title
-        } : null,
-        nextLesson: nextLesson ? {
-          _id: nextLesson._id,
-          title: nextLesson.title
-        } : null
-      }
-    };
-
-    console.log('Sending lesson data:', JSON.stringify(lessonData, null, 2));
 
     res.status(200).json({
       success: true,
-      lesson: lessonData
+      lesson: {
+        ...lessonData,
+        isCompleted,
+        navigation: {
+          currentIndex: currentIndex + 1,
+          totalLessons: allLessons.length,
+          previousLesson,
+          nextLesson
+        }
+      }
     });
   } catch (error) {
-    console.error('Get lesson error:', error);
+    console.error("Get lesson error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error fetching lesson',
-      error: error.message
+      message: "Server error fetching lesson"
     });
   }
 };
@@ -455,11 +394,10 @@ exports.markLessonComplete = async (req, res) => {
       });
     }
 
-    // Check if lesson exists and is published
+    // Check if lesson exists
     const lesson = await Lesson.findOne({
       _id: lessonId,
-      courseId,
-      status: 'published'
+      courseId
     });
 
     if (!lesson) {
@@ -482,8 +420,7 @@ exports.markLessonComplete = async (req, res) => {
 
     // Calculate progress
     const totalLessons = await Lesson.countDocuments({ 
-      courseId, 
-      status: 'published' 
+      courseId
     });
     const progress = totalLessons > 0 
       ? Math.round((enrollment.completedLessons.length / totalLessons) * 100) 
@@ -529,8 +466,7 @@ exports.getCourseProgress = async (req, res) => {
     }
 
     const totalLessons = await Lesson.countDocuments({ 
-      courseId, 
-      status: 'published' 
+      courseId
     });
     
     const completedLessons = enrollment.completedLessons?.length || 0;

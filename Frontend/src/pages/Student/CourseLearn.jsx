@@ -4,21 +4,17 @@ import {
   ArrowBack,
   CheckCircle,
   VideoLibrary,
-  Quiz,
   Description,
   ArrowForward,
-  Download,
-  PictureAsPdf,
-  Link as LinkIcon,
-  PlayCircle,
-  PauseCircle,
-  Speed,
   Menu,
+  PlayArrow,
   Article,
-  InsertDriveFile
+  Link as LinkIcon,
+  YouTube,
+  Download,
 } from "@mui/icons-material";
 import axiosInstance from "../../utils/axiosInstance";
-import ReactPlayer from 'react-player';
+import ReactPlayer from "react-player";
 
 const CourseLearn = () => {
   const { courseId } = useParams();
@@ -30,495 +26,141 @@ const CourseLearn = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [videoPlaying, setVideoPlaying] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1);
-  const [completedLessons, setCompletedLessons] = useState(new Set());
-  const [progress, setProgress] = useState({ percentage: 0, completed: 0, total: 0 });
 
   useEffect(() => {
     loadCourseData();
   }, [courseId]);
 
-// In CourseLearn.jsx - Update all API calls:
+  /* =========================
+     API CALLS
+  ========================== */
 
-const loadCourseData = async () => {
-  try {
-    setLoading(true);
-    
-    // Get course details - This seems to work (no 404)
-    const courseRes = await axiosInstance.get(`/students/course-details/${courseId}`);
-    
-    if (!courseRes.data.success) {
-      setError("Failed to load course");
-      return;
-    }
+  const loadCourseData = async () => {
+    try {
+      setLoading(true);
 
-    if (!courseRes.data.course.isEnrolled) {
-      setError("You must enroll in this course first");
-      return;
-    }
-
-    setCourse(courseRes.data.course);
-
-    // Get all lessons - FIXED PATH
-    const lessonsRes = await axiosInstance.get(`/students/courses/${courseId}/lessons`);
-    if (lessonsRes.data.success) {
-      setLessons(lessonsRes.data.lessons || []);
-      
-      // Set completed lessons
-      const completed = new Set(
-        lessonsRes.data.lessons
-          .filter(lesson => lesson.isCompleted)
-          .map(lesson => lesson._id)
+      const courseRes = await axiosInstance.get(
+        `/students/course-details/${courseId}`
       );
-      setCompletedLessons(completed);
-      
-      // Load first lesson if available
-      if (lessonsRes.data.lessons.length > 0) {
-        await loadLessonContent(lessonsRes.data.lessons[0]._id);
+
+      if (!courseRes.data.course?.isEnrolled) {
+        setError("You must enroll in this course first");
+        return;
       }
-    }
 
-    // Get progress - FIXED PATH
-    const progressRes = await axiosInstance.get(`/students/courses/${courseId}/progress`);
-    if (progressRes.data.success) {
-      setProgress({
-        percentage: progressRes.data.progress.percentage,
-        completed: progressRes.data.progress.completedLessons,
-        total: progressRes.data.progress.totalLessons
-      });
-    }
+      setCourse(courseRes.data.course);
 
-  } catch (err) {
-    console.error("Error loading course:", err);
-    console.error("Error details:", err.response?.data);
-    setError(err.response?.data?.message || "Failed to load course content");
-  } finally {
-    setLoading(false);
-  }
-};
+      const lessonsRes = await axiosInstance.get(
+        `/students/courses/${courseId}/lessons`
+      );
 
-const loadLessonContent = async (lessonId) => {
-  try {
-    setLoading(true);
-    
-    // FIXED PATH
-    const response = await axiosInstance.get(`/students/courses/${courseId}/lessons/${lessonId}`);
-    
-    if (response.data.success) {
-      setCurrentLesson(response.data.lesson);
-    } else {
-      // Fallback to basic lesson data from local state
-      const lesson = lessons.find(l => l._id === lessonId);
-      if (lesson) {
-        setCurrentLesson({
-          ...lesson,
-          isCompleted: completedLessons.has(lessonId)
-        });
+      const lessonList = lessonsRes.data.lessons || [];
+      setLessons(lessonList);
+
+      if (lessonList.length > 0) {
+        loadLessonContent(lessonList[0]._id);
       }
+    } catch (err) {
+      console.error("Error loading course:", err);
+      setError("Failed to load course content");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error("Error loading lesson:", err);
-    console.error("Error response:", err.response?.data);
-    // Fallback to basic lesson data
-    const lesson = lessons.find(l => l._id === lessonId);
-    if (lesson) {
-      setCurrentLesson({
-        ...lesson,
-        isCompleted: completedLessons.has(lessonId)
-      });
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-const markLessonComplete = async () => {
-  if (!currentLesson || currentLesson.isCompleted) return;
-
-  try {
-    // FIXED PATH
-    const response = await axiosInstance.post(
-      `/students/courses/${courseId}/lessons/${currentLesson._id}/complete`
-    );
-    
-    if (response.data.success) {
-      // Update local state
-      setCompletedLessons(prev => new Set([...prev, currentLesson._id]));
-      setCurrentLesson(prev => ({ ...prev, isCompleted: true }));
-      setProgress(prev => ({
-        ...prev,
-        percentage: response.data.progress.percentage,
-        completed: response.data.progress.completedLessons
-      }));
-
-      // Auto-navigate to next lesson if available
-      if (currentLesson.navigation?.nextLesson) {
-        setTimeout(() => {
-          loadLessonContent(currentLesson.navigation.nextLesson._id);
-        }, 1500);
-      }
-    }
-  } catch (err) {
-    console.error("Failed to mark lesson complete:", err);
-    console.error("Error response:", err.response?.data);
-    alert("Failed to mark lesson complete. Please try again.");
-  }
-};
-  const getLessonType = (lesson) => {
-    if (lesson.lessonType) return lesson.lessonType;
-    
-    // Auto-detect based on materials
-    if (lesson.materials && lesson.materials.length > 0) {
-      const hasVideo = lesson.materials.some(m => 
-        m.type === 'video' || m.url?.includes('youtube') || m.url?.includes('vimeo')
+  const loadLessonContent = async (lessonId) => {
+    try {
+      const res = await axiosInstance.get(
+        `/students/courses/${courseId}/lessons/${lessonId}`
       );
-      if (hasVideo) return 'video';
-      
-      const hasDocument = lesson.materials.some(m => 
-        m.type === 'document' || m.type === 'pdf'
-      );
-      if (hasDocument) return 'document';
+      setCurrentLesson(res.data.lesson);
+    } catch (err) {
+      console.error("Error loading lesson:", err);
+      setCurrentLesson(null);
     }
+  };
+
+  /* =========================
+     VIDEO HELPERS
+  ========================== */
+
+  const getVideoType = () => {
+    if (!currentLesson?.materials?.length) return null;
+
+    const videoMaterial = currentLesson.materials.find(material =>
+      material.type === 'video' ||
+      material.type === 'video_lesson' ||
+      material.url?.match(/\.(mp4|webm|ogg|mov|avi|wmv|m4v)$/i) ||
+      material.url?.includes('youtube') ||
+      material.url?.includes('youtu.be') ||
+      material.url?.includes('vimeo')
+    );
+
+    if (!videoMaterial?.url) return null;
+
+    const url = videoMaterial.url.toLowerCase();
+
+    if (url.includes('youtube') || url.includes('youtu.be')) {
+      return { type: 'youtube', url: videoMaterial.url };
+    } else if (url.includes('vimeo')) {
+      return { type: 'vimeo', url: videoMaterial.url };
+    } else if (url.match(/\.(mp4|webm|ogg|mov|avi|wmv|m4v)$/)) {
+      return { type: 'direct', url: videoMaterial.url };
+    }
+
+    return { type: 'external', url: videoMaterial.url };
+  };
+
+  const getLessonTypeIcon = (lesson) => {
+    const hasVideo = lesson.materials?.some(material =>
+      material.type === 'video' ||
+      material.type === 'video_lesson' ||
+      material.url?.match(/\.(mp4|webm|ogg|mov|avi|wmv)$/i) ||
+      material.url?.includes('youtube') ||
+      material.url?.includes('youtu.be') ||
+      material.url?.includes('vimeo')
+    );
+
+    if (hasVideo) return { icon: VideoLibrary, label: 'Video', color: 'text-red-600' };
+    if (lesson.content || lesson.description) return { icon: Description, label: 'Text', color: 'text-blue-600' };
+    if (lesson.materials?.length) return { icon: Article, label: 'Materials', color: 'text-purple-600' };
+    return { icon: Description, label: 'Lesson', color: 'text-gray-600' };
+  };
+
+  const formatDuration = (minutes) => {
+    if (!minutes) return null;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
     
-    // Default based on content
-    if (lesson.content && lesson.content.trim().length > 0) return 'text';
-    if (lesson.description && lesson.description.trim().length > 0) return 'text';
-    
-    return 'document';
-  };
-
-  const renderVideoContent = () => {
-    // Find video materials
-    const videoMaterials = currentLesson.materials?.filter(m => 
-      m.type === 'video' || m.url?.includes('youtube') || m.url?.includes('vimeo')
-    );
-
-    if (videoMaterials && videoMaterials.length > 0) {
-      return (
-        <div className="space-y-6">
-          <div className="bg-black rounded-xl overflow-hidden">
-            <div className="relative pt-[56.25%]">
-              <ReactPlayer
-                url={videoMaterials[0].url}
-                controls
-                width="100%"
-                height="100%"
-                className="absolute top-0 left-0"
-                playing={videoPlaying}
-                playbackRate={playbackRate}
-                onPlay={() => setVideoPlaying(true)}
-                onPause={() => setVideoPlaying(false)}
-                onEnded={() => {
-                  setVideoPlaying(false);
-                  // Auto-mark complete when video ends
-                  if (!currentLesson.isCompleted) {
-                    markLessonComplete();
-                  }
-                }}
-                config={{
-                  youtube: {
-                    playerVars: { showinfo: 1 }
-                  }
-                }}
-              />
-            </div>
-            <div className="p-4 bg-gray-900 flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => setVideoPlaying(!videoPlaying)}
-                  className="flex items-center text-white hover:text-yellow-400 transition-colors"
-                >
-                  {videoPlaying ? <PauseCircle fontSize="large" /> : <PlayCircle fontSize="large" />}
-                  <span className="ml-2">{videoPlaying ? 'Pause' : 'Play'}</span>
-                </button>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center">
-                  <Speed className="mr-2 text-white" />
-                  <select
-                    value={playbackRate}
-                    onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
-                    className="bg-gray-800 text-white px-3 py-1 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  >
-                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map(rate => (
-                      <option key={rate} value={rate}>{rate}x</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Video description and content */}
-          {(currentLesson.description || currentLesson.content) && (
-            <div className="bg-white rounded-xl p-6 shadow">
-              <h3 className="text-xl font-semibold mb-4">About this video</h3>
-              <div className="prose max-w-none text-gray-700">
-                {currentLesson.content ? (
-                  <div dangerouslySetInnerHTML={{ __html: currentLesson.content }} />
-                ) : (
-                  <p className="whitespace-pre-line">{currentLesson.description}</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Additional materials */}
-          {currentLesson.materials && currentLesson.materials.length > 1 && (
-            <div className="bg-white rounded-xl p-6 shadow">
-              <h3 className="text-xl font-semibold mb-4">Additional Resources</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {currentLesson.materials.slice(1).map((material, idx) => (
-                  <a
-                    key={idx}
-                    href={material.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
-                  >
-                    <div className="p-3 bg-blue-100 text-blue-600 rounded-lg mr-4">
-                      {material.type === 'document' || material.type === 'pdf' ? (
-                        <InsertDriveFile />
-                      ) : material.type === 'link' ? (
-                        <LinkIcon />
-                      ) : material.type === 'video' ? (
-                        <VideoLibrary />
-                      ) : (
-                        <Article />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{material.name}</p>
-                      <p className="text-sm text-gray-500 capitalize">
-                        {material.description || material.type}
-                      </p>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      );
+    if (hours > 0) {
+      return `${hours}h ${mins > 0 ? `${mins}m` : ''}`.trim();
     }
+    return `${mins}m`;
+  };
 
+  /* =========================
+     RENDER STATES
+  ========================== */
+
+  if (loading) {
     return (
-      <div className="bg-gray-100 rounded-xl p-8 text-center">
-        <VideoLibrary className="h-24 w-24 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-700 mb-2">Video Lesson</h3>
-        <p className="text-gray-600 mb-4">
-          {currentLesson.description || "This is a video lesson. Video content will appear here."}
-        </p>
-        <div className="bg-gray-200 p-4 rounded-lg inline-block">
-          <p className="text-sm text-gray-500">
-            No video materials configured for this lesson.
-          </p>
-        </div>
-      </div>
-    );
-  };
-
-  const renderTextContent = () => {
-    const hasContent = currentLesson.content && currentLesson.content.trim().length > 0;
-    const hasDescription = currentLesson.description && currentLesson.description.trim().length > 0;
-
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-xl p-6 shadow">
-          <div className="prose max-w-none">
-            {hasContent ? (
-              <div dangerouslySetInnerHTML={{ __html: currentLesson.content }} />
-            ) : hasDescription ? (
-              <>
-                <h2 className="text-2xl font-bold mb-4">{currentLesson.title}</h2>
-                <div className="text-gray-700 whitespace-pre-line">
-                  {currentLesson.description}
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <Description className="h-24 w-24 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">Text Lesson</h3>
-                <p className="text-gray-600">
-                  No content available for this lesson.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Materials section */}
-        {currentLesson.materials && currentLesson.materials.length > 0 && (
-          <div className="bg-white rounded-xl p-6 shadow">
-            <h3 className="text-xl font-semibold mb-4">Lesson Materials</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {currentLesson.materials.map((material, idx) => (
-                <a
-                  key={idx}
-                  href={material.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
-                >
-                  <div className="p-3 bg-blue-100 text-blue-600 rounded-lg mr-4">
-                    {material.type === 'pdf' ? (
-                      <PictureAsPdf />
-                    ) : material.type === 'document' ? (
-                      <InsertDriveFile />
-                    ) : material.type === 'link' ? (
-                      <LinkIcon />
-                    ) : material.type === 'video' ? (
-                      <VideoLibrary />
-                    ) : (
-                      <Article />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{material.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {material.description || material.type}
-                    </p>
-                  </div>
-                  <Download className="text-gray-400" />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderQuizContent = () => {
-    return (
-      <div className="bg-white rounded-xl p-6 shadow">
-        <div className="text-center py-8">
-          <Quiz className="h-24 w-24 text-purple-400 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">Quiz: {currentLesson.title}</h3>
-          <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-            {currentLesson.description || "Test your knowledge with this quiz. Complete it to mark this lesson as finished."}
-          </p>
-          <button className="px-8 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-colors shadow-md hover:shadow-lg">
-            Start Quiz
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderDocumentContent = () => {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-xl p-6 shadow">
-          <div className="prose max-w-none">
-            <h2 className="text-2xl font-bold mb-4">{currentLesson.title}</h2>
-            {currentLesson.description && (
-              <div className="text-gray-700 mb-6">
-                <p className="whitespace-pre-line">{currentLesson.description}</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Documents section */}
-        {currentLesson.materials && currentLesson.materials.length > 0 && (
-          <div className="bg-white rounded-xl p-6 shadow">
-            <h3 className="text-xl font-semibold mb-4">Documents & Resources</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {currentLesson.materials.map((material, idx) => (
-                <a
-                  key={idx}
-                  href={material.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex flex-col items-center p-6 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 text-center"
-                >
-                  <div className="p-4 bg-blue-100 text-blue-600 rounded-full mb-4">
-                    {material.type === 'pdf' ? (
-                      <PictureAsPdf className="h-8 w-8" />
-                    ) : material.type === 'document' ? (
-                      <InsertDriveFile className="h-8 w-8" />
-                    ) : (
-                      <Article className="h-8 w-8" />
-                    )}
-                  </div>
-                  <p className="font-medium text-gray-900 mb-2">{material.name}</p>
-                  {material.description && (
-                    <p className="text-sm text-gray-500 mb-3">{material.description}</p>
-                  )}
-                  <span className="text-xs px-3 py-1 bg-gray-200 text-gray-700 rounded-full">
-                    {material.type.toUpperCase()}
-                  </span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderLessonContent = () => {
-    if (!currentLesson) return null;
-
-    const lessonType = getLessonType(currentLesson);
-
-    switch (lessonType) {
-      case 'video':
-        return renderVideoContent();
-      case 'text':
-        return renderTextContent();
-      case 'quiz':
-        return renderQuizContent();
-      case 'document':
-        return renderDocumentContent();
-      default:
-        return renderTextContent();
-    }
-  };
-
-  const renderLessonIcon = (lesson) => {
-    if (completedLessons.has(lesson._id)) {
-      return <CheckCircle className="text-green-500" />;
-    }
-
-    const lessonType = getLessonType(lesson);
-    
-    switch (lessonType) {
-      case 'video':
-        return <VideoLibrary className="text-blue-500" />;
-      case 'quiz':
-        return <Quiz className="text-purple-500" />;
-      case 'document':
-        return <InsertDriveFile className="text-yellow-500" />;
-      default:
-        return <Description className="text-gray-500" />;
-    }
-  };
-
-  if (loading && !currentLesson) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-b-2 border-blue-600 rounded-full mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading course content...</p>
-        </div>
+      <div className="h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full mb-4" />
+        <p className="text-gray-600">Loading course content...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen p-4">
-        <div className="text-center max-w-md">
-          <div className="bg-red-100 text-red-600 p-4 rounded-lg mb-6">
-            <h2 className="text-xl font-bold mb-2">Unable to load course</h2>
-            <p>{error}</p>
-          </div>
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">Access Required</h3>
+          <p className="text-gray-600 mb-6">{error}</p>
           <button
             onClick={() => navigate("/student/mylearning")}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
             Back to My Learning
           </button>
@@ -527,213 +169,441 @@ const markLessonComplete = async () => {
     );
   }
 
-  const currentIndex = currentLesson?.navigation?.currentIndex || 0;
-  const totalLessons = currentLesson?.navigation?.totalLessons || lessons.length;
+  /* =========================
+     MAIN UI
+  ========================== */
+
+  const videoInfo = getVideoType();
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col">
-      {/* Top Navigation */}
-      <header className="bg-white shadow-sm z-10">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 mr-3 lg:hidden hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <Menu />
-            </button>
-            <button
-              onClick={() => navigate("/student/mylearning")}
-              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowBack className="h-5 w-5 mr-2" />
-              <span className="hidden sm:inline">Back to Courses</span>
-            </button>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:block text-right">
-              <p className="text-sm text-gray-500">Progress</p>
-              <div className="flex items-center">
-                <div className="w-32 bg-gray-200 rounded-full h-2 mr-2">
-                  <div 
-                    className="bg-green-600 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${progress.percentage}%` }}
-                  ></div>
-                </div>
-                <span className="text-sm font-semibold">{progress.percentage}%</span>
-              </div>
-            </div>
-          </div>
+    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Top Bar */}
+      <header className="bg-white shadow-lg px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition"
+          >
+            <Menu className="text-gray-700" />
+          </button>
+          <button
+            onClick={() => navigate("/student/mylearning")}
+            className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition"
+          >
+            <ArrowBack />
+            <span className="hidden sm:inline">Back to Courses</span>
+          </button>
         </div>
+        <div className="text-center flex-1 px-4">
+          <h2 className="font-bold text-lg text-gray-800 truncate">{course?.title}</h2>
+          {currentLesson && (
+            <p className="text-sm text-gray-500 truncate">
+              Lesson {lessons.findIndex(l => l._id === currentLesson._id) + 1} of {lessons.length}
+            </p>
+          )}
+        </div>
+        <div className="w-10"></div> {/* Spacer for balance */}
       </header>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className={`
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          fixed lg:relative lg:translate-x-0
-          w-80 bg-white shadow-lg h-full overflow-y-auto
-          transition-transform duration-300 z-20 flex-shrink-0
-        `}>
+        <aside
+          className={`${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } lg:translate-x-0 w-80 bg-white shadow-xl h-full overflow-y-auto transition-all duration-300 flex flex-col`}
+        >
           <div className="p-4 border-b">
-            <h2 className="font-bold text-lg truncate">{course?.title}</h2>
-            <div className="mt-2 flex items-center justify-between text-sm">
-              <span className="text-gray-600">
-                {progress.completed} of {progress.total} lessons
-              </span>
-              <span className="font-semibold text-blue-600">
-                {progress.percentage}%
-              </span>
-            </div>
-            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${progress.percentage}%` }}
-              ></div>
-            </div>
+            <h3 className="font-bold text-gray-800 text-lg">Course Content</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              {lessons.length} lessons • {lessons.filter(l => l.isCompleted).length} completed
+            </p>
           </div>
-
-          <div className="p-2">
-            {lessons.map((lesson, index) => (
-              <button
-                key={lesson._id}
-                onClick={() => loadLessonContent(lesson._id)}
-                className={`
-                  w-full px-4 py-3 flex items-start gap-3 text-left rounded-lg mb-1
-                  transition-all duration-200 hover:shadow-sm
-                  ${currentLesson?._id === lesson._id
-                    ? 'bg-blue-50 border-l-4 border-blue-600 shadow-sm'
-                    : 'hover:bg-gray-50'
-                  }
-                  ${completedLessons.has(lesson._id) ? 'opacity-100' : ''}
-                `}
-              >
-                <div className="pt-1 flex-shrink-0">
-                  {renderLessonIcon(lesson)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium truncate">
-                      {index + 1}. {lesson.title}
-                    </span>
-                    {lesson.isPreview && (
-                      <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                        Preview
-                      </span>
-                    )}
+          
+          <div className="flex-1 overflow-y-auto">
+            {lessons.map((lesson, idx) => {
+              const iconInfo = getLessonTypeIcon(lesson);
+              const Icon = iconInfo.icon;
+              
+              return (
+                <button
+                  key={lesson._id}
+                  onClick={() => loadLessonContent(lesson._id)}
+                  className={`w-full text-left p-4 border-b hover:bg-gray-50 transition-all duration-200 group ${
+                    currentLesson?._id === lesson._id
+                      ? "bg-blue-50 border-l-4 border-blue-600"
+                      : "border-l-4 border-transparent"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${iconInfo.color} bg-opacity-10`}>
+                      <Icon fontSize="small" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-800 group-hover:text-blue-600">
+                          {idx + 1}. {lesson.title}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {lesson.duration && (
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                              {formatDuration(lesson.duration)}
+                            </span>
+                          )}
+                          {lesson.isPreview && (
+                            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">
+                              Preview
+                            </span>
+                          )}
+                          {lesson.isCompleted && (
+                            <CheckCircle className="text-green-500 text-lg" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-xs font-medium ${iconInfo.color}`}>
+                          {iconInfo.label}
+                        </span>
+                        {lesson.materials?.length > 0 && (
+                          <span className="text-xs text-gray-500">
+                            • {lesson.materials.length} material{lesson.materials.length !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center text-xs text-gray-500 mt-1">
-                    <span className="capitalize">
-                      {getLessonType(lesson).replace('_', ' ')}
-                    </span>
-                    {lesson.duration && (
-                      <>
-                        <span className="mx-2">•</span>
-                        <span>{lesson.duration} min</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          {currentLesson ? (
-            <div className="max-w-6xl mx-auto">
+        <main className="flex-1 overflow-y-auto p-6">
+          {!currentLesson ? (
+            <div className="h-full flex flex-col items-center justify-center text-center">
+              <div className="text-6xl mb-4 text-gray-300">📚</div>
+              <h3 className="text-xl font-bold text-gray-700 mb-2">Select a Lesson</h3>
+              <p className="text-gray-500 max-w-md">
+                Choose a lesson from the sidebar to start learning. Each lesson contains video, text, or interactive content.
+              </p>
+            </div>
+          ) : (
+            <div className="max-w-5xl mx-auto">
               {/* Lesson Header */}
-              <div className="mb-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+              <div className="mb-8">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                        Lesson {currentIndex} of {totalLessons}
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                        Lesson {lessons.findIndex(l => l._id === currentLesson._id) + 1}
                       </span>
-                      <span className="text-sm font-medium text-gray-500 capitalize">
-                        {getLessonType(currentLesson)}
-                      </span>
+                      {currentLesson.isCompleted && (
+                        <span className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                          <CheckCircle fontSize="small" />
+                          Completed
+                        </span>
+                      )}
+                      {currentLesson.isPreview && (
+                        <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
+                          Free Preview
+                        </span>
+                      )}
                     </div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-3">
                       {currentLesson.title}
                     </h1>
-                    {currentLesson.description && !currentLesson.content && (
-                      <p className="text-gray-600 mt-2 max-w-3xl">
+                    {currentLesson.description && (
+                      <p className="text-gray-600 text-lg">
                         {currentLesson.description}
                       </p>
                     )}
                   </div>
+                  
                   <div className="flex items-center gap-3">
-                    {!currentLesson.isCompleted && (
-                      <button
-                        onClick={markLessonComplete}
-                        className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg whitespace-nowrap"
-                      >
-                        <CheckCircle className="h-5 w-5" />
-                        Mark Complete
-                      </button>
-                    )}
-                    {currentLesson.isCompleted && (
-                      <span className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-medium">
-                        <CheckCircle className="h-5 w-5" />
-                        Completed
-                      </span>
+                    {currentLesson.duration && (
+                      <div className="text-center px-4 py-2 bg-gray-100 rounded-lg">
+                        <p className="text-sm text-gray-500">Duration</p>
+                        <p className="font-bold text-gray-800">
+                          {formatDuration(currentLesson.duration)}
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Lesson Content */}
-              <div className="mb-8">
-                {renderLessonContent()}
-              </div>
+              {/* Video Content */}
+              {videoInfo && (
+                <div className="mb-8">
+                  <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
+                    <div className="p-6 border-b border-gray-200">
+                      <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <VideoLibrary className="text-red-500" />
+                        Video Content
+                      </h3>
+                    </div>
+                    
+                    <div className="p-6">
+                      {videoInfo.type === 'youtube' ? (
+                        <div className="text-center">
+                          <div className="max-w-md mx-auto mb-6">
+                            <div className="text-6xl mb-4 text-red-500">
+                              <YouTube fontSize="inherit" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                              YouTube Video
+                            </h4>
+                            <p className="text-gray-600 mb-6">
+                              This lesson contains a YouTube video. Click the button below to watch it on YouTube.
+                            </p>
+                            <a
+                              href={videoInfo.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition shadow-md hover:shadow-lg"
+                            >
+                              <PlayArrow />
+                              Watch on YouTube
+                            </a>
+                            <p className="text-sm text-gray-500 mt-4">
+                              Video will open in a new tab
+                            </p>
+                          </div>
+                        </div>
+                      ) : videoInfo.type === 'direct' ? (
+                        <div>
+                          <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                            <ReactPlayer
+                              url={videoInfo.url}
+                              controls
+                              width="100%"
+                              height="100%"
+                              playsinline
+                              config={{
+                                file: {
+                                  attributes: {
+                                    controlsList: 'nodownload',
+                                    style: { width: '100%', height: '100%' }
+                                  }
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="mt-4 flex items-center justify-between">
+                            <span className="text-sm text-gray-600">
+                              Direct video playback
+                            </span>
+                            <a
+                              href={videoInfo.url}
+                              download
+                              className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                            >
+                              <Download fontSize="small" />
+                              Download Video
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <div className="text-4xl mb-4 text-blue-500">🎬</div>
+                          <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                            External Video Content
+                          </h4>
+                          <p className="text-gray-600 mb-6">
+                            This lesson contains video content from an external platform.
+                          </p>
+                          <a
+                            href={videoInfo.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                          >
+                            <PlayArrow />
+                            Watch Video
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Text Content */}
+              {(currentLesson.content || currentLesson.description) && !videoInfo && (
+                <div className="mb-8">
+                  <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
+                    <div className="p-6 border-b border-gray-200">
+                      <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <Description className="text-blue-500" />
+                        Lesson Content
+                      </h3>
+                    </div>
+                    <div className="p-6">
+                      <div
+                        className="prose prose-lg max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            currentLesson.content?.trim() ||
+                            `<div class="text-gray-700 leading-relaxed">${currentLesson.description}</div>`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Materials */}
+              {currentLesson.materials && currentLesson.materials.length > 0 && (
+                <div className="mb-8">
+                  <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
+                    <div className="p-6 border-b border-gray-200">
+                      <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <Article className="text-purple-500" />
+                        Lesson Materials
+                        <span className="text-sm font-normal text-gray-500 ml-2">
+                          ({currentLesson.materials.length})
+                        </span>
+                      </h3>
+                    </div>
+                    <div className="p-6">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {currentLesson.materials.map((material, idx) => {
+                          const isVideo = material.type === 'video' || 
+                                         material.type === 'video_lesson' ||
+                                         material.url?.match(/\.(mp4|webm|ogg|mov|avi|wmv)$/i);
+                          const isYoutube = material.url?.includes('youtube') || 
+                                           material.url?.includes('youtu.be');
+                          const isExternalLink = material.type === 'link' || 
+                                                (!isVideo && !isYoutube && material.url);
+                          const isDocument = material.type === 'document';
+
+                          let Icon = Article;
+                          let iconColor = 'text-purple-600';
+                          let bgColor = 'bg-purple-50';
+
+                          if (isVideo) {
+                            Icon = VideoLibrary;
+                            iconColor = 'text-red-600';
+                            bgColor = 'bg-red-50';
+                          } else if (isYoutube) {
+                            Icon = YouTube;
+                            iconColor = 'text-red-600';
+                            bgColor = 'bg-red-50';
+                          } else if (isExternalLink) {
+                            Icon = LinkIcon;
+                            iconColor = 'text-blue-600';
+                            bgColor = 'bg-blue-50';
+                          } else if (isDocument) {
+                            Icon = Description;
+                            iconColor = 'text-green-600';
+                            bgColor = 'bg-green-50';
+                          }
+
+                          return (
+                            <div
+                              key={idx}
+                              className="border border-gray-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-md transition-all"
+                            >
+                              <div className="flex items-start gap-4">
+                                <div className={`p-3 rounded-lg ${bgColor} ${iconColor}`}>
+                                  <Icon />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-gray-800 mb-1">
+                                    {material.name || `Material ${idx + 1}`}
+                                  </h4>
+                                  <p className="text-sm text-gray-600 mb-3">
+                                    {material.description || 'No description'}
+                                  </p>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                                      {material.type || 'file'}
+                                    </span>
+                                    <a
+                                      href={material.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`text-sm font-medium px-4 py-2 rounded-lg transition ${
+                                        isVideo || isYoutube
+                                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                      }`}
+                                    >
+                                      {isVideo || isYoutube ? 'Watch' : 'View'}
+                                    </a>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Navigation */}
-              <div className="flex items-center justify-between pt-6 border-t mt-8">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 mt-12 mb-8">
                 <button
                   onClick={() => {
-                    if (currentLesson.navigation?.previousLesson) {
-                      loadLessonContent(currentLesson.navigation.previousLesson._id);
-                    }
+                    const idx = lessons.findIndex(l => l._id === currentLesson._id);
+                    if (idx > 0) loadLessonContent(lessons[idx - 1]._id);
                   }}
-                  disabled={!currentLesson.navigation?.previousLesson}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors ${
-                    currentLesson.navigation?.previousLesson
-                      ? 'text-gray-700 hover:bg-gray-100 hover:shadow'
-                      : 'text-gray-400 cursor-not-allowed'
-                  }`}
+                  className="px-8 py-4 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  disabled={lessons.findIndex(l => l._id === currentLesson._id) === 0}
                 >
-                  <ArrowBack className="h-5 w-5" />
-                  <span className="hidden sm:inline">Previous Lesson</span>
-                  <span className="sm:hidden">Previous</span>
+                  <ArrowBack />
+                  <div className="text-left">
+                    <div className="text-sm text-gray-500">Previous</div>
+                    <div className="font-medium">
+                      {lessons[lessons.findIndex(l => l._id === currentLesson._id) - 1]?.title || 'No Previous Lesson'}
+                    </div>
+                  </div>
                 </button>
 
                 <button
                   onClick={() => {
-                    if (currentLesson.navigation?.nextLesson) {
-                      loadLessonContent(currentLesson.navigation.nextLesson._id);
+                    const idx = lessons.findIndex(l => l._id === currentLesson._id);
+                    if (idx < lessons.length - 1) {
+                      loadLessonContent(lessons[idx + 1]._id);
                     }
                   }}
-                  disabled={!currentLesson.navigation?.nextLesson}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-colors shadow-md ${
-                    currentLesson.navigation?.nextLesson
-                      ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
+                  className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                  disabled={lessons.findIndex(l => l._id === currentLesson._id) === lessons.length - 1}
                 >
-                  <span className="hidden sm:inline">Next Lesson</span>
-                  <span className="sm:hidden">Next</span>
-                  <ArrowForward className="h-5 w-5" />
+                  <div className="text-right">
+                    <div className="text-sm text-blue-100">Next</div>
+                    <div className="font-medium">
+                      {lessons[lessons.findIndex(l => l._id === currentLesson._id) + 1]?.title || 'Course Complete'}
+                    </div>
+                  </div>
+                  <ArrowForward />
                 </button>
               </div>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Description className="h-24 w-24 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">No Lesson Selected</h3>
-              <p className="text-gray-600">Select a lesson from the sidebar to begin learning</p>
+
+              {/* Progress Bar */}
+              <div className="mt-8 pt-8 border-t border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">
+                    Course Progress
+                  </span>
+                  <span className="text-sm font-bold text-blue-600">
+                    {Math.round((lessons.filter(l => l.isCompleted).length / lessons.length) * 100)}%
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${(lessons.filter(l => l.isCompleted).length / lessons.length) * 100}%`
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {lessons.filter(l => l.isCompleted).length} of {lessons.length} lessons completed
+                </p>
+              </div>
             </div>
           )}
         </main>

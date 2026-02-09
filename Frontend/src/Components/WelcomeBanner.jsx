@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../utils/axiosInstance";
-import { useAuth } from "../Context/AuthContext";
+import { useAuth } from "../Context/authContext";
 
 const WelcomeBanner = () => {
     const { user } = useAuth();
