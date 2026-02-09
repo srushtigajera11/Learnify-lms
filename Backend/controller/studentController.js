@@ -116,41 +116,33 @@ exports.getStudentDashboardStats = async (req, res) => {
  */
 exports.getAvailableCourses = async (req, res) => {
   try {
-    const { q = "", limit = 20 } = req.query;
     const studentId = req.user.id;
 
-    const filter = {
-      status: "published",
-      ...(q.trim() && {
-        $or: [
-          { title: { $regex: q, $options: "i" } },
-          { description: { $regex: q, $options: "i" } },
-          { category: { $regex: q, $options: "i" } },
-        ],
-      }),
-    };
+    const courses = await Course.find({ status: "published" })
+      .select("title description price thumbnail");
 
-    console.log("🔍 Search query:", q);
+    const enrollments = await Enrollment.find({ studentId })
+      .select("courseId");
 
-    const courses = await Course.find(filter)
-      .limit(Number(limit))
-      .select("title description category price thumbnail level rating");
+    const enrolledCourseIds = enrollments.map(e => e.courseId.toString());
 
-    console.log("✅ Matched courses:", courses.length);
+    const coursesWithStatus = courses.map(course => ({
+      ...course.toObject(),
+      isEnrolled: enrolledCourseIds.includes(course._id.toString())
+    }));
 
     res.status(200).json({
       success: true,
-      courses,
-      totalCourses: courses.length,
+      courses: coursesWithStatus
     });
   } catch (error) {
-    console.error("Search courses error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch courses",
+      message: "Failed to fetch courses"
     });
   }
 };
+
 
 exports.getCourseDetails = async (req, res) => {
   try {

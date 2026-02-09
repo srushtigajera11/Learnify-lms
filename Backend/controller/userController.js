@@ -165,10 +165,6 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-
-
-
-
 // @route   PUT /api/users/change-password
 // @access  Private
 exports.changePassword = async (req, res) => {
