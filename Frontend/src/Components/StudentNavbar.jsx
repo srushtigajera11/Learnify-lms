@@ -12,9 +12,8 @@ import SchoolIcon from "@mui/icons-material/School";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { useAuth } from "../Context/AuthContext";
 
-
 const StudentNavbar = () => {
-   const { user, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
@@ -22,15 +21,23 @@ const StudentNavbar = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const navigate = useNavigate();
   const searchRef = useRef(null);
+  const profileRef = useRef(null); // Add ref for profile menu
   const searchTimeout = useRef(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Close search dropdown
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setShowResults(false);
       }
+      
+      // Close profile menu
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setAnchorEl(null);
+      }
     };
+    
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -43,11 +50,10 @@ const StudentNavbar = () => {
     }
     setIsSearching(true);
     try {
-      // Make API call with search query
-      const response = await axiosInstance.get(`/students/courses?q=${encodeURIComponent(query)}`);
-      
-    
-      
+      const response = await axiosInstance.get(
+        `/students/courses?q=${encodeURIComponent(query)}`
+      );
+
       if (response.data?.success) {
         setSearchResults(response.data.courses || []);
       } else {
@@ -65,10 +71,10 @@ const StudentNavbar = () => {
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
-    
+
     if (value.trim()) {
       setShowResults(true);
-      
+
       if (searchTimeout.current) {
         clearTimeout(searchTimeout.current);
       }
@@ -101,24 +107,37 @@ const StudentNavbar = () => {
   };
 
   const initials = user?.name
-    ? user.name.split(" ").map(n => n[0]).join("").toUpperCase()
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
     : "U";
 
-  const handleMenuOpen = (e) => setAnchorEl(e.currentTarget);
-  const handleMenuClose = () => setAnchorEl(null);
+  const handleMenuOpen = (e) => {
+    e.stopPropagation(); // Prevent immediate closing
+    setAnchorEl(e.currentTarget);
+  };
 
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleMenuItemClick = (callback) => {
+    handleMenuClose();
+    callback();
+  };
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
 
-
   return (
     <nav className="sticky top-0 z-50 bg-gray-900 border-b border-gray-800 shadow-lg py-2 ">
       <div className="flex px-4 items-center justify-between gap-6">
         {/* Logo */}
-        <div 
+        <div
           onClick={() => navigate("/student/dashboard")}
           className="text-xl font-bold text-white cursor-pointer hover:text-indigo-300 transition-colors whitespace-nowrap"
         >
@@ -131,7 +150,7 @@ const StudentNavbar = () => {
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <SearchIcon className="h-5 w-5 text-gray-400" />
             </div>
-            
+
             <input
               type="text"
               value={searchTerm}
@@ -140,7 +159,7 @@ const StudentNavbar = () => {
               placeholder="Search courses, lessons..."
               className="w-full pl-10 pr-10 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
             />
-            
+
             {searchTerm && (
               <button
                 onClick={handleClearSearch}
@@ -157,7 +176,9 @@ const StudentNavbar = () => {
               {isSearching ? (
                 <div className="flex items-center justify-center p-4">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-500 mr-2"></div>
-                  <span className="text-sm text-gray-300">Searching for "{searchTerm}"...</span>
+                  <span className="text-sm text-gray-300">
+                    Searching for "{searchTerm}"...
+                  </span>
                 </div>
               ) : searchResults.length > 0 ? (
                 <>
@@ -167,7 +188,7 @@ const StudentNavbar = () => {
                       Found {searchResults.length} courses for "{searchTerm}"
                     </div>
                   </div>
-                  
+
                   {searchResults.slice(0, 4).map((course) => (
                     <button
                       key={course._id || course.id}
@@ -185,8 +206,8 @@ const StudentNavbar = () => {
                           {course.progress !== undefined && (
                             <div className="flex items-center mt-2">
                               <div className="w-full bg-gray-700 rounded-full h-1.5">
-                                <div 
-                                  className="bg-green-500 h-1.5 rounded-full" 
+                                <div
+                                  className="bg-green-500 h-1.5 rounded-full"
                                   style={{ width: `${course.progress || 0}%` }}
                                 ></div>
                               </div>
@@ -200,7 +221,7 @@ const StudentNavbar = () => {
                       </div>
                     </button>
                   ))}
-                  
+
                   {searchResults.length > 4 && (
                     <button
                       onClick={handleViewAllResults}
@@ -242,12 +263,11 @@ const StudentNavbar = () => {
             <FavoriteBorderIcon className="h-5 w-5" />
           </button>
 
-          {/* Profile Avatar */}
-          <div className="relative">
+          {/* Profile Avatar with ref */}
+          <div className="relative" ref={profileRef}>
             <button
               onClick={handleMenuOpen}
-             className="flex items-center justify-center px-2.5 py-2 bg-indigo-600 !  rounded-full text-white font-bold"
-
+              className="flex items-center justify-center px-2.5 py-2 bg-indigo-600 !  rounded-full text-white font-bold"
             >
               {initials}
             </button>
@@ -257,9 +277,6 @@ const StudentNavbar = () => {
               <div className="absolute right-0 mt-1 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 overflow-hidden z-50">
                 <div className="px-2 py-1.5 border-b border-gray-700 bg-gray-900">
                   <div className="flex items-center gap-2 ">
-                    {/* <div className="w-7 h-7 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full p-2 flex items-center justify-center text-white font-bold text-xs">
-                      {initials}
-                    </div> */}
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-white truncate">
                         {user?.name || "Student"}
@@ -273,10 +290,11 @@ const StudentNavbar = () => {
 
                 <div className="py-1">
                   <button
-                    onClick={() => {
-                      handleMenuClose();
-                      navigate("/student/mylearning");
-                    }}
+                    onClick={() =>
+                      handleMenuItemClick(() =>
+                        navigate("/student/mylearning")
+                      )
+                    }
                     className="w-full flex items-center px-3 py-2 text-gray-300 hover:bg-gray-700 transition-colors text-sm"
                   >
                     <BookIcon className="h-4 w-4 mr-2 text-gray-400" />
@@ -284,10 +302,9 @@ const StudentNavbar = () => {
                   </button>
 
                   <button
-                    onClick={() => {
-                      handleMenuClose();
-                      navigate("/student/wishlist");
-                    }}
+                    onClick={() =>
+                      handleMenuItemClick(() => navigate("/student/wishlist"))
+                    }
                     className="w-full flex items-center px-3 py-2 text-gray-300 hover:bg-gray-700 transition-colors text-sm"
                   >
                     <FavoriteBorderIcon className="h-4 w-4 mr-2 text-gray-400" />
@@ -295,10 +312,11 @@ const StudentNavbar = () => {
                   </button>
 
                   <button
-                    onClick={() => {
-                      handleMenuClose();
-                      navigate("/student/purchaseHistory");
-                    }}
+                    onClick={() =>
+                      handleMenuItemClick(() =>
+                        navigate("/student/purchaseHistory")
+                      )
+                    }
                     className="w-full flex items-center px-3 py-2 text-gray-300 hover:bg-gray-700 transition-colors text-sm"
                   >
                     <HistoryIcon className="h-4 w-4 mr-2 text-gray-400" />
@@ -306,10 +324,9 @@ const StudentNavbar = () => {
                   </button>
 
                   <button
-                    onClick={() => {
-                      handleMenuClose();
-                      navigate("/student/profile");
-                    }}
+                    onClick={() =>
+                      handleMenuItemClick(() => navigate("/student/profile"))
+                    }
                     className="w-full flex items-center px-3 py-2 text-gray-300 hover:bg-gray-700 transition-colors text-sm"
                   >
                     <PersonIcon className="h-4 w-4 mr-2 text-gray-400" />
@@ -318,7 +335,9 @@ const StudentNavbar = () => {
 
                   <div className="border-t border-gray-700">
                     <button
-                      onClick={handleLogout}
+                      onClick={() =>
+                        handleMenuItemClick(() => handleLogout())
+                      }
                       className="w-full flex items-center px-3 py-2 text-red-400 hover:bg-red-900/20 transition-colors text-sm"
                     >
                       <LogoutIcon className="h-4 w-4 mr-2" />

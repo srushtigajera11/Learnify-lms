@@ -158,46 +158,35 @@ const CourseLearn = () => {
   /* =========================
      VIDEO HELPERS
   ========================== */
+const getVideoType = () => {
+  if (!currentLesson?.materials?.length) return null;
 
-  const getVideoType = () => {
-    if (!currentLesson?.materials?.length) return null;
+  const videoMaterial = currentLesson.materials.find(m =>
+    m.type === "video" ||
+    m.type === "video_lesson" ||
+    /youtube|youtu\.be|vimeo|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(m.url || "")
+  );
 
-    const videoMaterial = currentLesson.materials.find(material =>
-      material.type === 'video' ||
-      material.type === 'video_lesson' ||
-      material.url?.match(/\.(mp4|webm|ogg|mov|avi|wmv|m4v|mkv)$/i) ||
-      material.url?.includes('youtube') ||
-      material.url?.includes('youtu.be') ||
-      material.url?.includes('vimeo') ||
-      material.url?.includes('dailymotion')
-    );
+  if (!videoMaterial) return null;
 
-    if (!videoMaterial?.url) return null;
+  const url = videoMaterial.url;
 
-    const url = videoMaterial.url.toLowerCase();
+  if (/youtube|youtu\.be/i.test(url)) {
+    return { type: "youtube", url };
+  }
 
-    if (url.includes('youtube') || url.includes('youtu.be')) {
-      return { 
-        type: 'youtube', 
-        url: videoMaterial.url,
-        embedUrl: url.includes('youtu.be') 
-          ? `https://www.youtube.com/embed/${url.split('/').pop()}`
-          : url.includes('watch?v=')
-          ? `https://www.youtube.com/embed/${url.split('v=')[1].split('&')[0]}`
-          : videoMaterial.url
-      };
-    } else if (url.includes('vimeo')) {
-      return { 
-        type: 'vimeo', 
-        url: videoMaterial.url,
-        embedUrl: `https://player.vimeo.com/video/${url.split('/').pop()}`
-      };
-    } else if (url.match(/\.(mp4|webm|ogg|mov|avi|wmv|m4v|mkv)$/)) {
-      return { type: 'direct', url: videoMaterial.url };
-    }
+  if (/vimeo/i.test(url)) {
+    return { type: "vimeo", url };
+  }
 
-    return { type: 'external', url: videoMaterial.url };
-  };
+  if (/\.(mp4|webm|ogg|mov|m4v)$/i.test(url)) {
+    return { type: "direct", url };
+  }
+
+  return { type: "external", url };
+};
+
+
 
   const getLessonType = (lesson) => {
     if (lesson.materials?.some(material =>
@@ -564,166 +553,58 @@ const CourseLearn = () => {
                 <div className="mb-8">
                   <div className="bg-black rounded-xl overflow-hidden shadow-xl relative group">
                     {/* Video Player */}
-                    <div className="aspect-video">
-                      {videoInfo.type === 'youtube' || videoInfo.type === 'vimeo' ? (
+                    <div className="aspect-video bg-black">
+                      {/* YOUTUBE / VIMEO → native controls */}
+                      {(videoInfo.type === "youtube" || videoInfo.type === "vimeo") && (
+                        <ReactPlayer
+                          url={videoInfo.url}
+                          width="100%"
+                          height="100%"
+                          controls
+                          playing={playing}
+                          onEnded={handleEnded}
+                          onProgress={handleProgress}
+                          onDuration={handleDuration}
+                        />
+                      )}
+
+                      {/* MP4 / DIRECT → custom controls */}
+                      {videoInfo.type === "direct" && (
                         <div className="relative w-full h-full">
                           <ReactPlayer
                             ref={playerRef}
-                            url={videoInfo.embedUrl || videoInfo.url}
+                            url={videoInfo.url}
                             playing={playing}
+                            controls={false}
+                            width="100%"
+                            height="100%"
                             volume={volume}
                             muted={muted}
                             playbackRate={playbackRate}
-                            width="100%"
-                            height="100%"
                             onProgress={handleProgress}
                             onDuration={handleDuration}
                             onEnded={handleEnded}
-                            config={{
-                              youtube: {
-                                playerVars: {
-                                  controls: 0,
-                                  modestbranding: 1,
-                                  rel: 0,
-                                  showinfo: 0,
-                                  iv_load_policy: 3
-                                }
-                              },
-                              vimeo: {
-                                playerOptions: {
-                                  byline: false,
-                                  portrait: false,
-                                  title: false,
-                                  transparent: false
-                                }
-                              }
-                            }}
                           />
-                          
-                          {/* Custom Controls Overlay */}
-                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {/* Top Controls */}
-                            <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent">
-                              <div className="flex items-center justify-between">
-                                <h3 className="text-white font-semibold truncate">
-                                  {currentLesson.title}
-                                </h3>
-                                <button
-                                  onClick={toggleFullscreen}
-                                  className="p-2 hover:bg-white/20 rounded"
-                                >
-                                  <Fullscreen className="text-white" />
-                                </button>
-                              </div>
-                            </div>
-                            
-                            {/* Center Play Button */}
-                            <button
-                              onClick={handlePlayPause}
-                              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-4 bg-black/50 rounded-full hover:bg-black/70"
-                            >
-                              {playing ? (
-                                <PauseCircle className="text-white text-5xl" />
-                              ) : (
-                                <PlayCircle className="text-white text-5xl" />
-                              )}
-                            </button>
-                            
-                            {/* Bottom Controls */}
-                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
-                              {/* Progress Bar */}
-                              <div className="mb-3">
-                                <input
-                                  type="range"
-                                  min={0}
-                                  max={0.999999}
-                                  step="any"
-                                  value={played}
-                                  onChange={handleSeekChange}
-                                  onMouseDown={handleSeekMouseDown}
-                                  onMouseUp={handleSeekMouseUp}
-                                  className="w-full h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-                                />
-                                <div className="flex justify-between text-xs text-white mt-1">
-                                  <span>{formatTime(played * duration)}</span>
-                                  <span>{formatTime(duration)}</span>
-                                </div>
-                              </div>
-                              
-                              {/* Control Buttons */}
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                  <button onClick={handlePlayPause} className="text-white hover:text-gray-300">
-                                    {playing ? <PauseCircle /> : <PlayArrow />}
-                                  </button>
-                                  
-                                  <div className="flex items-center gap-2">
-                                    <button onClick={toggleMute} className="text-white hover:text-gray-300">
-                                      {muted || volume === 0 ? <VolumeOff /> : <VolumeUp />}
-                                    </button>
-                                    <input
-                                      type="range"
-                                      min={0}
-                                      max={1}
-                                      step={0.1}
-                                      value={volume}
-                                      onChange={handleVolumeChange}
-                                      className="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-                                    />
-                                  </div>
-                                  
-                                  <div className="relative">
-                                    <button
-                                      onClick={() => setShowPlaybackOptions(!showPlaybackOptions)}
-                                      className="text-white hover:text-gray-300 text-sm font-medium"
-                                    >
-                                      {playbackRate}x
-                                    </button>
-                                    {showPlaybackOptions && (
-                                      <div className="absolute bottom-full mb-2 left-0 bg-gray-900 text-white rounded-lg shadow-lg py-1 min-w-[80px]">
-                                        {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(rate => (
-                                          <button
-                                            key={rate}
-                                            onClick={() => handlePlaybackRateChange(rate)}
-                                            className={`w-full px-4 py-2 text-left hover:bg-gray-800 ${playbackRate === rate ? 'bg-gray-800' : ''}`}
-                                          >
-                                            {rate}x
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                
-                                <div className="flex items-center gap-4">
-                                  <button className="text-white hover:text-gray-300">
-                                    <Subtitles />
-                                  </button>
-                                  <button className="text-white hover:text-gray-300">
-                                    <Settings />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+
+                          {/* Keep your existing custom overlay controls here */}
                         </div>
-                      ) : (
-                        <ReactPlayer
-                          ref={playerRef}
-                          url={videoInfo.url}
-                          playing={playing}
-                          controls={true}
-                          width="100%"
-                          height="100%"
-                          volume={volume}
-                          muted={muted}
-                          playbackRate={playbackRate}
-                          onProgress={handleProgress}
-                          onDuration={handleDuration}
-                          onEnded={handleEnded}
-                        />
                       )}
                     </div>
+                    {videoInfo?.type === "youtube" && (
+                      <div className="mt-3 flex justify-end">
+                        <a
+                          href={videoInfo.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-red-600 font-medium hover:underline"
+                        >
+                          <YouTube />
+                          Watch on YouTube
+                        </a>
+                      </div>
+                    )}
+
+
                     
                     {/* Video Title Bar (Always Visible) */}
                     <div className="p-4 bg-white border-b border-gray-200">
@@ -871,7 +752,7 @@ const CourseLearn = () => {
                         <div className="space-y-3">
                           {currentLesson.materials.map((material, idx) => {
                             const isVideo = material.type === 'video' || material.type === 'video_lesson';
-                            const isYoutube = material.url?.includes('youtube') || material.url?.includes('youtu.be');
+                            const isYoutube = /youtube|youtu\.be/i.test(material.url || ""); 
                             const isDocument = material.type === 'document';
                             const isLink = material.type === 'link';
 
