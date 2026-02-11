@@ -1,226 +1,350 @@
-const Lesson = require('../models/Lesson');
-const cloudinary = require('../utils/cloudinary');
+const Lesson = require("../models/Lesson");
+const Course = require("../models/courseModel");
+const cloudinary = require("../utils/cloudinary");
+const LessonProgress = require("../models/LessonProgress");
 
-exports.addLesson = async (req, res) => {
+/* =========================================
+   CREATE LESSON
+========================================= */
+exports.createLesson = async (req, res) => {
   try {
     const { title, description, order, courseId } = req.body;
-    
-    if (!courseId) {
-      return res.status(400).json({ error: 'Course ID is required' });
-    }
 
-    console.log("=== BACKEND DEBUG ===");
-    console.log("Request body:", req.body);
-    console.log("Request files:", req.files);
-
-    let materials = [];
-
-    // Process materials from the array
-    if (Array.isArray(req.body.materials)) {
-      console.log("Processing materials as array");
-      
-      req.body.materials.forEach((mat, index) => {
-        console.log(`Material ${index}:`, mat);
-        
-        if (mat && mat.type) {
-          if (mat.type === 'link') {
-            // Handle link materials
-            if (mat.url) {
-              materials.push({ 
-                type: mat.type, 
-                name: mat.name || 'Unnamed', 
-                url: mat.url 
-              });
-              console.log(`✅ Added link material: ${mat.url}`);
-            }
-          } else {
-            // Handle file materials (video, document, image)
-            // With upload.any(), files don't have specific field names
-            // So we need to match files to materials by index
-            if (req.files && req.files[index]) {
-              const file = req.files[index];
-              materials.push({
-                type: mat.type,
-                name: mat.name || file.originalname,
-                url: file.path, // Cloudinary URL
-              });
-              console.log(`✅ Added file material: ${file.originalname}`);
-            } else {
-              console.log(`❌ No file found for material ${index}`);
-              // If no file but has URL, treat it as existing file
-              if (mat.url) {
-                materials.push({
-                  type: mat.type,
-                  name: mat.name || 'Unnamed',
-                  url: mat.url,
-                });
-                console.log(`✅ Added existing file material: ${mat.url}`);
-              }
-            }
-          }
-        }
+    if (!title || !order || !courseId) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, order and courseId are required",
       });
     }
 
-    console.log("Final materials to save:", materials);
+    const materialCount = parseInt(req.body.materialCount) || 0;
+    const materials = [];
 
+    for (let i = 0; i < materialCount; i++) {
+      const type = req.body[`materials[${i}][type]`];
+      const name = req.body[`materials[${i}][name]`] || "Material";
+      const url = req.body[`materials[${i}][url]`];
+      const file = req.files?.find(
+        (f) => f.fieldname === `materials[${i}][file]`
+      );
+
+      /* ---------- LINK ---------- */
+      if (type === "link" && url) {
+        materials.push({
+          type: "link",
+          name,
+          url,
+        });
+      }
+
+      /* ---------- FILE ---------- */
+      if (file) {
+        let materialType = "document";
+        if (file.mimetype.startsWith("video")) {
+          materialType = "video";
+        }
+
+        materials.push({
+          type: materialType,
+          name,
+          url: file.secure_url || file.path,
+          public_id: file.filename || file.public_id,
+          duration: file.duration || 0,
+          size: file.size,
+          format: file.mimetype,
+        });
+      }
+    }
+
+    /* ---------- CREATE LESSON ---------- */
     const lesson = await Lesson.create({
-      courseId,
       title,
       description,
       order,
+      courseId,
       materials,
+      lessonType:
+        materials.find((m) => m.type === "video") ? "video" : "text",
     });
 
-    console.log("✅ Lesson saved with materials:", lesson.materials);
+    /* ---------- CALCULATE TOTAL DURATION ---------- */
+    lesson.totalDuration = lesson.materials
+      .filter((m) => m.type === "video")
+      .reduce((sum, m) => sum + (m.duration || 0), 0);
 
-    res.status(201).json({ 
-      success: true, 
-      message: 'Lesson added', 
-      lesson 
+    await lesson.save();
+
+    /* ---------- UPDATE COURSE DURATION ---------- */
+    await updateCourseDuration(courseId);
+
+    res.status(201).json({
+      success: true,
+      lesson,
     });
-
   } catch (error) {
-    console.error("Add Lesson Error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error creating lesson', 
-      error: error.message 
+    console.error("Create Lesson Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
-exports.getLessonsByCourse = async (req, res) => {
-    try{
-        const lessons = await Lesson.find({courseId: req.params.courseId})
-            .sort({ order: 1 }); // Sort by order field
-            res.status(200).json({
-                success: true,
-                lessons
-            });
 
-    }catch(error) {
-        console.error('Get Lessons Error:', error);
-        res.status(500).json({ success: false, message: 'Server Error' });
-    }   
-};
-
+/* =========================================
+   GET LESSON WITH SIGNED URL
+========================================= */
 exports.getLessonById = async (req, res) => {
   try {
     const lesson = await Lesson.findById(req.params.lessonId);
     if (!lesson) {
-      return res.status(404).json({ success: false, message: "Lesson not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Lesson not found",
+      });
     }
-    
-    // Ensure materials is always an array
-    const lessonWithMaterials = {
-      ...lesson._doc,
-      materials: lesson.materials || [] // Force array if undefined
-    };
-    
-    console.log("Sending lesson:", lessonWithMaterials);
-    
-    res.status(200).json({ success: true, lesson: lessonWithMaterials });
+    const progress = await LessonProgress.findOne({
+  studentId: req.user.id,
+  lessonId: lesson._id,
+});
+    const updatedMaterials = lesson.materials.map((m) => {
+      if (m.type === "video" && m.public_id) {
+        const signedUrl = cloudinary.url(m.public_id, {
+          resource_type: "video",
+          type: "authenticated",
+          sign_url: true,
+          expires_at: Math.floor(Date.now() / 1000) + 300,
+        });
+
+        return { ...m._doc, url: signedUrl };
+      }
+
+      return m;
+    });
+
+   res.status(200).json({
+  success: true,
+  lesson: {
+    ...lesson._doc,
+    materials: updatedMaterials,
+  },
+  resumeFrom: progress?.lastWatchedTime || 0,
+  progress: progress?.progress || 0,
+});
   } catch (error) {
-    console.error("Get Lesson Error:", error);
-    res.status(500).json({ success: false, message: "Server Error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
+/* =========================================
+   UPDATE LESSON
+========================================= */
 exports.updateLesson = async (req, res) => {
   try {
-    console.log("=== UPDATE LESSON DEBUG ===");
-    console.log("Request Body:", req.body);
-    console.log("Request Files:", req.files ? req.files.map(f => f.fieldname) : 'No files');
-    console.log("Lesson ID:", req.params.lessonId);
-
-    const { title, description, order } = req.body;
     const lessonId = req.params.lessonId;
 
-    // Find the existing lesson first
-    const existingLesson = await Lesson.findById(lessonId);
-    if (!existingLesson) {
-      return res.status(404).json({ success: false, message: 'Lesson not found' });
+    const lesson = await Lesson.findById(lessonId);
+    if (!lesson) {
+      return res.status(404).json({
+        success: false,
+        message: "Lesson not found",
+      });
     }
 
-    console.log("Existing lesson materials:", existingLesson.materials);
-
-    let materials = [];
-    
-    // Process materials from form data
-    const materialCount = Object.keys(req.body).filter(key => 
-      key.startsWith('materials[') && key.includes('][type]')
-    ).length;
-
-    console.log("Material count from request:", materialCount);
+    const materialCount = parseInt(req.body.materialCount) || 0;
+    const materials = [];
 
     for (let i = 0; i < materialCount; i++) {
       const type = req.body[`materials[${i}][type]`];
-      const name = req.body[`materials[${i}][name]`] || 'Unnamed';
+      const name = req.body[`materials[${i}][name]`] || "Material";
+      const url = req.body[`materials[${i}][url]`];
+      const file = req.files?.find(
+        (f) => f.fieldname === `materials[${i}][file]`
+      );
 
-      console.log(`Processing material ${i}:`, { type, name });
+      if (type === "link" && url) {
+        materials.push({ type: "link", name, url });
+      }
 
-      if (type === 'link') {
-        const url = req.body[`materials[${i}][url]`];
-        console.log(`Link URL: ${url}`);
-        if (url) {
-          materials.push({ type, name, url });
+      if (file) {
+        let materialType = "document";
+        if (file.mimetype.startsWith("video")) {
+          materialType = "video";
         }
-      } else {
-        const fieldName = `materials[${i}][file]`;
-        console.log(`Looking for file: ${fieldName}`);
-        
-        const file = req.files?.find(f => f.fieldname === fieldName);
 
-        if (file) {
-          console.log(`File found: ${file.originalname}`);
-          materials.push({
-            type,
-            name,
-            url: file.path, // Cloudinary URL
-          });
-        } else {
-          console.log(`No file found for: ${fieldName}`);
-          // Keep existing material if no new file
-          const existingMaterial = existingLesson.materials[i];
-          if (existingMaterial && existingMaterial.url) {
-            console.log(`Keeping existing material: ${existingMaterial.name}`);
-            materials.push(existingMaterial);
-          }
-        }
+        materials.push({
+          type: materialType,
+          name,
+          url: file.secure_url || file.path,
+          public_id: file.filename || file.public_id,
+          duration: file.duration || 0,
+          size: file.size,
+          format: file.mimetype,
+        });
       }
     }
 
-    console.log("Final materials to save:", materials);
+    lesson.title = req.body.title;
+    lesson.description = req.body.description;
+    lesson.order = req.body.order;
+    lesson.materials = materials;
 
-    const updatedLesson = await Lesson.findByIdAndUpdate(
-      lessonId,
-      { 
-        title: title || existingLesson.title,
-        description: description || existingLesson.description,
-        order: order || existingLesson.order,
-        materials: materials.length > 0 ? materials : existingLesson.materials
-      },
-      { new: true }
-    );
+    lesson.totalDuration = materials
+      .filter((m) => m.type === "video")
+      .reduce((sum, m) => sum + (m.duration || 0), 0);
 
-    console.log("Updated lesson:", updatedLesson);
+    await lesson.save();
+    await updateCourseDuration(lesson.courseId);
 
-    res.status(200).json({ success: true, lesson: updatedLesson });
+    res.status(200).json({
+      success: true,
+      lesson,
+    });
   } catch (error) {
-    console.error('Update Lesson Error:', error);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error("Update Lesson Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
+/* =========================================
+   DELETE LESSON
+========================================= */
 exports.deleteLesson = async (req, res) => {
-  console.log("Deleting lesson with ID:", req.params.lessonId);
   try {
-    const lesson = await Lesson.findByIdAndDelete(req.params.lessonId); // <-- FIXED HERE
-    if (!lesson) return res.status(404).json({ message: 'Lesson not found' });
-    res.json({ message: 'Lesson deleted successfully' });
-  } catch (err) {
-    console.error('Delete Lesson Error:', err);
-    res.status(500).json({ message: 'Server Error' });
+    const lesson = await Lesson.findById(req.params.lessonId);
+    if (!lesson) {
+      return res.status(404).json({
+        success: false,
+        message: "Lesson not found",
+      });
+    }
+
+    // Delete Cloudinary videos
+    for (const material of lesson.materials) {
+      if (material.public_id) {
+        await cloudinary.uploader.destroy(material.public_id, {
+          resource_type: material.type === "video" ? "video" : "raw",
+        });
+      }
+    }
+
+    await lesson.deleteOne();
+    await updateCourseDuration(lesson.courseId);
+
+    res.status(200).json({
+      success: true,
+      message: "Lesson deleted",
+    });
+  } catch (error) {
+    console.error("Delete Lesson Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
+/* =========================================
+   GET LESSONS BY COURSE
+========================================= */
+exports.getLessonsByCourse = async (req, res) => {
+  try {
+    const lessons = await Lesson.find({
+      courseId: req.params.courseId,
+    }).sort({ order: 1 });
+
+    res.status(200).json({
+      success: true,
+      lessons,
+    });
+  } catch (error) {
+    console.error("Get Lessons By Course Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+exports.updateProgress = async (req, res) => {
+  try {
+    const { progress, lastWatchedTime } = req.body;
+    const studentId = req.user.id;
+    const lessonId = req.params.lessonId;
+
+    let record = await LessonProgress.findOne({
+      studentId,
+      lessonId,
+    });
+
+    if (!record) {
+      record = await LessonProgress.create({
+        studentId,
+        lessonId,
+        progress,
+        lastWatchedTime,
+        isCompleted: progress >= 90,
+      });
+    } else {
+      record.progress = progress;
+      record.lastWatchedTime = lastWatchedTime;
+      if (progress >= 90) record.isCompleted = true;
+      await record.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      progress: record,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to update progress",
+    });
+  }
+};
+exports.reorderLessons = async (req, res) => {
+  try {
+    const updates = req.body; // array of { lessonId, order }
+
+    const bulkOps = updates.map((item) => ({
+      updateOne: {
+        filter: { _id: item.lessonId },
+        update: { order: item.order },
+      },
+    }));
+
+    await Lesson.bulkWrite(bulkOps);
+
+    res.status(200).json({
+      success: true,
+      message: "Lessons reordered",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Reorder failed",
+    });
+  }
+};
+
+/* =========================================
+   HELPER: UPDATE COURSE TOTAL DURATION
+========================================= */
+async function updateCourseDuration(courseId) {
+  const lessons = await Lesson.find({ courseId });
+
+  const total = lessons.reduce(
+    (sum, l) => sum + (l.totalDuration || 0),
+    0
+  );
+
+  await Course.findByIdAndUpdate(courseId, {
+    totalDuration: total,
+  });
+}
 

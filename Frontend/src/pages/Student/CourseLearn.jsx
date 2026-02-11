@@ -77,6 +77,7 @@ const CourseLearn = () => {
   const loadLessonContent = async (lessonId) => {
     try {
       const res = await axiosInstance.get(`/students/courses/${courseId}/lessons/${lessonId}`);
+      console.log("Loaded lesson:", res.data.lesson);
       setCurrentLesson(res.data.lesson);
       
       if (contentRef.current) {
@@ -108,28 +109,52 @@ const CourseLearn = () => {
   };
 
   const getVideoUrl = () => {
-    if (!currentLesson?.materials?.length) return null;
+    if (!currentLesson?.materials?.length) {
+      console.log("No materials found");
+      return null;
+    }
 
-    const videoMaterial = currentLesson.materials.find(m =>
-      m.type === "video" ||
-      m.type === "video_lesson" ||
-      /youtube|youtu\.be|vimeo|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(m.url || "")
-    );
+    console.log("All materials:", currentLesson.materials);
 
-    return videoMaterial?.url || null;
+    const videoMaterial = currentLesson.materials.find(m => {
+      const url = m.url || "";
+      const type = m.type || "";
+      
+      const isVideoType = type === "video" || type === "video_lesson";
+      const isVideoUrl = /youtube\.com|youtu\.be|vimeo\.com|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(url);
+      
+      console.log("Checking material:", { 
+        name: m.name, 
+        type: m.type, 
+        url: m.url?.substring(0, 50), 
+        isVideoType, 
+        isVideoUrl 
+      });
+      
+      return isVideoType || isVideoUrl;
+    });
+
+    if (videoMaterial) {
+      console.log("Found video material:", videoMaterial);
+      return videoMaterial.url;
+    }
+
+    console.log("No video material found");
+    return null;
   };
 
   const getLessonType = (lesson) => {
-    if (lesson.materials?.some(material =>
-      material.type === 'video' ||
-      material.type === 'video_lesson' ||
-      material.url?.match(/\.(mp4|webm|ogg|mov|avi|wmv)$/i) ||
-      material.url?.includes('youtube') ||
-      material.url?.includes('youtu.be') ||
-      material.url?.includes('vimeo')
-    )) {
-      return 'video';
-    }
+    if (!lesson.materials?.length) return 'text';
+    
+    const hasVideo = lesson.materials.some(m => {
+      const url = m.url || "";
+      const type = m.type || "";
+      return type === 'video' || 
+             type === 'video_lesson' ||
+             /youtube\.com|youtu\.be|vimeo\.com|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(url);
+    });
+    
+    if (hasVideo) return 'video';
     if (lesson.lessonType === 'quiz') return 'quiz';
     if (lesson.materials?.length && !lesson.content) return 'material';
     return 'text';
@@ -208,7 +233,6 @@ const CourseLearn = () => {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      {/* Top Bar */}
       <header className="bg-white border-b border-gray-200 flex-shrink-0">
         <div className="px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -242,14 +266,12 @@ const CourseLearn = () => {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
         <aside className={`
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
           lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-40
           w-72 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300
           shadow-xl lg:shadow-none
         `}>
-          {/* Sidebar Header */}
           <div className="p-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
               <h2 className="font-bold text-sm">Course Content</h2>
@@ -269,7 +291,6 @@ const CourseLearn = () => {
             </div>
           </div>
 
-          {/* Lessons List */}
           <div className="flex-1 overflow-y-auto">
             {lessons.map((lesson, idx) => {
               const lessonType = getLessonType(lesson);
@@ -317,7 +338,6 @@ const CourseLearn = () => {
             })}
           </div>
 
-          {/* Sidebar Footer */}
           <div className="p-3 border-t border-gray-200 bg-white flex-shrink-0">
             <button 
               onClick={() => currentLesson && markLessonComplete(currentLesson._id)}
@@ -329,17 +349,14 @@ const CourseLearn = () => {
           </div>
         </aside>
 
-        {/* Overlay */}
         {sidebarOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
         )}
 
-        {/* Main Content */}
         <main ref={contentRef} className="flex-1 overflow-y-auto">
           {currentLesson ? (
             <div className="max-w-5xl mx-auto p-3">
-              {/* Video Player - SIMPLIFIED */}
-              {videoUrl && (
+              {videoUrl ? (
                 <div className="mb-3">
                   <div className="bg-black rounded-lg overflow-hidden shadow-lg">
                     <div className="relative aspect-video bg-black">
@@ -368,26 +385,37 @@ const CourseLearn = () => {
                             playerOptions: {
                               autoplay: false
                             }
+                          },
+                          file: {
+                            attributes: {
+                              controlsList: 'nodownload'
+                            }
                           }
                         }}
                       />
                     </div>
                   </div>
 
-                  {/* Simple Controls */}
+                  <div className="mt-2 px-1">
+                    <h2 className="text-base font-bold text-gray-900 mb-1">{currentLesson.title}</h2>
+                    {currentLesson.description && (
+                      <p className="text-xs text-gray-600">{currentLesson.description}</p>
+                    )}
+                  </div>
+
                   <div className="flex items-center justify-between mt-2 px-1">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={goToPrevious}
                         disabled={!hasPrevious}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:border-[#5624d0] disabled:opacity-50"
+                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:border-[#5624d0] disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <span className="text-xs">Previous</span>
                       </button>
                       <button
                         onClick={goToNext}
                         disabled={!hasNext}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:border-[#5624d0] disabled:opacity-50"
+                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:border-[#5624d0] disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <span className="text-xs">Next</span>
                       </button>
@@ -427,9 +455,67 @@ const CourseLearn = () => {
                     </div>
                   </div>
                 </div>
+              ) : (
+                <div className="mb-3 bg-white rounded-lg border border-gray-200 p-4">
+                  <h2 className="text-lg font-bold text-gray-900 mb-2">{currentLesson.title}</h2>
+                  {currentLesson.description && (
+                    <p className="text-sm text-gray-600">{currentLesson.description}</p>
+                  )}
+                  
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={goToPrevious}
+                        disabled={!hasPrevious}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:border-[#5624d0] disabled:opacity-50"
+                      >
+                        <span className="text-xs">Previous</span>
+                      </button>
+                      <button
+                        onClick={goToNext}
+                        disabled={!hasNext}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:border-[#5624d0] disabled:opacity-50"
+                      >
+                        <span className="text-xs">Next</span>
+                      </button>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowNotes(!showNotes)}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm ${
+                          showNotes ? 'bg-[#5624d0] text-white' : 'bg-gray-100'
+                        }`}
+                      >
+                        <Notes fontSize="small" />
+                        <span className="text-xs">Notes</span>
+                      </button>
+                      <button
+                        onClick={() => toggleBookmark(currentLesson._id)}
+                        className="p-1.5 bg-gray-100 rounded hover:bg-gray-200"
+                      >
+                        {bookmarkedLessons.includes(currentLesson._id) ? (
+                          <Bookmark className="text-yellow-500" fontSize="small" />
+                        ) : (
+                          <BookmarkBorder fontSize="small" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => markLessonComplete(currentLesson._id)}
+                        disabled={completedLessons.includes(currentLesson._id)}
+                        className={`px-3 py-1.5 rounded text-xs font-semibold ${
+                          completedLessons.includes(currentLesson._id)
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-[#5624d0] text-white hover:bg-[#4a1fb8]'
+                        }`}
+                      >
+                        {completedLessons.includes(currentLesson._id) ? '✓ Done' : 'Complete'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
 
-              {/* Notes */}
               {showNotes && (
                 <div className="mb-3 bg-white rounded-lg border border-gray-200">
                   <div className="p-2.5 border-b border-gray-200 flex items-center justify-between">
@@ -460,20 +546,74 @@ const CourseLearn = () => {
                 </div>
               )}
 
-              {/* Content */}
               {(currentLesson.description || currentLesson.content) && (
-                <div className="bg-white rounded-lg border border-gray-200">
+                <div className="bg-white rounded-lg border border-gray-200 mb-3">
                   <div className="p-3 border-b border-gray-200">
                     <h3 className="text-sm font-bold">About this lesson</h3>
                   </div>
                   <div className="p-3">
-                    <div className="text-sm text-gray-700 leading-relaxed">
+                    <div className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none">
                       {currentLesson.content ? (
                         <div dangerouslySetInnerHTML={{ __html: currentLesson.content }} />
                       ) : (
                         <p>{currentLesson.description}</p>
                       )}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {currentLesson.materials && currentLesson.materials.length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200">
+                  <div className="p-3 border-b border-gray-200">
+                    <h3 className="text-sm font-bold flex items-center gap-1.5">
+                      <Article fontSize="small" />
+                      Lesson Resources
+                    </h3>
+                  </div>
+                  <div className="p-3 space-y-2">
+                    {currentLesson.materials.map((material, idx) => {
+                      const isVideo = material.type === 'video' || 
+                                     material.type === 'video_lesson' ||
+                                     /youtube|youtu\.be|vimeo/i.test(material.url || "");
+                      const isDocument = material.type === 'document';
+
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-2.5 border border-gray-200 rounded-lg hover:border-[#5624d0] transition"
+                        >
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                            <div className={`p-2 rounded ${
+                              isVideo ? 'bg-red-50 text-red-600' :
+                              isDocument ? 'bg-blue-50 text-blue-600' :
+                              'bg-purple-50 text-purple-600'
+                            }`}>
+                              {isVideo ? <VideoLibrary fontSize="small" /> :
+                               isDocument ? <Description fontSize="small" /> :
+                               <LinkIcon fontSize="small" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-xs font-semibold text-gray-900 truncate">
+                                {material.name || 'Resource'}
+                              </h4>
+                              {material.description && (
+                                <p className="text-[10px] text-gray-600 truncate">{material.description}</p>
+                              )}
+                              <p className="text-[10px] text-gray-500 capitalize">{material.type}</p>
+                            </div>
+                          </div>
+                          <a
+                            href={material.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-gray-100 text-xs font-semibold text-gray-700 hover:bg-[#5624d0] hover:text-white rounded transition flex-shrink-0"
+                          >
+                            {isVideo ? 'Watch' : 'View'}
+                          </a>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
