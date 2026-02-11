@@ -2,26 +2,20 @@ import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowBack,
-  CheckCircle,
-  VideoLibrary,
-  Description,
   Menu,
   PlayArrow,
-  Article,
-  Link as LinkIcon,
-  Lock,
-  Notes,
-  Quiz,
   PlayCircle,
+  Description,
+  Close,
+  Notes,
   Bookmark,
   BookmarkBorder,
-  Share,
-  Close,
+  Lock,
 } from "@mui/icons-material";
 import axiosInstance from "../../utils/axiosInstance";
 import ReactPlayer from "react-player";
-import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
-import 'react-circular-progressbar/dist/styles.css';
+import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
+import "react-circular-progressbar/dist/styles.css";
 
 const CourseLearn = () => {
   const { courseId } = useParams();
@@ -32,11 +26,12 @@ const CourseLearn = () => {
   const [course, setCourse] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [currentLesson, setCurrentLesson] = useState(null);
+  const [resumeFrom, setResumeFrom] = useState(0);
+  const [watchProgress, setWatchProgress] = useState(0);
+  const [completedLessons, setCompletedLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  
-  const [completedLessons, setCompletedLessons] = useState([]);
   const [bookmarkedLessons, setBookmarkedLessons] = useState([]);
   const [notes, setNotes] = useState("");
   const [showNotes, setShowNotes] = useState(false);
@@ -45,595 +40,225 @@ const CourseLearn = () => {
     loadCourseData();
   }, [courseId]);
 
+  /* =========================================
+     LOAD COURSE + LESSON LIST
+  ========================================= */
   const loadCourseData = async () => {
     try {
       setLoading(true);
-      const courseRes = await axiosInstance.get(`/students/course-details/${courseId}`);
 
-      if (!courseRes.data.course?.isEnrolled) {
-        setError("You must enroll in this course first");
-        return;
-      }
+      const lessonsRes = await axiosInstance.get(
+        `/lessons/course/${courseId}`
+      );
 
-      setCourse(courseRes.data.course);
-      const lessonsRes = await axiosInstance.get(`/students/courses/${courseId}/lessons`);
       const lessonList = lessonsRes.data.lessons || [];
       setLessons(lessonList);
-
-      const completed = lessonList.filter(lesson => lesson.isCompleted).map(l => l._id);
-      setCompletedLessons(completed);
 
       if (lessonList.length > 0) {
         loadLessonContent(lessonList[0]._id);
       }
     } catch (err) {
-      console.error("Error loading course:", err);
+      console.error(err);
       setError("Failed to load course content");
     } finally {
       setLoading(false);
     }
   };
 
+  /* =========================================
+     LOAD SINGLE LESSON
+  ========================================= */
   const loadLessonContent = async (lessonId) => {
     try {
-      const res = await axiosInstance.get(`/students/courses/${courseId}/lessons/${lessonId}`);
-      console.log("Loaded lesson:", res.data.lesson);
+      const res = await axiosInstance.get(`/lessons/${lessonId}`);
+
       setCurrentLesson(res.data.lesson);
-      
+      setResumeFrom(res.data.resumeFrom || 0);
+      setWatchProgress(res.data.progress || 0);
+
       if (contentRef.current) {
-        contentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (err) {
-      console.error("Error loading lesson:", err);
-      setCurrentLesson(null);
+      console.error(err);
     }
   };
 
-  const markLessonComplete = async (lessonId) => {
-    try {
-      await axiosInstance.post(`/students/courses/${courseId}/lessons/${lessonId}/complete`);
-      if (!completedLessons.includes(lessonId)) {
-        setCompletedLessons([...completedLessons, lessonId]);
-      }
-    } catch (err) {
-      console.error("Error marking lesson complete:", err);
-    }
-  };
-
-  const toggleBookmark = (lessonId) => {
-    if (bookmarkedLessons.includes(lessonId)) {
-      setBookmarkedLessons(bookmarkedLessons.filter(id => id !== lessonId));
-    } else {
-      setBookmarkedLessons([...bookmarkedLessons, lessonId]);
-    }
-  };
-
+  /* =========================================
+     VIDEO URL DETECTION
+  ========================================= */
   const getVideoUrl = () => {
-    if (!currentLesson?.materials?.length) {
-      console.log("No materials found");
-      return null;
-    }
+    if (!currentLesson?.materials?.length) return null;
 
-    console.log("All materials:", currentLesson.materials);
+    const videoMaterial = currentLesson.materials.find(
+      (m) => m.type === "video"
+    );
 
-    const videoMaterial = currentLesson.materials.find(m => {
-      const url = m.url || "";
-      const type = m.type || "";
-      
-      const isVideoType = type === "video" || type === "video_lesson";
-      const isVideoUrl = /youtube\.com|youtu\.be|vimeo\.com|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(url);
-      
-      console.log("Checking material:", { 
-        name: m.name, 
-        type: m.type, 
-        url: m.url?.substring(0, 50), 
-        isVideoType, 
-        isVideoUrl 
+    return videoMaterial?.url || null;
+  };
+
+  const videoUrl = getVideoUrl();
+
+  /* =========================================
+     PROGRESS TRACKING
+  ========================================= */
+  const handleProgress = (state) => {
+    const percent = state.played * 100;
+    setWatchProgress(percent);
+
+    // Send update every 5 seconds
+    if (Math.floor(state.playedSeconds) % 5 === 0) {
+      axiosInstance.patch(`/lessons/${currentLesson._id}/progress`, {
+        progress: percent,
+        lastWatchedTime: state.playedSeconds,
       });
-      
-      return isVideoType || isVideoUrl;
-    });
 
-    if (videoMaterial) {
-      console.log("Found video material:", videoMaterial);
-      return videoMaterial.url;
-    }
-
-    console.log("No video material found");
-    return null;
-  };
-
-  const getLessonType = (lesson) => {
-    if (!lesson.materials?.length) return 'text';
-    
-    const hasVideo = lesson.materials.some(m => {
-      const url = m.url || "";
-      const type = m.type || "";
-      return type === 'video' || 
-             type === 'video_lesson' ||
-             /youtube\.com|youtu\.be|vimeo\.com|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(url);
-    });
-    
-    if (hasVideo) return 'video';
-    if (lesson.lessonType === 'quiz') return 'quiz';
-    if (lesson.materials?.length && !lesson.content) return 'material';
-    return 'text';
-  };
-
-  const getLessonIcon = (type) => {
-    switch (type) {
-      case 'video': return { icon: PlayCircle, color: 'text-red-500' };
-      case 'quiz': return { icon: Quiz, color: 'text-orange-500' };
-      case 'material': return { icon: Article, color: 'text-purple-500' };
-      default: return { icon: Description, color: 'text-blue-500' };
+      // Auto mark completed at 90%
+      if (percent >= 90 && !completedLessons.includes(currentLesson._id)) {
+        setCompletedLessons((prev) => [...prev, currentLesson._id]);
+      }
     }
   };
+
+  /* =========================================
+     NAVIGATION
+  ========================================= */
+  const currentIndex = currentLesson
+    ? lessons.findIndex((l) => l._id === currentLesson._id)
+    : -1;
 
   const goToPrevious = () => {
-    const idx = lessons.findIndex(l => l._id === currentLesson._id);
-    if (idx > 0) loadLessonContent(lessons[idx - 1]._id);
+    if (currentIndex > 0) {
+      loadLessonContent(lessons[currentIndex - 1]._id);
+    }
   };
 
   const goToNext = () => {
-    const idx = lessons.findIndex(l => l._id === currentLesson._id);
-    if (idx < lessons.length - 1) loadLessonContent(lessons[idx + 1]._id);
+    if (currentIndex < lessons.length - 1) {
+      loadLessonContent(lessons[currentIndex + 1]._id);
+    }
   };
 
+  const progressPercentage =
+    lessons.length > 0
+      ? Math.round((completedLessons.length / lessons.length) * 100)
+      : 0;
+
+  /* =========================================
+     LOADING + ERROR
+  ========================================= */
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4">
-            <CircularProgressbar
-              value={75}
-              strokeWidth={6}
-              styles={buildStyles({
-                pathColor: '#5624d0',
-                trailColor: '#e5e7eb',
-              })}
-            />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-800">Loading Course...</h3>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <CircularProgressbar
+          value={75}
+          strokeWidth={6}
+          styles={buildStyles({
+            pathColor: "#5624d0",
+            trailColor: "#e5e7eb",
+          })}
+        />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Lock className="text-red-600" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Access Restricted</h3>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button
-            onClick={() => navigate(`/course/${courseId}`)}
-            className="w-full py-2.5 bg-[#5624d0] text-white font-semibold rounded-lg hover:bg-[#4a1fb8] mb-2"
-          >
-            Enroll in Course
-          </button>
-          <button
-            onClick={() => navigate("/student/mylearning")}
-            className="w-full py-2.5 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50"
-          >
-            Back to My Learning
-          </button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Lock className="text-red-500 mr-2" />
+        {error}
       </div>
     );
   }
 
-  const videoUrl = getVideoUrl();
-  const progressPercentage = lessons.length > 0 ? Math.round((completedLessons.length / lessons.length) * 100) : 0;
-  const currentIndex = currentLesson ? lessons.findIndex(l => l._id === currentLesson._id) : -1;
-  const hasPrevious = currentIndex > 0;
-  const hasNext = currentIndex < lessons.length - 1;
-
+  /* =========================================
+     UI
+  ========================================= */
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      <header className="bg-white border-b border-gray-200 flex-shrink-0">
-        <div className="px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 hover:bg-gray-100 rounded lg:hidden">
-              <Menu fontSize="small" />
-            </button>
-            <button onClick={() => navigate("/student/mylearning")} className="flex items-center gap-1.5 text-gray-700 hover:text-[#5624d0]">
-              <ArrowBack fontSize="small" />
-              <span className="hidden sm:inline text-sm font-medium">Back</span>
-            </button>
-            <div className="hidden md:block h-4 w-px bg-gray-300"></div>
-            <h1 className="text-sm font-bold text-gray-900 truncate">{course?.title}</h1>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2">
-              <span className="text-xs text-gray-600">{progressPercentage}%</span>
-              <div className="w-10 h-10">
-                <CircularProgressbar
-                  value={progressPercentage}
-                  strokeWidth={10}
-                  styles={buildStyles({ pathColor: '#5624d0', trailColor: '#e5e7eb' })}
-                />
-              </div>
-            </div>
-            <button className="p-1.5 hover:bg-gray-100 rounded">
-              <Share fontSize="small" />
-            </button>
+      <header className="bg-white border-b px-4 py-2 flex justify-between">
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate(-1)}>
+            <ArrowBack />
+          </button>
+          <h1 className="font-bold">{course?.title || "Course"}</h1>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span>{progressPercentage}%</span>
+          <div className="w-10 h-10">
+            <CircularProgressbar
+              value={progressPercentage}
+              strokeWidth={10}
+              styles={buildStyles({
+                pathColor: "#5624d0",
+                trailColor: "#e5e7eb",
+              })}
+            />
           </div>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className={`
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-          lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-40
-          w-72 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300
-          shadow-xl lg:shadow-none
-        `}>
-          <div className="p-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-bold text-sm">Course Content</h2>
-              <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 hover:bg-gray-200 rounded">
-                <Close fontSize="small" />
-              </button>
-            </div>
-            <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="text-gray-600">{completedLessons.length}/{lessons.length} complete</span>
-              <span className="font-semibold text-[#5624d0]">{progressPercentage}%</span>
-            </div>
-            <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-[#5624d0] rounded-full transition-all duration-300"
-                style={{ width: `${progressPercentage}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {lessons.map((lesson, idx) => {
-              const lessonType = getLessonType(lesson);
-              const { icon: Icon, color } = getLessonIcon(lessonType);
-              const isCompleted = completedLessons.includes(lesson._id);
-              const isCurrent = currentLesson?._id === lesson._id;
-
-              return (
-                <button
-                  key={lesson._id}
-                  onClick={() => loadLessonContent(lesson._id)}
-                  className={`w-full text-left p-2.5 border-b border-gray-100 flex items-start gap-2 hover:bg-gray-50 transition ${
-                    isCurrent ? 'bg-blue-50 border-l-4 border-l-[#5624d0]' : ''
-                  }`}
-                >
-                  <div className={`flex items-center justify-center min-w-[20px] w-5 h-5 rounded-full mt-0.5 ${
-                    isCompleted ? 'bg-green-100' : 'border-2 border-gray-300'
-                  }`}>
-                    {isCompleted ? (
-                      <CheckCircle className="text-green-600" style={{ fontSize: '16px' }} />
-                    ) : (
-                      <span className="text-[10px] font-medium text-gray-600">{idx + 1}</span>
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h3 className={`text-xs font-medium leading-tight mb-1 ${isCurrent ? 'text-[#5624d0]' : 'text-gray-900'}`}>
-                      {lesson.title}
-                    </h3>
-                    <div className="flex items-center gap-1.5">
-                      <Icon style={{ fontSize: '12px' }} className={color} />
-                      <span className="text-[10px] text-gray-600 capitalize">{lessonType}</span>
-                      {lesson.duration && (
-                        <>
-                          <span className="text-gray-400">•</span>
-                          <span className="text-[10px] text-gray-500">
-                            {Math.floor(lesson.duration / 60)}:{(lesson.duration % 60).toString().padStart(2, '0')}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="p-3 border-t border-gray-200 bg-white flex-shrink-0">
-            <button 
-              onClick={() => currentLesson && markLessonComplete(currentLesson._id)}
-              disabled={!currentLesson || completedLessons.includes(currentLesson?._id)}
-              className="w-full py-2 bg-[#5624d0] text-white text-sm font-semibold rounded-lg hover:bg-[#4a1fb8] disabled:opacity-50 disabled:cursor-not-allowed"
+        {/* Sidebar */}
+        <aside
+          className={`w-72 bg-white border-r ${
+            sidebarOpen ? "block" : "hidden"
+          }`}
+        >
+          {lessons.map((lesson, idx) => (
+            <button
+              key={lesson._id}
+              onClick={() => loadLessonContent(lesson._id)}
+              className="w-full text-left p-3 border-b hover:bg-gray-50"
             >
-              {completedLessons.includes(currentLesson?._id) ? '✓ Completed' : 'Mark Complete'}
+              {idx + 1}. {lesson.title}
             </button>
-          </div>
+          ))}
         </aside>
 
-        {sidebarOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-        )}
-
-        <main ref={contentRef} className="flex-1 overflow-y-auto">
-          {currentLesson ? (
-            <div className="max-w-5xl mx-auto p-3">
+        {/* Main Content */}
+        <main ref={contentRef} className="flex-1 overflow-y-auto p-6">
+          {currentLesson && (
+            <>
               {videoUrl ? (
-                <div className="mb-3">
-                  <div className="bg-black rounded-lg overflow-hidden shadow-lg">
-                    <div className="relative aspect-video bg-black">
-                      <ReactPlayer
-                        ref={playerRef}
-                        url={videoUrl}
-                        width="100%"
-                        height="100%"
-                        controls={true}
-                        playing={false}
-                        onEnded={() => {
-                          if (currentLesson && !completedLessons.includes(currentLesson._id)) {
-                            markLessonComplete(currentLesson._id);
-                          }
-                        }}
-                        config={{
-                          youtube: {
-                            playerVars: { 
-                              showinfo: 1, 
-                              modestbranding: 1, 
-                              rel: 0,
-                              autoplay: 0
-                            }
-                          },
-                          vimeo: {
-                            playerOptions: {
-                              autoplay: false
-                            }
-                          },
-                          file: {
-                            attributes: {
-                              controlsList: 'nodownload'
-                            }
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-2 px-1">
-                    <h2 className="text-base font-bold text-gray-900 mb-1">{currentLesson.title}</h2>
-                    {currentLesson.description && (
-                      <p className="text-xs text-gray-600">{currentLesson.description}</p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between mt-2 px-1">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={goToPrevious}
-                        disabled={!hasPrevious}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:border-[#5624d0] disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <span className="text-xs">Previous</span>
-                      </button>
-                      <button
-                        onClick={goToNext}
-                        disabled={!hasNext}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:border-[#5624d0] disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <span className="text-xs">Next</span>
-                      </button>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setShowNotes(!showNotes)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm ${
-                          showNotes ? 'bg-[#5624d0] text-white' : 'bg-white border border-gray-300'
-                        }`}
-                      >
-                        <Notes fontSize="small" />
-                        <span className="text-xs">Notes</span>
-                      </button>
-                      <button
-                        onClick={() => toggleBookmark(currentLesson._id)}
-                        className="p-1.5 bg-white border border-gray-300 rounded hover:border-yellow-500"
-                      >
-                        {bookmarkedLessons.includes(currentLesson._id) ? (
-                          <Bookmark className="text-yellow-500" fontSize="small" />
-                        ) : (
-                          <BookmarkBorder fontSize="small" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => markLessonComplete(currentLesson._id)}
-                        disabled={completedLessons.includes(currentLesson._id)}
-                        className={`px-3 py-1.5 rounded text-xs font-semibold ${
-                          completedLessons.includes(currentLesson._id)
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-[#5624d0] text-white hover:bg-[#4a1fb8]'
-                        }`}
-                      >
-                        {completedLessons.includes(currentLesson._id) ? '✓ Done' : 'Complete'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <ReactPlayer
+                  ref={playerRef}
+                  url={videoUrl}
+                  width="100%"
+                  height="500px"
+                  controls
+                  playing={false}
+                  onReady={() => {
+                    if (resumeFrom) {
+                      playerRef.current.seekTo(resumeFrom, "seconds");
+                    }
+                  }}
+                  onProgress={handleProgress}
+                />
               ) : (
-                <div className="mb-3 bg-white rounded-lg border border-gray-200 p-4">
-                  <h2 className="text-lg font-bold text-gray-900 mb-2">{currentLesson.title}</h2>
-                  {currentLesson.description && (
-                    <p className="text-sm text-gray-600">{currentLesson.description}</p>
-                  )}
-                  
-                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={goToPrevious}
-                        disabled={!hasPrevious}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:border-[#5624d0] disabled:opacity-50"
-                      >
-                        <span className="text-xs">Previous</span>
-                      </button>
-                      <button
-                        onClick={goToNext}
-                        disabled={!hasNext}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-sm rounded hover:border-[#5624d0] disabled:opacity-50"
-                      >
-                        <span className="text-xs">Next</span>
-                      </button>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setShowNotes(!showNotes)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm ${
-                          showNotes ? 'bg-[#5624d0] text-white' : 'bg-gray-100'
-                        }`}
-                      >
-                        <Notes fontSize="small" />
-                        <span className="text-xs">Notes</span>
-                      </button>
-                      <button
-                        onClick={() => toggleBookmark(currentLesson._id)}
-                        className="p-1.5 bg-gray-100 rounded hover:bg-gray-200"
-                      >
-                        {bookmarkedLessons.includes(currentLesson._id) ? (
-                          <Bookmark className="text-yellow-500" fontSize="small" />
-                        ) : (
-                          <BookmarkBorder fontSize="small" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => markLessonComplete(currentLesson._id)}
-                        disabled={completedLessons.includes(currentLesson._id)}
-                        className={`px-3 py-1.5 rounded text-xs font-semibold ${
-                          completedLessons.includes(currentLesson._id)
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-[#5624d0] text-white hover:bg-[#4a1fb8]'
-                        }`}
-                      >
-                        {completedLessons.includes(currentLesson._id) ? '✓ Done' : 'Complete'}
-                      </button>
-                    </div>
-                  </div>
+                <div className="bg-white p-4 rounded shadow">
+                  <h2 className="text-xl font-bold">
+                    {currentLesson.title}
+                  </h2>
+                  <p>{currentLesson.description}</p>
                 </div>
               )}
+
+              <div className="flex justify-between mt-4">
+                <button onClick={goToPrevious}>Previous</button>
+                <button onClick={goToNext}>Next</button>
+              </div>
 
               {showNotes && (
-                <div className="mb-3 bg-white rounded-lg border border-gray-200">
-                  <div className="p-2.5 border-b border-gray-200 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                      <Notes fontSize="small" />
-                      My Notes
-                    </h3>
-                    <button onClick={() => setShowNotes(false)} className="p-1 hover:bg-gray-100 rounded">
-                      <Close fontSize="small" />
-                    </button>
-                  </div>
-                  <div className="p-2.5">
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Type your notes here..."
-                      className="w-full h-32 p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-[#5624d0] focus:border-transparent resize-none"
-                    />
-                    <div className="flex justify-end gap-2 mt-2">
-                      <button onClick={() => setNotes("")} className="px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded">
-                        Clear
-                      </button>
-                      <button className="px-4 py-1.5 text-xs bg-[#5624d0] text-white rounded hover:bg-[#4a1fb8] font-semibold">
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full mt-4 border p-2 rounded"
+                  placeholder="Write your notes..."
+                />
               )}
-
-              {(currentLesson.description || currentLesson.content) && (
-                <div className="bg-white rounded-lg border border-gray-200 mb-3">
-                  <div className="p-3 border-b border-gray-200">
-                    <h3 className="text-sm font-bold">About this lesson</h3>
-                  </div>
-                  <div className="p-3">
-                    <div className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none">
-                      {currentLesson.content ? (
-                        <div dangerouslySetInnerHTML={{ __html: currentLesson.content }} />
-                      ) : (
-                        <p>{currentLesson.description}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {currentLesson.materials && currentLesson.materials.length > 0 && (
-                <div className="bg-white rounded-lg border border-gray-200">
-                  <div className="p-3 border-b border-gray-200">
-                    <h3 className="text-sm font-bold flex items-center gap-1.5">
-                      <Article fontSize="small" />
-                      Lesson Resources
-                    </h3>
-                  </div>
-                  <div className="p-3 space-y-2">
-                    {currentLesson.materials.map((material, idx) => {
-                      const isVideo = material.type === 'video' || 
-                                     material.type === 'video_lesson' ||
-                                     /youtube|youtu\.be|vimeo/i.test(material.url || "");
-                      const isDocument = material.type === 'document';
-
-                      return (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between p-2.5 border border-gray-200 rounded-lg hover:border-[#5624d0] transition"
-                        >
-                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                            <div className={`p-2 rounded ${
-                              isVideo ? 'bg-red-50 text-red-600' :
-                              isDocument ? 'bg-blue-50 text-blue-600' :
-                              'bg-purple-50 text-purple-600'
-                            }`}>
-                              {isVideo ? <VideoLibrary fontSize="small" /> :
-                               isDocument ? <Description fontSize="small" /> :
-                               <LinkIcon fontSize="small" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-xs font-semibold text-gray-900 truncate">
-                                {material.name || 'Resource'}
-                              </h4>
-                              {material.description && (
-                                <p className="text-[10px] text-gray-600 truncate">{material.description}</p>
-                              )}
-                              <p className="text-[10px] text-gray-500 capitalize">{material.type}</p>
-                            </div>
-                          </div>
-                          <a
-                            href={material.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1.5 bg-gray-100 text-xs font-semibold text-gray-700 hover:bg-[#5624d0] hover:text-white rounded transition flex-shrink-0"
-                          >
-                            {isVideo ? 'Watch' : 'View'}
-                          </a>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="h-full flex items-center justify-center p-8">
-              <div className="text-center max-w-md">
-                <div className="w-20 h-20 bg-gradient-to-br from-[#5624d0] to-[#7c3aed] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <PlayArrow className="text-white" style={{ fontSize: '40px' }} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Ready to Learn?</h3>
-                <p className="text-gray-600 mb-6">Select a lesson from the sidebar to begin.</p>
-                <button
-                  onClick={() => lessons.length > 0 && loadLessonContent(lessons[0]._id)}
-                  className="px-6 py-3 bg-[#5624d0] text-white font-bold rounded-lg hover:bg-[#4a1fb8]"
-                >
-                  Start First Lesson
-                </button>
-              </div>
-            </div>
+            </>
           )}
         </main>
       </div>
