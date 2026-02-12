@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import {
   Dashboard as DashboardIcon,
@@ -8,7 +8,9 @@ import {
   Paid as PaidIcon,
   Person as PersonIcon,
   School as SchoolIcon,
+  Menu as MenuIcon,
 } from "@mui/icons-material";
+
 
 const tutorMenu = [
   { text: "Dashboard", icon: <DashboardIcon />, route: "/tutor/dashboard" },
@@ -18,60 +20,89 @@ const tutorMenu = [
   { text: "Earnings", icon: <PaidIcon />, route: "/tutor/earnings" },
   { text: "Profile", icon: <PersonIcon />, route: "/tutor/profile" },
 ];
-
 const Sidebar = ({ onSelect, selectedRoute }) => {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
-    <div className="w-64 bg-gradient-to-b from-gray-900 to-gray-950 text-white flex flex-col h-screen sticky top-0 border-r border-gray-800">
-      {/* Logo */}
-      <div className="p-6 border-b border-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-            <SchoolIcon className="text-white" />
+    <div
+      className={`
+        ${collapsed ? "w-20" : "w-64"}
+        bg-gradient-to-b from-gray-950 via-gray-900 to-black
+        text-white flex flex-col h-screen sticky top-0
+        border-r border-gray-800 shadow-2xl
+        transition-all duration-300 ease-in-out
+      `}
+    >
+      {/* Header */}
+      <div className="p-5 border-b border-gray-800 flex items-center justify-between">
+        {!collapsed && (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+              <SchoolIcon />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold">Learnify</h2>
+              <p className="text-xs text-gray-400">Tutor Panel</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">
-              Learnify
-            </h2>
-            <p className="text-xs text-gray-400 mt-1">Tutor Panel</p>
-          </div>
-        </div>
+        )}
+
+        {/* <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="text-gray-400 hover:text-white transition"
+        >
+          <MenuIcon />
+        </button> */}
       </div>
 
-      {/* Navigation Items */}
-      <nav className="p-4 flex-1">
-        <ul className="space-y-1">
+      {/* Navigation */}
+      <nav className="p-3 flex-1">
+        <ul className="space-y-2">
           {tutorMenu.map((item, index) => {
             const isSelected = item.route === selectedRoute;
+
             return (
               <li key={index}>
                 <button
                   onClick={() => onSelect(item.route)}
                   className={`
-                    w-full text-left px-4 py-3 rounded-xl flex items-center gap-3
-                    transition-all duration-200 relative
-                    ${isSelected 
-                      ? 'bg-blue-500/20 text-blue-400' 
-                      : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-300'
+                    group relative w-full flex items-center
+                    ${collapsed ? "justify-center" : "gap-4"}
+                    px-4 py-3 rounded-xl
+                    transition-all duration-300
+                    ${
+                      isSelected
+                        ? "bg-blue-600/15 text-blue-400"
+                        : "text-gray-400 hover:bg-gray-800/60 hover:text-white"
                     }
-                    ${isSelected && 'before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-blue-500 before:rounded-r-full'}
                   `}
                 >
-                  <span className={`
-                    flex items-center justify-center
-                    ${isSelected ? 'text-blue-400' : 'text-gray-500'}
-                  `}>
+                  {/* Active indicator */}
+                  {isSelected && (
+                    <span className="absolute left-0 top-2 bottom-2 w-1 bg-blue-500 rounded-r-full"></span>
+                  )}
+
+                  {/* Icon */}
+                  <span
+                    className={`
+                      transition-all duration-300
+                      ${
+                        isSelected
+                          ? "text-blue-400 scale-110"
+                          : "text-gray-500 group-hover:text-white"
+                      }
+                    `}
+                  >
                     {React.cloneElement(item.icon, {
-                      fontSize: isSelected ? "medium" : "small"
+                      fontSize: "medium",
                     })}
                   </span>
-                  <span className={`
-                    text-sm flex-1
-                    ${isSelected ? 'font-semibold' : 'font-medium'}
-                  `}>
-                    {item.text}
-                  </span>
-                  {isSelected && (
-                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+
+                  {/* Text */}
+                  {!collapsed && (
+                    <span className="text-sm font-medium flex-1">
+                      {item.text}
+                    </span>
                   )}
                 </button>
               </li>
@@ -81,22 +112,16 @@ const Sidebar = ({ onSelect, selectedRoute }) => {
       </nav>
 
       {/* Footer */}
-      <div className="p-6 border-t border-gray-800">
-        <div className="text-xs text-gray-500">
+      {!collapsed && (
+        <div className="p-6 border-t border-gray-800 text-xs text-gray-500">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span>Online</span>
           </div>
           <p>Tutor Dashboard v1.0</p>
         </div>
-      </div>
+      )}
     </div>
   );
 };
-
-Sidebar.propTypes = {
-  onSelect: PropTypes.func.isRequired,
-  selectedRoute: PropTypes.string.isRequired,
-};
-
-export default Sidebar;
+ export default Sidebar;
