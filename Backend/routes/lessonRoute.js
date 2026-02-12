@@ -2,28 +2,68 @@ const express = require('express');
 const router = express.Router();
 const lessonController = require('../controller/lessonController');
 const { isAuthenticated, authorizeRoles } = require('../middleware/auth');
-const uploadMaterials = require('../middleware/upload');
+const { upload } = require("../middleware/upload");
+const verifyLessonAccess = require("../middleware/lessonAccessMiddleware");
 
-// POST - Add lesson with file uploads
+/* ===================================================
+   INSTRUCTOR / ADMIN ROUTES
+   =================================================== */
+
+// Create Lesson
 router.post(
-  '/:courseId/add-lesson',
+  "/course/:courseId",
   isAuthenticated,
-  authorizeRoles('tutor'),
-  uploadMaterials,
-  lessonController.addLesson
+  authorizeRoles("tutor"),
+  upload.any(), // Supports materials[0][file] dynamic fields
+  lessonController.createLesson
 );
 
-// PUT - Update lesson with file uploads
+// Update Lesson
 router.put(
-  '/lesson/:lessonId',
+  "/:lessonId",
   isAuthenticated,
-  authorizeRoles('tutor'),
-  uploadMaterials,  // <-- ADD THIS for update route too!
+  authorizeRoles("tutor"),
+  upload.any(),
   lessonController.updateLesson
 );
 
-// Other routes...
-router.get('/lesson/:lessonId', isAuthenticated, authorizeRoles('tutor'), lessonController.getLessonById);
-router.delete('/lesson/:lessonId', isAuthenticated, authorizeRoles('tutor'), lessonController.deleteLesson);
-router.get('/:courseId', isAuthenticated, authorizeRoles('tutor'), lessonController.getLessonsByCourse);
+// Delete Lesson
+router.delete(
+  "/:lessonId",
+  isAuthenticated,
+  authorizeRoles("tutor"),
+  lessonController.deleteLesson
+);
+
+/* ===================================================
+   STUDENT / ENROLLED USER ROUTES
+   =================================================== */
+
+// Get Single Lesson (with signed URLs if implemented)
+router.get(
+  "/:lessonId",
+  isAuthenticated,
+  verifyLessonAccess,
+  lessonController.getLessonById
+);
+
+// Get All Lessons By Course
+router.get(
+  "/course/:courseId",
+  isAuthenticated,
+  lessonController.getLessonsByCourse
+);
+router.patch(
+  "/reorder",
+  isAuthenticated,
+  authorizeRoles("tutor"),
+  lessonController.reorderLessons
+);
+
+router.patch(
+  "/:lessonId/progress",
+  isAuthenticated,
+  verifyLessonAccess,
+  lessonController.updateProgress
+);
 module.exports = router;
