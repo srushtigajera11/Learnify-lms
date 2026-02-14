@@ -121,24 +121,25 @@ export default function CourseDetail() {
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate(`/tutor/course/${courseId}/edit`)}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm md:text-base"
-          >
-            Edit
-          </button>
+       <div className="flex items-start gap-3">
+  <button
+    onClick={() => navigate(`/tutor/course/${courseId}/edit`)}
+    className="h-16 text-sm font-medium  bg-blue-700 text-white border hover:bg-blue-600 transition-colors"
+  >
+    Edit Course
+  </button>
 
-          {course.status === 'draft' && (
-            <button
-              onClick={submitCourse}
-              disabled={completeness() < 70}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm md:text-base"
-            >
-              Submit for Review
-            </button>
-          )}
-        </div>
+  {course.status === 'draft' && (
+    <button
+      onClick={submitCourse}
+      disabled={completeness() < 70}
+      className="h-11 px-6 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+    >
+      Submit for Review
+    </button>
+  )}
+</div>
+
       </div>
 
       {/* Progress Section */}
