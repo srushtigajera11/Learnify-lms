@@ -62,7 +62,7 @@ const MyCourses = () => {
         <div className="text-center mt-20">
           <p className="text-gray-500 text-lg">You haven't created any courses yet</p>
           <button
-            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-1"
+            className="mt-4 bg-blue-800 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-1"
             onClick={() => navigate('/tutor/create-course')}
           >
             <Add /> Create Your First Course
@@ -71,7 +71,7 @@ const MyCourses = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {courses.map(course => (
-            <div key={course._id} className="bg-white border rounded shadow-sm flex flex-col hover:shadow-lg transition-transform duration-200 hover:-translate-y-1">
+            <div key={course._id} className="bg-black border rounded shadow-sm flex flex-col hover:shadow-lg transition-transform duration-200 hover:-translate-y-1">
               {/* Thumbnail */}
               <div className="relative h-40 overflow-hidden rounded-t">
                 {course.thumbnail ? (
