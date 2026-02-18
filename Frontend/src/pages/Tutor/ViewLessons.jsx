@@ -14,7 +14,7 @@ const ViewLessons = () => {
     const fetchLessons = async () => {
       try {
         setLoading(true);
-        const res = await axiosInstance.get(`/lessons/${courseId}`);
+        const res = await axiosInstance.get(`/lessons/course/${courseId}`);
         setLessons(res.data.lessons || []);
       } catch (err) {
         console.error("Error fetching lessons:", err);

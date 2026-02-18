@@ -6,21 +6,28 @@ const LessonProgress = require("../models/LessonProgress");
 /* =========================================
    CREATE LESSON
 ========================================= */
+/* =========================================
+   CREATE LESSON
+========================================= */
 exports.createLesson = async (req, res) => {
   try {
-   const { title, description, order, courseId, duration } = req.body;
+    const { title, description, order, duration } = req.body;
+    const courseId = req.params.courseId; // ✅ FIXED
 
-
-    if (!title  || !courseId) {
+    // ✅ Validation
+    if (!title || !courseId) {
       return res.status(400).json({
         success: false,
-        message: "Title, order and courseId are required",
+        message: "Title and courseId are required",
       });
     }
 
     const materialCount = parseInt(req.body.materialCount) || 0;
     const materials = [];
 
+    /* =========================================
+       PROCESS MATERIALS
+    ========================================= */
     for (let i = 0; i < materialCount; i++) {
       const type = req.body[`materials[${i}][type]`];
       const name = req.body[`materials[${i}][name]`] || "Material";
@@ -29,7 +36,7 @@ exports.createLesson = async (req, res) => {
         (f) => f.fieldname === `materials[${i}][file]`
       );
 
-      /* ---------- LINK ---------- */
+      // LINK
       if (type === "link" && url) {
         materials.push({
           type: "link",
@@ -38,7 +45,7 @@ exports.createLesson = async (req, res) => {
         });
       }
 
-      /* ---------- FILE ---------- */
+      // FILE
       if (file) {
         let materialType = "document";
         if (file.mimetype.startsWith("video")) {
@@ -56,27 +63,29 @@ exports.createLesson = async (req, res) => {
         });
       }
     }
-let finalOrder;
 
-// If user sends order → insert at that position
-if (order) {
-  finalOrder = parseInt(order);
+    /* =========================================
+       AUTO ORDER LOGIC
+    ========================================= */
+    let finalOrder;
 
-  // Shift all lessons >= this order
-  await Lesson.updateMany(
-    { courseId, order: { $gte: finalOrder } },
-    { $inc: { order: 1 } }
-  );
+    if (order) {
+      finalOrder = parseInt(order);
 
-} else {
-  // Auto append to last
-  const lastLesson = await Lesson.findOne({ courseId })
-    .sort({ order: -1 });
+      await Lesson.updateMany(
+        { courseId, order: { $gte: finalOrder } },
+        { $inc: { order: 1 } }
+      );
+    } else {
+      const lastLesson = await Lesson.findOne({ courseId })
+        .sort({ order: -1 });
 
-  finalOrder = lastLesson ? lastLesson.order + 1 : 1;
-}
+      finalOrder = lastLesson ? lastLesson.order + 1 : 1;
+    }
 
-    /* ---------- CREATE LESSON ---------- */
+    /* =========================================
+       CREATE LESSON
+    ========================================= */
     const lesson = await Lesson.create({
       title,
       description,
@@ -88,20 +97,25 @@ if (order) {
         materials.find((m) => m.type === "video") ? "video" : "text",
     });
 
-    /* ---------- CALCULATE TOTAL DURATION ---------- */
+    /* =========================================
+       CALCULATE VIDEO TOTAL DURATION
+    ========================================= */
     lesson.totalDuration = lesson.materials
       .filter((m) => m.type === "video")
       .reduce((sum, m) => sum + (m.duration || 0), 0);
 
     await lesson.save();
 
-    /* ---------- UPDATE COURSE DURATION ---------- */
+    /* =========================================
+       UPDATE COURSE TOTAL DURATION
+    ========================================= */
     await updateCourseDuration(courseId);
 
     res.status(201).json({
       success: true,
       lesson,
     });
+
   } catch (error) {
     console.error("Create Lesson Error:", error);
     res.status(500).json({
@@ -110,6 +124,7 @@ if (order) {
     });
   }
 };
+
 
 /* =========================================
    GET LESSON WITH SIGNED URL
@@ -265,6 +280,7 @@ if (newOrder && newOrder !== oldOrder) {
 exports.deleteLesson = async (req, res) => {
   try {
     const lesson = await Lesson.findById(req.params.lessonId);
+
     if (!lesson) {
       return res.status(404).json({
         success: false,
@@ -272,7 +288,12 @@ exports.deleteLesson = async (req, res) => {
       });
     }
 
-    // Delete Cloudinary videos
+    const deletedOrder = lesson.order;
+    const courseId = lesson.courseId;
+
+    /* ----------------------------
+       DELETE CLOUDINARY FILES
+    ----------------------------- */
     for (const material of lesson.materials) {
       if (material.public_id) {
         await cloudinary.uploader.destroy(material.public_id, {
@@ -281,13 +302,34 @@ exports.deleteLesson = async (req, res) => {
       }
     }
 
+    /* ----------------------------
+       DELETE LESSON
+    ----------------------------- */
     await lesson.deleteOne();
-    await updateCourseDuration(lesson.courseId);
+
+    /* ----------------------------
+       AUTO REORDER REMAINING LESSONS
+    ----------------------------- */
+    await Lesson.updateMany(
+      {
+        courseId,
+        order: { $gt: deletedOrder },
+      },
+      {
+        $inc: { order: -1 },
+      }
+    );
+
+    /* ----------------------------
+       UPDATE COURSE DURATION
+    ----------------------------- */
+    await updateCourseDuration(courseId);
 
     res.status(200).json({
       success: true,
-      message: "Lesson deleted",
+      message: "Lesson deleted and reordered",
     });
+
   } catch (error) {
     console.error("Delete Lesson Error:", error);
     res.status(500).json({
@@ -296,6 +338,7 @@ exports.deleteLesson = async (req, res) => {
     });
   }
 };
+
 /* =========================================
    GET LESSONS BY COURSE
 ========================================= */

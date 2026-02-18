@@ -71,7 +71,7 @@ const MyCourses = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {courses.map(course => (
-            <div key={course._id} className="bg-black border rounded shadow-sm flex flex-col hover:shadow-lg transition-transform duration-200 hover:-translate-y-1">
+            <div key={course._id} className="bg-white border rounded shadow-sm flex flex-col hover:shadow-lg transition-transform duration-200 hover:-translate-y-1">
               {/* Thumbnail */}
               <div className="relative h-40 overflow-hidden rounded-t">
                 {course.thumbnail ? (

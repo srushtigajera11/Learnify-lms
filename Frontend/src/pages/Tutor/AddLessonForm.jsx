@@ -83,8 +83,8 @@ const AddLessonForm = () => {
     setError("");
 
     try {
-      if (!formData.title || !formData.order) {
-        setError("Title and order are required");
+      if (!formData.title ) {
+        setError("Title is required");
         setLoading(false);
         return;
       }
