@@ -10,6 +10,7 @@ const AddLessonForm = () => {
     title: "",
     description: "",
     order: "",
+    duration : "",
   });
 
   const [materials, setMaterials] = useState([
@@ -92,6 +93,7 @@ const AddLessonForm = () => {
       fd.append("title", formData.title);
       fd.append("description", formData.description);
       fd.append("order", formData.order);
+      fd.append("duration", formData.duration);
       fd.append("materialCount", materials.length);
 
       materials.forEach((m, i) => {
@@ -166,8 +168,17 @@ const AddLessonForm = () => {
             onChange={handleChange}
             placeholder="Order"
             className="w-full border p-2 rounded"
+          />
+          <input
+            type="number"
+            name="duration"
+            value={formData.duration}
+            onChange={handleChange}
+            placeholder="Duration (in minutes)"
+            className="w-full border p-2 rounded"
             required
           />
+
         </div>
 
         {/* Materials */}

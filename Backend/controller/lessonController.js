@@ -8,9 +8,10 @@ const LessonProgress = require("../models/LessonProgress");
 ========================================= */
 exports.createLesson = async (req, res) => {
   try {
-    const { title, description, order, courseId } = req.body;
+   const { title, description, order, courseId, duration } = req.body;
 
-    if (!title || !order || !courseId) {
+
+    if (!title  || !courseId) {
       return res.status(400).json({
         success: false,
         message: "Title, order and courseId are required",
@@ -55,14 +56,34 @@ exports.createLesson = async (req, res) => {
         });
       }
     }
+let finalOrder;
+
+// If user sends order → insert at that position
+if (order) {
+  finalOrder = parseInt(order);
+
+  // Shift all lessons >= this order
+  await Lesson.updateMany(
+    { courseId, order: { $gte: finalOrder } },
+    { $inc: { order: 1 } }
+  );
+
+} else {
+  // Auto append to last
+  const lastLesson = await Lesson.findOne({ courseId })
+    .sort({ order: -1 });
+
+  finalOrder = lastLesson ? lastLesson.order + 1 : 1;
+}
 
     /* ---------- CREATE LESSON ---------- */
     const lesson = await Lesson.create({
       title,
       description,
-      order,
+      order: finalOrder,
       courseId,
       materials,
+      duration: duration || 0,
       lessonType:
         materials.find((m) => m.type === "video") ? "video" : "text",
     });
@@ -185,10 +206,37 @@ exports.updateLesson = async (req, res) => {
         });
       }
     }
+    const newOrder = parseInt(req.body.order);
+const oldOrder = lesson.order;
+if (newOrder && newOrder !== oldOrder) {
+
+  if (newOrder > oldOrder) {
+    // Moving down
+    await Lesson.updateMany(
+      {
+        courseId: lesson.courseId,
+        order: { $gt: oldOrder, $lte: newOrder },
+      },
+      { $inc: { order: -1 } }
+    );
+  } else {
+    // Moving up
+    await Lesson.updateMany(
+      {
+        courseId: lesson.courseId,
+        order: { $gte: newOrder, $lt: oldOrder },
+      },
+      { $inc: { order: 1 } }
+    );
+  }
+
+  lesson.order = newOrder;
+}
+
 
     lesson.title = req.body.title;
     lesson.description = req.body.description;
-    lesson.order = req.body.order;
+    lesson.duration = req.body.duration || lesson.duration;
     lesson.materials = materials;
 
     lesson.totalDuration = materials

@@ -11,6 +11,7 @@ export default function EditLesson() {
     title: "",
     description: "",
     order: "",
+    duration : "",
     materials: [],
   });
 
@@ -32,6 +33,7 @@ export default function EditLesson() {
           title: lesson.title,
           description: lesson.description,
           order: lesson.order,
+          duration: lesson.duration || "",
           materials: lesson.materials.map((m) => ({
             ...m,
             file: null, // existing files don't have file object
@@ -104,6 +106,7 @@ export default function EditLesson() {
       fd.append("title", lessonData.title);
       fd.append("description", lessonData.description);
       fd.append("order", lessonData.order);
+      fd.append("duration", lessonData.duration);
       fd.append("materialCount", lessonData.materials.length);
 
       lessonData.materials.forEach((m, i) => {
@@ -185,6 +188,16 @@ export default function EditLesson() {
             className="w-full border p-2 rounded"
             required
           />
+          <input
+            type="number"
+            name="duration"
+            value={lessonData.duration}
+            onChange={handleChange}
+            placeholder="Duration (in minutes)"
+            className="w-full border p-2 rounded"
+            required
+          />
+
         </div>
 
         {/* Materials */}
