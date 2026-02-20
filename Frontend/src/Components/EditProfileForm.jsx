@@ -1,283 +1,263 @@
 import { useState } from "react";
 import axiosInstance from "../utils/axiosInstance";
-import { 
-  Save, 
-  Person, 
-  Email, 
-  Work, 
-  LocationOn, 
-  Language, 
-  Code, 
-  Add, 
-  Close 
-} from "@mui/icons-material";
 
-const EditProfileForm = ({ user }) => {
-  const [formData, setFormData] = useState({
-    name: user.name || "",
-    email: user.email || "",
-    bio: "Senior Full Stack Developer with 5+ years of experience in React, Node.js, and MongoDB. Passionate about teaching and creating impactful learning experiences." || "",
-    location: "San Francisco, CA" || "",
-    website: "https://john-doe-portfolio.com" || "",
-    headline: "Senior Full Stack Developer & Instructor" || "",
-    expertise: ["React", "Node.js", "MongoDB", "JavaScript", "TypeScript"]
+/* ─── Icon helper ─── */
+const Icon = ({ d, size = 18, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d={d} />
+  </svg>
+);
+const icons = {
+  user:  "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  brief: "M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zM16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2",
+  map:   "M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0zM12 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2z",
+  globe: "M12 22C6.48 22 2 17.52 2 12S6.48 2 12 2s10 4.48 10 10-4.48 10-10 10zM2.05 12h19.9M12 2c2.76 3.33 4 6.6 4 10s-1.24 6.67-4 10M12 2C9.24 5.33 8 8.6 8 12s1.24 6.67 4 10",
+  save:  "M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8",
+  check: "M20 6L9 17l-5-5",
+  alert: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 8v4M12 16h.01",
+  plus:  "M12 5v14M5 12h14",
+  x:     "M18 6 6 18M6 6l12 12",
+};
+
+const inputCls =
+  "w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100 placeholder-slate-600 text-sm focus:outline-none focus:border-amber-500/60 focus:bg-white/8 focus:ring-1 focus:ring-amber-500/30 transition-all duration-200";
+
+const Field = ({ label, icon, children }) => (
+  <div className="space-y-1.5">
+    <label className="flex items-center gap-2 text-xs font-semibold tracking-widest text-slate-400 uppercase">
+      {icon && <Icon d={icon} size={13} className="text-amber-400" />}
+      {label}
+    </label>
+    {children}
+  </div>
+);
+
+const SkillBadge = ({ skill, onRemove }) => (
+  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-semibold tracking-wide hover:bg-amber-500/25 transition-colors">
+    {skill}
+    {onRemove && (
+      <button onClick={() => onRemove(skill)} className="opacity-50 hover:opacity-100 hover:text-red-400 transition-all ml-0.5">
+        <Icon d={icons.x} size={12} />
+      </button>
+    )}
+  </span>
+);
+
+/* ─── Main Component ─── */
+const EditProfileForm = ({ user, onUpdated }) => {
+  // Initialize from user prop — this is the source of truth from the backend
+  const buildForm = (u) => ({
+    name:       u?.name || "",
+    email:      u?.email || "",
+    headline:   u?.tutorProfile?.headline || "",
+    bio:        u?.tutorProfile?.bio || "",
+    location:   u?.tutorProfile?.location || "",
+    experience: u?.tutorProfile?.experience || "",
+    website:    u?.tutorProfile?.socialLinks?.website || "",
+    linkedin:   u?.tutorProfile?.socialLinks?.linkedin || "",
+    twitter:    u?.tutorProfile?.socialLinks?.twitter || "",
+    youtube:    u?.tutorProfile?.socialLinks?.youtube || "",
+    expertise:  u?.tutorProfile?.expertise || [],
   });
 
+  const [form, setForm]       = useState(() => buildForm(user));
   const [newSkill, setNewSkill] = useState("");
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError]     = useState("");
 
-  const handleChange = (field) => (e) => {
-    setFormData(prev => ({ ...prev, [field]: e.target.value }));
-  };
+  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
-  const handleAddSkill = () => {
-    if (newSkill.trim() && !formData.expertise.includes(newSkill.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        expertise: [...prev.expertise, newSkill.trim()]
-      }));
+  const addSkill = () => {
+    const s = newSkill.trim();
+    if (s && !form.expertise.includes(s)) {
+      setForm((p) => ({ ...p, expertise: [...p.expertise, s] }));
       setNewSkill("");
     }
   };
+  const removeSkill = (s) =>
+    setForm((p) => ({ ...p, expertise: p.expertise.filter((x) => x !== s) }));
 
-  const handleRemoveSkill = (skillToRemove) => {
-    setFormData(prev => ({
-      ...prev,
-      expertise: prev.expertise.filter(skill => skill !== skillToRemove)
-    }));
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddSkill();
+  const handleSubmit = async () => {
+    if (!form.name.trim() || !form.email.trim()) {
+      setError("Name and email are required.");
+      return;
     }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
-      await axiosInstance.put("/users/profile", formData);
-      alert("Profile updated successfully!");
+      const { data } = await axiosInstance.put("/users/profile", {
+        name:  form.name,
+        email: form.email,
+        tutorProfile: {
+          headline:   form.headline,
+          bio:        form.bio,
+          location:   form.location,
+          experience: form.experience ? Number(form.experience) : undefined,
+          expertise:  form.expertise,
+          socialLinks: {
+            website:  form.website,
+            linkedin: form.linkedin,
+            twitter:  form.twitter,
+            youtube:  form.youtube,
+          },
+        },
+      });
+
+      // Sync local form state with what the backend actually saved
+      if (data?.user) {
+        setForm(buildForm(data.user));
+        // Notify parent (e.g. to refresh the displayed profile/avatar/name)
+        onUpdated?.(data.user);
+      }
+
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       console.error(err);
-      alert("Failed to update profile.");
+      setError(err.response?.data?.message || "Failed to update profile. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Common skills suggestions
-  const skillSuggestions = ["React", "Python", "UI/UX", "Data Science", "Machine Learning", "DevOps", "Cloud Computing", "Mobile Development"];
+  const suggestions = ["React", "Node.js", "Python", "TypeScript", "MongoDB", "DevOps", "UI/UX", "ML/AI"];
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-6">
-          <div className="space-y-6">
-            {/* Full Name */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={formData.name}
-                onChange={handleChange('name')}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter your full name"
-              />
-            </div>
-
-            {/* Email Address */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange('email')}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter your email address"
-              />
-            </div>
-
-            {/* Professional Headline */}
-            <div>
-              <label htmlFor="headline" className="block text-sm font-medium text-gray-700 mb-1">
-                Professional Headline
-              </label>
-              <input
-                id="headline"
-                type="text"
-                value={formData.headline}
-                onChange={handleChange('headline')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., Senior Full Stack Developer"
-              />
-            </div>
-
-            {/* Location */}
-            <div>
-              <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-                Location
-              </label>
-              <input
-                id="location"
-                type="text"
-                value={formData.location}
-                onChange={handleChange('location')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., San Francisco, CA"
-              />
-            </div>
-
-            {/* Website/Portfolio */}
-            <div>
-              <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-1">
-                Website/Portfolio
-              </label>
-              <input
-                id="website"
-                type="url"
-                value={formData.website}
-                onChange={handleChange('website')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="https://your-portfolio.com"
-              />
-            </div>
-
-            {/* Enhanced Area of Expertise Section */}
-            <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
-              <div className="flex items-center gap-2 mb-4">
-                <Code className="text-blue-600" fontSize="small" />
-                <h3 className="text-lg font-semibold text-blue-600">
-                  Areas of Expertise
-                </h3>
-              </div>
-              
-              {/* Skills Input with Add Button */}
-              <div className="flex gap-2 mb-4">
-                <input
-                  type="text"
-                  value={newSkill}
-                  onChange={(e) => setNewSkill(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Add your skills (e.g., React, Python, UI/UX)"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddSkill}
-                  disabled={!newSkill.trim()}
-                  className={`px-4 py-2 rounded-md font-medium flex items-center gap-1 ${
-                    !newSkill.trim()
-                      ? 'bg-gray-300 cursor-not-allowed text-gray-500'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
-                  }`}
-                >
-                  <Add fontSize="small" />
-                  Add
-                </button>
-              </div>
-
-              {/* Quick Skill Suggestions */}
-              <p className="text-xs text-gray-500 mb-2">
-                Quick add:
-              </p>
-              <div className="flex flex-wrap gap-1 mb-4">
-                {skillSuggestions.map((skill, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => {
-                      if (!formData.expertise.includes(skill)) {
-                        setFormData(prev => ({
-                          ...prev,
-                          expertise: [...prev.expertise, skill]
-                        }));
-                      }
-                    }}
-                    className={`px-2 py-1 text-xs rounded-full border ${
-                      formData.expertise.includes(skill)
-                        ? 'bg-blue-100 text-blue-800 border-blue-300'
-                        : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                    }`}
-                  >
-                    {skill}
-                  </button>
-                ))}
-              </div>
-
-              {/* Current Skills Display */}
-              {formData.expertise.length > 0 ? (
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">
-                    Your skills ({formData.expertise.length}):
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.expertise.map((skill, index) => (
-                      <div
-                        key={index}
-                        className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                      >
-                        {skill}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSkill(skill)}
-                          className="text-blue-600 hover:text-blue-800 ml-1"
-                        >
-                          <Close fontSize="small" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 italic">
-                  No skills added yet. Add your areas of expertise to showcase your knowledge.
-                </p>
-              )}
-            </div>
-
-            {/* Professional Bio */}
-            <div>
-              <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
-                Professional Bio
-              </label>
-              <textarea
-                id="bio"
-                value={formData.bio}
-                onChange={handleChange('bio')}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Share your story, expertise, and what students can expect from your courses..."
-              />
-            </div>
-          </div>
+      {/* ── Basic Info ── */}
+      <section>
+        <h4 className="text-xs font-bold tracking-widest text-slate-500 uppercase mb-4 pb-2 border-b border-white/5">
+          Basic Information
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Full Name" icon={icons.user}>
+            <input className={inputCls} value={form.name} onChange={set("name")} placeholder="Your full name" />
+          </Field>
+          <Field label="Email Address">
+            <input className={inputCls} type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" />
+          </Field>
+          <Field label="Professional Headline" icon={icons.brief}>
+            <input className={inputCls} value={form.headline} onChange={set("headline")} placeholder="e.g. Full-Stack Instructor" />
+          </Field>
+          <Field label="Years of Experience">
+            <input className={inputCls} type="number" min={0} value={form.experience} onChange={set("experience")} placeholder="e.g. 5" />
+          </Field>
+          <Field label="Location" icon={icons.map}>
+            <input className={inputCls} value={form.location} onChange={set("location")} placeholder="City, Country" />
+          </Field>
+          <Field label="Website" icon={icons.globe}>
+            <input className={inputCls} value={form.website} onChange={set("website")} placeholder="https://yoursite.com" />
+          </Field>
         </div>
-      </div>
+      </section>
 
-      {/* Save Button */}
-      <button
-        type="button"
-        disabled={loading}
-        onClick={handleSubmit}
-        className={`px-6 py-2 rounded-md font-medium flex items-center gap-2 ${
-          loading
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700 text-white'
-        }`}
-      >
-        <Save fontSize="small" />
-        {loading ? "Saving..." : "Save Profile"}
-      </button>
+      {/* ── Bio ── */}
+      <Field label="Professional Bio">
+        <textarea
+          className={`${inputCls} resize-none`}
+          rows={4}
+          value={form.bio}
+          onChange={set("bio")}
+          placeholder="Tell students about your background and teaching style..."
+        />
+      </Field>
+
+      {/* ── Expertise ── */}
+      <section>
+        <h4 className="text-xs font-bold tracking-widest text-slate-500 uppercase mb-4 pb-2 border-b border-white/5">
+          Areas of Expertise
+        </h4>
+        <div className="flex gap-2 mb-3">
+          <input
+            className={`${inputCls} flex-1`}
+            value={newSkill}
+            onChange={(e) => setNewSkill(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSkill())}
+            placeholder="Type a skill & press Enter"
+          />
+          <button
+            onClick={addSkill}
+            disabled={!newSkill.trim()}
+            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+          >
+            <Icon d={icons.plus} size={15} /> Add
+          </button>
+        </div>
+
+        {/* Quick suggestions */}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              onClick={() =>
+                !form.expertise.includes(s) &&
+                setForm((p) => ({ ...p, expertise: [...p.expertise, s] }))
+              }
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                form.expertise.includes(s)
+                  ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                  : "border-white/10 text-slate-500 hover:border-white/20 hover:text-slate-400"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
+        {form.expertise.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {form.expertise.map((s) => (
+              <SkillBadge key={s} skill={s} onRemove={removeSkill} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-600 italic">No skills added yet.</p>
+        )}
+      </section>
+
+      {/* ── Social Links ── */}
+      <section>
+        <h4 className="text-xs font-bold tracking-widest text-slate-500 uppercase mb-4 pb-2 border-b border-white/5">
+          Social Links
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="LinkedIn">
+            <input className={inputCls} value={form.linkedin} onChange={set("linkedin")} placeholder="linkedin.com/in/username" />
+          </Field>
+          <Field label="Twitter / X">
+            <input className={inputCls} value={form.twitter} onChange={set("twitter")} placeholder="twitter.com/username" />
+          </Field>
+          <Field label="YouTube">
+            <input className={inputCls} value={form.youtube} onChange={set("youtube")} placeholder="youtube.com/@channel" />
+          </Field>
+        </div>
+      </section>
+
+      {/* ── Error ── */}
+      {error && (
+        <p className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+          <Icon d={icons.alert} size={15} className="shrink-0" /> {error}
+        </p>
+      )}
+
+      {/* ── Submit ── */}
+      <div className="flex items-center gap-3 pt-1">
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-900 font-bold text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40"
+        >
+          <Icon d={icons.save} size={15} />
+          {loading ? "Saving…" : "Save Changes"}
+        </button>
+        {success && (
+          <span className="flex items-center gap-1.5 text-sm text-emerald-400 font-medium">
+            <Icon d={icons.check} size={15} className="text-emerald-400" /> Saved successfully!
+          </span>
+        )}  
+      </div>
     </div>
   );
 };

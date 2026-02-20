@@ -1,5 +1,8 @@
 const Course = require('../models/courseModel');
 const Lesson = require('../models/Lesson');
+const Quiz = require('../models/Quiz');
+const Enrollment = require('../models/Enrollment');
+
 const cloudinary = require('../utils/cloudinary');
 // Create a new course (Tutor only)
 exports.createCourse = async (req, res) => {
@@ -33,54 +36,65 @@ exports.createCourse = async (req, res) => {
 // backend/src/controllers/courseController.js - Add this method
 exports.getCourseStats = async (req, res) => {
   try {
-    const course = await Course.findById(req.params.id)
-      .populate('createdBy', 'name email')
-      .populate('sections.lessons');
+    const courseId = req.params.id;
+
+    const course = await Course.findById(courseId)
+      .populate('createdBy', 'name email');
 
     if (!course) {
-      return res.status(404).json({ error: 'Course not found' });
+      return res.status(404).json({ message: 'Course not found' });
     }
 
-    // Calculate statistics
-    const stats = {
-      basicInfo: {
-        title: !!course.title,
-        description: !!course.description && course.description.length > 50,
-        category: !!course.category,
-        thumbnail: !!course.thumbnail,
-        price: course.price !== undefined
-      },
-      content: {
-        totalSections: course.sections?.length || 0,
-        totalLessons: course.totalLessons || 0,
-        totalDuration: course.totalDuration || 0,
-        hasVideoLessons: course.sections?.some(s => 
-          s.lessons?.some(l => l.videoUrl)
-        ) || false,
-        hasResources: course.sections?.some(s => 
-          s.lessons?.some(l => l.resources && l.resources.length > 0)
-        ) || false
-      },
-      completeness: {
-        // Calculate percentage
-        percentage: calculateCompleteness(course),
-        missingItems: getMissingItems(course)
-      }
-    };
+    // Run queries in parallel (efficient)
+    const [
+      lessons,
+      totalQuizzes,
+      totalStudents
+    ] = await Promise.all([
+      Lesson.find({ courseId }),
+      Quiz.countDocuments({ courseId }),
+      Enrollment.countDocuments({ courseId })
+    ]);
 
-    res.json({
+    const totalLessons = lessons.length;
+
+    const totalDuration = lessons.reduce(
+      (sum, lesson) => sum + (lesson.duration || 0),
+      0
+    );
+
+    const totalSections = course.sections?.length || 0;
+
+    // Completion logic
+    const checks = [
+      course.title && course.title.length >= 10,
+      course.description && course.description.length >= 50,
+      course.category,
+      course.thumbnail,
+      totalSections >= 1,
+      totalLessons >= 1,
+      course.price !== undefined,
+    ];
+
+    const completeness = Math.round(
+      (checks.filter(Boolean).length / checks.length) * 100
+    );
+
+    res.status(200).json({
       success: true,
-      course: {
-        _id: course._id,
-        title: course.title,
-        instructor: course.createdBy,
-        status: course.status,
-        createdAt: course.createdAt
+      stats: {
+        totalLessons,
+        totalDuration,
+        totalSections,
+        totalQuizzes,
+        totalStudents,   // ✅ Enrollment based
+        completeness,
       },
-      stats
     });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Get Course Stats Error:', error);
+    res.status(500).json({ message: 'Server Error' });
   }
 };
 

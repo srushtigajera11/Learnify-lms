@@ -16,7 +16,15 @@ export default function CourseDetail() {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [stats, setStats] = useState({ totalLessons: 0, totalDuration: 0 });
+const [stats, setStats] = useState({
+  totalLessons: 0,
+  totalDuration: 0,
+  totalSections: 0,
+  totalQuizzes: 0,
+  completeness: 0,
+  totalStudents: 0,
+});
+
   const [showNotes, setShowNotes] = useState(false);
   const [notes, setNotes] = useState('');
 
@@ -28,9 +36,12 @@ export default function CourseDetail() {
 
         try {
           const statsRes = await axiosInstance.get(`/courses/${courseId}/stats`);
-          setStats(statsRes.data.stats || { totalLessons: 0, totalDuration: 0 });
-        } catch {}
-      } catch {
+          setStats(statsRes.data.stats);
+
+        } catch (err) {
+          console.error('Error fetching course stats:', err);
+        }
+      } catch (err) {
         setError('Failed to load course');
       } finally {
         setLoading(false);
@@ -124,7 +135,7 @@ export default function CourseDetail() {
        <div className="flex items-start gap-3">
   <button
     onClick={() => navigate(`/tutor/course/${courseId}/edit`)}
-    className="h-16 text-sm font-medium  bg-blue-700 text-white border hover:bg-blue-600 transition-colors"
+    className="h-14 w-28 text-sm font-medium  bg-blue-700 text-white border hover:bg-blue-600 transition-colors"
   >
     Edit Course
   </button>
@@ -132,7 +143,7 @@ export default function CourseDetail() {
   {course.status === 'draft' && (
     <button
       onClick={submitCourse}
-      disabled={completeness() < 70}
+      disabled={stats.completeness < 70}
       className="h-11 px-6 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
       Submit for Review
@@ -143,25 +154,25 @@ export default function CourseDetail() {
       </div>
 
       {/* Progress Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+      {/* <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <div className="flex justify-between items-center mb-3">
           <span className="font-medium text-gray-700">Course Completion</span>
-          <span className="font-semibold text-blue-600">{completeness()}%</span>
+          <span className="font-semibold text-blue-600">{stats.completeness}%</span>
         </div>
         <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
           <div
             className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-            style={{ width: `${completeness()}%` }}
+            style={{ width: `${stats.completeness}%` }}
           />
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
           <StatCard label="Lessons" value={stats.totalLessons} />
           <StatCard label="Duration" value={`${Math.round(stats.totalDuration / 60)}h`} />
-          <StatCard label="Sections" value={course.sections?.length || 0} />
+          <StatCard label="Sections" value={stats.totalSections} />
           <StatCard label="Students" value={course.studentCount || 0} />
         </div>
-      </div>
+      </div> */}
 
       {/* Management Cards */}
       <div>
@@ -175,14 +186,14 @@ export default function CourseDetail() {
           />
           <ManageCard
             title="Quizzes"
-            count={course.quizCount || 0}
+            count={stats.totalQuizzes}
             onView={() => navigate(`/tutor/course/${courseId}/quizzes`)}
             onAdd={() => navigate(`/tutor/course/${courseId}/quizzes/create`)}
           />
-          <ManageCard
+          <ManageCard className="col-span-1 md:col-span-1 text-center"
             title="Students"
-            count={course.studentCount || 0}
-            onView={() => navigate(`/tutor/course/${courseId}/students`)}
+            count={stats.totalStudents || 0}
+            onView={() => navigate(`/tutor/students`)}
           />
         </div>
       </div>
@@ -191,7 +202,7 @@ export default function CourseDetail() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
         <h3 className="font-semibold text-gray-800 mb-4">Quick Tools</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <ToolButton label="Preview Course" onClick={() => window.open(`/course/preview/${courseId}`)} />
+          <ToolButton label="Preview Course"onClick={() => alert('Preview feature coming soon!')}/>
           <ToolButton label="Analytics" onClick={() => navigate(`/tutor/course/${courseId}/analytics`)} />
           <ToolButton label="Export" onClick={() => alert('Export feature coming soon!')} />
           <ToolButton label="Internal Notes" onClick={() => setShowNotes(true)} />

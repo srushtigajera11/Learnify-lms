@@ -27,9 +27,15 @@ router.put('/:id/submit', isAuthenticated, authorizeRoles('tutor'), courseContro
 
 // Update course status (for fixing rejected courses)
 router.put('/:id/status', isAuthenticated, authorizeRoles('tutor'),courseController.updateCourseStatus);
-
+router.get(
+  '/:id/stats',
+  isAuthenticated,
+  authorizeRoles('tutor'),
+  courseController.getCourseStats
+);
 // Get tutor dashboard stats
 router.get('/tutor/stats', isAuthenticated, authorizeRoles('tutor'),courseController.getTutorStats);
+
 
 // ============================================
 // ADMIN ROUTES (requires admin role)

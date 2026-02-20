@@ -141,30 +141,51 @@ exports.getProfile = async (req, res) => {
 // @route   PUT /api/users/profile
 // @access  Private
 exports.updateProfile = async (req, res) => {
-  const { name, email } = req.body;
+  const { name, email, tutorProfile } = req.body;
 
   try {
     const user = await User.findById(req.user.id);
-
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    user.name = name || user.name;
-    user.email = email || user.email;
+    // Basic fields
+    if (name) user.name = name;
+    if (email) user.email = email;
+
+    // Tutor-specific fields (only update if role is tutor)
+    if (user.role === "tutor" && tutorProfile) {
+      user.tutorProfile = {
+        headline:   tutorProfile.headline   ?? user.tutorProfile?.headline,
+        bio:        tutorProfile.bio        ?? user.tutorProfile?.bio,
+        location:   tutorProfile.location   ?? user.tutorProfile?.location,
+        experience: tutorProfile.experience ?? user.tutorProfile?.experience,
+        expertise:  tutorProfile.expertise  ?? user.tutorProfile?.expertise,
+        socialLinks: {
+          youtube:  tutorProfile.socialLinks?.youtube  ?? user.tutorProfile?.socialLinks?.youtube,
+          linkedin: tutorProfile.socialLinks?.linkedin ?? user.tutorProfile?.socialLinks?.linkedin,
+          twitter:  tutorProfile.socialLinks?.twitter  ?? user.tutorProfile?.socialLinks?.twitter,
+          website:  tutorProfile.socialLinks?.website  ?? user.tutorProfile?.socialLinks?.website,
+        },
+      };
+    }
 
     const updatedUser = await user.save();
 
     res.status(200).json({
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      role: updatedUser.role,
+      success: true,
+      message: "Profile updated successfully",
+      user: {
+        _id:          updatedUser._id,
+        name:         updatedUser.name,
+        email:        updatedUser.email,
+        role:         updatedUser.role,
+        tutorProfile: updatedUser.tutorProfile,
+      },
     });
   } catch (err) {
-
+    console.error("Update profile error:", err);
     res.status(500).json({ message: "Update failed" });
   }
 };
-
 // @route   PUT /api/users/change-password
 // @access  Private
 exports.changePassword = async (req, res) => {
