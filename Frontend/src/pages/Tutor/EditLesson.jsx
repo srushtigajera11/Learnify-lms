@@ -18,6 +18,70 @@ export default function EditLesson() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState("");
+  /* =========================
+   VALIDATION HELPERS
+========================= */
+
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_DOC_SIZE = 10 * 1024 * 1024; // 10MB
+
+const validateURL = (url) => {
+  const pattern = /^(https?:\/\/)[^\s$.?#].[^\s]*$/gm;
+  return pattern.test(url);
+};
+
+const validateMaterials = (materials) => {
+  for (let i = 0; i < materials.length; i++) {
+    const m = materials[i];
+
+    // VIDEO VALIDATION
+    if (m.type === "video") {
+      if (!m.file && !m.url) {
+        return `Video file is required for material ${i + 1}`;
+      }
+
+      if (m.file) {
+        if (!m.file.type.startsWith("video/")) {
+          return `Only video files allowed for material ${i + 1}`;
+        }
+
+        if (m.file.size > MAX_VIDEO_SIZE) {
+          return `Video size must be under 100MB (Material ${i + 1})`;
+        }
+      }
+    }
+
+    // DOCUMENT VALIDATION
+    if (m.type === "document") {
+      if (!m.file && !m.url) {
+        return `Document file is required for material ${i + 1}`;
+      }
+
+      if (m.file) {
+        if (m.file.type !== "application/pdf") {
+          return `Only PDF files allowed for material ${i + 1}`;
+        }
+
+        if (m.file.size > MAX_DOC_SIZE) {
+          return `Document size must be under 10MB (Material ${i + 1})`;
+        }
+      }
+    }
+
+    // LINK VALIDATION
+    if (m.type === "link") {
+      if (!m.url) {
+        return `URL is required for material ${i + 1}`;
+      }
+
+      if (!validateURL(m.url)) {
+        return `Invalid URL format for material ${i + 1}`;
+      }
+    }
+  }
+
+  return null;
+};
 
   /* =========================
      FETCH LESSON
@@ -101,6 +165,14 @@ export default function EditLesson() {
     setError("");
 
     try {
+    
+    const materialError = validateMaterials(lessonData.materials); // EditLesson
+
+      if (materialError) {
+        setError(materialError);
+        setLoading(false); // or setUpdating(false)
+        return;
+      }
       const fd = new FormData();
 
       fd.append("title", lessonData.title);
@@ -229,11 +301,16 @@ export default function EditLesson() {
                   className="w-full border p-2 rounded"
                 />
               ) : (
-                <input
-                  type="file"
-                  onChange={(e) =>
-                    handleFileChange(i, e.target.files[0])
-                  }
+              <input
+                type="file"
+                accept={
+                  m.type === "video"
+                    ? "video/*"
+                    : m.type === "document"
+                    ? "image/png, image/jpeg"
+                    : ""
+                }
+                onChange={(e) => handleFileChange(i, e.target.files[0])}
                 />
               )}
 

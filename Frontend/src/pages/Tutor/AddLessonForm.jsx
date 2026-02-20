@@ -9,8 +9,7 @@ const AddLessonForm = () => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    order: "",
-    duration : "",
+    duration: "",
   });
 
   const [materials, setMaterials] = useState([
@@ -38,6 +37,13 @@ const AddLessonForm = () => {
   const handleMaterialChange = (index, field, value) => {
     const updated = [...materials];
     updated[index][field] = value;
+
+    // reset file if type changes
+    if (field === "type") {
+      updated[index].file = null;
+      updated[index].preview = null;
+    }
+
     setMaterials(updated);
   };
 
@@ -47,9 +53,10 @@ const AddLessonForm = () => {
     const updated = [...materials];
     updated[index].file = file;
     updated[index].name = file.name;
-    updated[index].preview = file.type.startsWith("video/")
-      ? URL.createObjectURL(file)
-      : null;
+
+    if (file.type.startsWith("video/")) {
+      updated[index].preview = URL.createObjectURL(file);
+    }
 
     setMaterials(updated);
   };
@@ -83,8 +90,8 @@ const AddLessonForm = () => {
     setError("");
 
     try {
-      if (!formData.title ) {
-        setError("Title is required");
+      if (!formData.title || !formData.duration) {
+        setError("Title and Duration are required");
         setLoading(false);
         return;
       }
@@ -92,7 +99,6 @@ const AddLessonForm = () => {
       const fd = new FormData();
       fd.append("title", formData.title);
       fd.append("description", formData.description);
-      fd.append("order", formData.order);
       fd.append("duration", formData.duration);
       fd.append("materialCount", materials.length);
 
@@ -110,13 +116,9 @@ const AddLessonForm = () => {
         }
       });
 
-      await axiosInstance.post(
-        `/lessons/course/${courseId}`,  // ✅ Updated route
-        fd,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
+      await axiosInstance.post(`/lessons/course/${courseId}`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
       navigate(-1);
     } catch (err) {
@@ -131,142 +133,159 @@ const AddLessonForm = () => {
   ========================= */
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Add New Lesson</h1>
+    <div className="max-w-4xl mx-auto px-6 py-10">
+      <div className="bg-white shadow-xl rounded-2xl p-8 space-y-8 border">
 
-      {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-
-        {/* Lesson Info */}
-        <div className="bg-white p-4 rounded border space-y-4">
-          <input
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            placeholder="Lesson title"
-            className="w-full border p-2 rounded"
-            required
-          />
-
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Lesson description"
-            className="w-full border p-2 rounded"
-          />
-
-          <input
-            type="number"
-            name="order"
-            value={formData.order}
-            onChange={handleChange}
-            placeholder="Order"
-            className="w-full border p-2 rounded"
-          />
-          <input
-            type="number"
-            name="duration"
-            value={formData.duration}
-            onChange={handleChange}
-            placeholder="Duration (in minutes)"
-            className="w-full border p-2 rounded"
-            required
-          />
-
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">
+            Create New Lesson
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Add lesson details and learning materials
+          </p>
         </div>
 
-        {/* Materials */}
-        <div className="space-y-4">
-          <h3 className="font-semibold">Materials</h3>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
 
-          {materials.map((m, i) => (
-            <div key={i} className="border p-4 rounded space-y-3">
-              <select
-                value={m.type}
-                onChange={(e) =>
-                  handleMaterialChange(i, "type", e.target.value)
-                }
-                className="w-full border p-2 rounded"
+        <form onSubmit={handleSubmit} className="space-y-8">
+
+          {/* Lesson Info */}
+          <div className="space-y-4">
+            <input
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              placeholder="Lesson Title"
+              className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              required
+            />
+
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Lesson Description"
+              className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+
+            <input
+              type="number"
+              name="duration"
+              value={formData.duration}
+              onChange={handleChange}
+              placeholder="Duration (minutes)"
+              className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              required
+            />
+          </div>
+
+          {/* Materials */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-gray-700">
+              Lesson Materials
+            </h3>
+
+            {materials.map((m, i) => (
+              <div
+                key={i}
+                className="border rounded-xl p-5 bg-gray-50 space-y-4"
               >
-                <option value="video">Video</option>
-                <option value="document">Document</option>
-                <option value="link">Link</option>
-              </select>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-gray-600">
+                    Material {i + 1}
+                  </span>
+                  {materials.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeMaterial(i)}
+                      className="text-red-500 text-sm"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
 
-              {m.type === "link" ? (
-                <input
-                  placeholder="https://example.com"
-                  value={m.url}
+                <select
+                  value={m.type}
                   onChange={(e) =>
-                    handleMaterialChange(i, "url", e.target.value)
+                    handleMaterialChange(i, "type", e.target.value)
                   }
-                  className="w-full border p-2 rounded"
-                />
-              ) : (
-                <input
-                  type="file"
-                  onChange={(e) =>
-                    handleFileChange(i, e.target.files[0])
-                  }
-                />
-              )}
+                  className="w-full border p-2 rounded-lg"
+                >
+                  <option value="video">Video</option>
+                  <option value="document">Document</option>
+                  <option value="link">Link</option>
+                </select>
 
-              {/* Preview Toggle */}
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={m.isPreview}
-                  onChange={(e) =>
-                    handleMaterialChange(i, "isPreview", e.target.checked)
-                  }
-                />
-                Make this material free preview
-              </label>
+                {m.type === "link" ? (
+                  <input
+                    placeholder="https://example.com"
+                    value={m.url}
+                    onChange={(e) =>
+                      handleMaterialChange(i, "url", e.target.value)
+                    }
+                    className="w-full border p-2 rounded-lg"
+                  />
+                ) : (
+                  <input
+                    type="file"
+                    accept={
+                      m.type === "video"
+                        ? "video/*"
+                        : "image/png, image/jpeg"
+                    }
+                    onChange={(e) =>
+                      handleFileChange(i, e.target.files[0])
+                    }
+                  />
+                )}
 
-              {m.preview && (
-                <video
-                  controls
-                  src={m.preview}
-                  className="w-full max-w-md"
-                />
-              )}
+                {m.preview && (
+                  <video
+                    controls
+                    src={m.preview}
+                    className="w-full max-w-md rounded-lg"
+                  />
+                )}
 
-              <button
-                type="button"
-                onClick={() => removeMaterial(i)}
-                className="text-red-500 text-sm"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={m.isPreview}
+                    onChange={(e) =>
+                      handleMaterialChange(i, "isPreview", e.target.checked)
+                    }
+                  />
+                  Make Free Preview
+                </label>
+              </div>
+            ))}
 
-          <button
-            type="button"
-            onClick={addMaterial}
-            className="bg-gray-100 px-3 py-2 rounded"
-          >
-            + Add Material
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={addMaterial}
+              className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+            >
+              + Add Material
+            </button>
+          </div>
 
-        {/* Submit */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-blue-600 text-white px-6 py-2 rounded"
-          >
-            {loading ? "Creating..." : "Create Lesson"}
-          </button>
-        </div>
-      </form>
+          {/* Submit */}
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition"
+            >
+              {loading ? "Creating..." : "Create Lesson"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
