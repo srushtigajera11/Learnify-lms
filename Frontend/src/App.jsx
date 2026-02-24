@@ -37,6 +37,7 @@ import CourseLearn from "./pages/Student/CourseLearn";
 import Unauthorized from "./pages/Unothorized"; 
 import AdminProtectedRoute from "./pages/Admin/AdminProtectedRoute";
 import { AuthProvider } from "./Context/authContext";
+import TutorLessonPreview from "./pages/Tutor/TutorLessonPreview";
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -74,6 +75,7 @@ function AppRoutes() {
         <Route path="course/:courseId/lessons/add" element={<AddLessonForm />} />
         <Route path="course/:courseId/lessons" element={<ViewLessons />} />
         <Route path="course/:courseId/lesson/:lessonId/edit" element={<EditLesson />} />
+        <Route path="course/:courseId/lesson/:lessonId/preview" element={<TutorLessonPreview />} />
         <Route path="course/:courseId/quizzes/create" element={<CreateQuiz />} />
         <Route path="/tutor/course/:courseId/quizzes/:quizId/edit" element={<EditQuiz />} />
         <Route path="/tutor/course/:courseId/quizzes" element={<ViewQuiz />} />

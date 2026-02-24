@@ -49,18 +49,27 @@ exports.getEnrollmentHistory = async (req, res) => {
 
 // 📌 GET /api/history/payments
 
-
 exports.getPaymentHistory = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const payments = await Payment.find({ userId })
-      .populate('courseId', 'title')
+      .populate("courseId", "title thumbnail")
       .sort({ createdAt: -1 });
 
     const formatted = payments.map((pay) => ({
       _id: pay._id,
-      course: pay.courseId,
+      course: pay.courseId
+        ? {
+            _id: pay.courseId._id,
+            title: pay.courseId.title,
+            thumbnail: pay.courseId.thumbnail,
+          }
+        : {
+            _id: null,
+            title: "Course No Longer Available",
+            thumbnail: null,
+          },
       amount: pay.amount,
       status: pay.status,
       createdAt: pay.createdAt,
@@ -68,10 +77,15 @@ exports.getPaymentHistory = async (req, res) => {
       razorpayOrderId: pay.razorpayOrderId,
     }));
 
-    res.status(200).json({ payments: formatted });
+    return res.status(200).json({
+      success: true,
+      payments: formatted,
+    });
   } catch (error) {
-    console.error('Fetch payments error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Fetch payments error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error fetching payments",
+    });
   }
 };
-

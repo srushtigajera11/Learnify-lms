@@ -28,16 +28,25 @@ export default function EditLesson() {
         const res = await axiosInstance.get(`/lessons/${lessonId}`);
         const lesson = res.data.lesson;
 
+        console.log("Loaded lesson:", lesson);
+
         setLessonData({
           title: lesson.title,
-          description: lesson.description,
+          description: lesson.description || "",
           duration: lesson.duration || "",
-         materials: lesson.materials.map((m) => ({
+          materials: lesson.materials.map((m) => ({
             ...m,
-            file: null,
+            _id: m._id,
+            type: m.type,
+            name: m.name || "",
+            url: m.url || "",
+            description: m.description || "",
+            isPreview: m.isPreview || false,
+            file: null, // New file to upload (if any)
           })),
         });
-      } catch {
+      } catch (err) {
+        console.error("Fetch error:", err);
         setError("Failed to load lesson");
       } finally {
         setLoading(false);
@@ -86,6 +95,7 @@ export default function EditLesson() {
           type: "video",
           name: "",
           url: "",
+          description: "",
           isPreview: false,
           file: null,
         },
@@ -108,6 +118,16 @@ export default function EditLesson() {
     setError("");
 
     try {
+      // Validate materials
+      for (let i = 0; i < lessonData.materials.length; i++) {
+        const m = lessonData.materials[i];
+        if (m.type === "link" && !m.url) {
+          setError(`Material ${i + 1}: URL is required for link type`);
+          setUpdating(false);
+          return;
+        }
+      }
+
       const fd = new FormData();
 
       fd.append("title", lessonData.title);
@@ -115,25 +135,33 @@ export default function EditLesson() {
       fd.append("duration", lessonData.duration);
       fd.append("materialCount", lessonData.materials.length);
 
-     lessonData.materials.forEach((m, i) => {
-  if (m._id) {
-    fd.append(`materials[${i}][_id]`, m._id);
-  }
+      lessonData.materials.forEach((m, i) => {
+        // Preserve existing material ID if it exists
+        if (m._id) {
+          fd.append(`materials[${i}][_id]`, m._id);
+        }
 
-  fd.append(`materials[${i}][type]`, m.type);
-  fd.append(`materials[${i}][name]`, m.name || "Material");
-  fd.append(`materials[${i}][isPreview]`, m.isPreview || false);
+        fd.append(`materials[${i}][type]`, m.type);
+        fd.append(`materials[${i}][name]`, m.name || "Material");
+        fd.append(`materials[${i}][isPreview]`, m.isPreview || false);
 
-  if (m.type === "link") {
-    fd.append(`materials[${i}][url]`, m.url);
-  }
+        // Add description
+        if (m.description) {
+          fd.append(`materials[${i}][description]`, m.description);
+        }
 
-  if (m.file) {
-    fd.append(`materials[${i}][file]`, m.file);
-  } else if (m.url) {
-    fd.append(`materials[${i}][url]`, m.url);
-  }
-});
+        // Add URL (for existing materials or links)
+        if (m.url) {
+          fd.append(`materials[${i}][url]`, m.url);
+        }
+
+        // Add new file if uploaded
+        if (m.file) {
+          fd.append(`materials[${i}][file]`, m.file);
+        }
+      });
+
+      console.log("Updating lesson with materials:", lessonData.materials);
 
       await axiosInstance.put(`/lessons/${lessonId}`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -141,6 +169,7 @@ export default function EditLesson() {
 
       navigate(-1);
     } catch (err) {
+      console.error("Update error:", err);
       setError(err.response?.data?.message || "Update failed");
     } finally {
       setUpdating(false);
@@ -154,7 +183,7 @@ export default function EditLesson() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="animate-spin w-10 h-10" />
+        <Loader2 className="animate-spin w-10 h-10 text-blue-600" />
       </div>
     );
   }
@@ -181,32 +210,49 @@ export default function EditLesson() {
 
           {/* Basic Info */}
           <div className="space-y-4">
-            <input
-              name="title"
-              value={lessonData.title}
-              onChange={handleChange}
-              placeholder="Lesson Title"
-              className="w-full border p-3 rounded-lg"
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Lesson Title *
+              </label>
+              <input
+                name="title"
+                value={lessonData.title}
+                onChange={handleChange}
+                placeholder="Lesson Title"
+                className="w-full border p-3 rounded-lg"
+                required
+              />
+            </div>
 
-            <textarea
-              name="description"
-              value={lessonData.description}
-              onChange={handleChange}
-              placeholder="Lesson Description"
-              className="w-full border p-3 rounded-lg"
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Lesson Description
+              </label>
+              <textarea
+                name="description"
+                value={lessonData.description}
+                onChange={handleChange}
+                placeholder="Lesson Description"
+                rows={3}
+                className="w-full border p-3 rounded-lg"
+              />
+            </div>
 
-            <input
-              type="number"
-              name="duration"
-              value={lessonData.duration}
-              onChange={handleChange}
-              placeholder="Duration (minutes)"
-              className="w-full border p-3 rounded-lg"
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Duration (minutes) *
+              </label>
+              <input
+                type="number"
+                name="duration"
+                value={lessonData.duration}
+                onChange={handleChange}
+                placeholder="Duration (minutes)"
+                min="1"
+                className="w-full border p-3 rounded-lg"
+                required
+              />
+            </div>
           </div>
 
           {/* Materials Section */}
@@ -227,25 +273,62 @@ export default function EditLesson() {
                   <button
                     type="button"
                     onClick={() => removeMaterial(i)}
-                    className="text-red-500 text-sm"
+                    className="text-red-500 text-sm hover:text-red-700"
                   >
                     Remove
                   </button>
                 </div>
 
-                <select
-                  value={m.type}
-                  onChange={(e) =>
-                    handleMaterialChange(i, "type", e.target.value)
-                  }
-                  className="w-full border p-2 rounded-lg"
-                >
-                  <option value="video">Video</option>
-                  <option value="document">Document</option>
-                  <option value="link">Link</option>
-                </select>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Material Type
+                  </label>
+                  <select
+                    value={m.type}
+                    onChange={(e) =>
+                      handleMaterialChange(i, "type", e.target.value)
+                    }
+                    className="w-full border p-2 rounded-lg"
+                  >
+                    <option value="video">Video (Upload or URL)</option>
+                    <option value="document">Document</option>
+                    <option value="link">External Link</option>
+                  </select>
+                </div>
 
-                {m.type === "link" ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Material Name
+                  </label>
+                  <input
+                    value={m.name}
+                    onChange={(e) =>
+                      handleMaterialChange(i, "name", e.target.value)
+                    }
+                    placeholder="Material name"
+                    className="w-full border p-2 rounded-lg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description (Optional)
+                  </label>
+                  <input
+                    value={m.description}
+                    onChange={(e) =>
+                      handleMaterialChange(i, "description", e.target.value)
+                    }
+                    placeholder="Brief description"
+                    className="w-full border p-2 rounded-lg"
+                  />
+                </div>
+
+                {/* URL Input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {m.type === "link" ? "URL *" : "URL (Optional)"}
+                  </label>
                   <input
                     value={m.url}
                     onChange={(e) =>
@@ -254,31 +337,49 @@ export default function EditLesson() {
                     placeholder="https://example.com"
                     className="w-full border p-2 rounded-lg"
                   />
-                ) : (
-                  <input
-                    type="file"
-                    accept={
-                      m.type === "video"
-                        ? "video/*"
-                        : "image/png, image/jpeg"
-                    }
-                    onChange={(e) =>
-                      handleFileChange(i, e.target.files[0])
-                    }
-                  />
+                </div>
+
+                {/* File Upload (Not for links) */}
+                {m.type !== "link" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Upload New File (Optional)
+                    </label>
+                    <input
+                      type="file"
+                      accept={
+                        m.type === "video"
+                          ? "video/*"
+                          : ".pdf,.doc,.docx,.ppt,.pptx,.txt"
+                      }
+                      onChange={(e) =>
+                        handleFileChange(i, e.target.files[0])
+                      }
+                      className="w-full"
+                    />
+                    {m.file && (
+                      <p className="text-xs text-green-600 mt-1">
+                        ✓ New file selected: {m.file.name}
+                      </p>
+                    )}
+                  </div>
                 )}
 
-               {m.url && !m.file && (
-                  <div className="bg-gray-100 p-3 rounded text-sm">
-                    <p className="text-gray-600">Current File:</p>
+                {/* Show current file/URL */}
+                {m.url && !m.file && (
+                  <div className="bg-blue-50 border border-blue-200 p-3 rounded text-sm">
+                    <p className="text-gray-700 font-medium mb-1">Current Material:</p>
                     <a
                       href={m.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-blue-600 underline"
+                      className="text-blue-600 underline break-all"
                     >
-                      View File
+                      {m.url.length > 60 ? m.url.substring(0, 60) + '...' : m.url}
                     </a>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Upload a new file above to replace this
+                    </p>
                   </div>
                 )}
 
@@ -290,7 +391,9 @@ export default function EditLesson() {
                       handleMaterialChange(i, "isPreview", e.target.checked)
                     }
                   />
-                  Make Free Preview
+                  <span className="text-gray-700">
+                    Make this a free preview
+                  </span>
                 </label>
               </div>
             ))}
@@ -298,18 +401,25 @@ export default function EditLesson() {
             <button
               type="button"
               onClick={addMaterial}
-              className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+              className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium"
             >
-              + Add Material
+              + Add Another Material
             </button>
           </div>
 
           {/* Submit */}
-          <div className="flex justify-end">
+          <div className="flex gap-3 justify-end">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
               disabled={updating}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg disabled:opacity-50"
             >
               {updating ? "Updating..." : "Update Lesson"}
             </button>

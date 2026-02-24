@@ -6,15 +6,11 @@ const LessonProgress = require("../models/LessonProgress");
 /* =========================================
    CREATE LESSON
 ========================================= */
-/* =========================================
-   CREATE LESSON
-========================================= */
 exports.createLesson = async (req, res) => {
   try {
     const { title, description, order, duration } = req.body;
-    const courseId = req.params.courseId; // ✅ FIXED
+    const courseId = req.params.courseId;
 
-    // ✅ Validation
     if (!title || !courseId) {
       return res.status(400).json({
         success: false,
@@ -25,28 +21,32 @@ exports.createLesson = async (req, res) => {
     const materialCount = parseInt(req.body.materialCount) || 0;
     const materials = [];
 
-    /* =========================================
-       PROCESS MATERIALS
-    ========================================= */
     for (let i = 0; i < materialCount; i++) {
       const type = req.body[`materials[${i}][type]`];
       const name = req.body[`materials[${i}][name]`] || "Material";
       const url = req.body[`materials[${i}][url]`];
+      const description = req.body[`materials[${i}][description]`] || "";
       const file = req.files?.find(
         (f) => f.fieldname === `materials[${i}][file]`
       );
 
-      // LINK
+      // LINK TYPE
       if (type === "link" && url) {
+        // Auto-detect video URLs
+        let materialType = type;
+        if (/youtube\.com|youtu\.be|vimeo\.com|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(url)) {
+          materialType = 'video';
+        }
+        
         materials.push({
-          type: "link",
+          type: materialType,
           name,
           url,
+          description,
         });
       }
-
-      // FILE
-      if (file) {
+      // FILE TYPE
+      else if (file) {
         let materialType = "document";
         if (file.mimetype.startsWith("video")) {
           materialType = "video";
@@ -56,36 +56,42 @@ exports.createLesson = async (req, res) => {
           type: materialType,
           name,
           url: file.secure_url || file.path,
+          description,
           public_id: file.filename || file.public_id,
           duration: file.duration || 0,
           size: file.size,
           format: file.mimetype,
         });
       }
+      // VIDEO URL WITHOUT FILE
+      else if ((type === "video" || type === "document") && url) {
+        let materialType = type;
+        if (/youtube\.com|youtu\.be|vimeo\.com|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(url)) {
+          materialType = 'video';
+        }
+        
+        materials.push({
+          type: materialType,
+          name,
+          url,
+          description,
+        });
+      }
     }
 
-    /* =========================================
-       AUTO ORDER LOGIC
-    ========================================= */
     let finalOrder;
 
     if (order) {
       finalOrder = parseInt(order);
-
       await Lesson.updateMany(
         { courseId, order: { $gte: finalOrder } },
         { $inc: { order: 1 } }
       );
     } else {
-      const lastLesson = await Lesson.findOne({ courseId })
-        .sort({ order: -1 });
-
+      const lastLesson = await Lesson.findOne({ courseId }).sort({ order: -1 });
       finalOrder = lastLesson ? lastLesson.order + 1 : 1;
     }
 
-    /* =========================================
-       CREATE LESSON
-    ========================================= */
     const lesson = await Lesson.create({
       title,
       description,
@@ -93,22 +99,14 @@ exports.createLesson = async (req, res) => {
       courseId,
       materials,
       duration: duration || 0,
-      lessonType:
-        materials.find((m) => m.type === "video") ? "video" : "text",
+      lessonType: materials.find((m) => m.type === "video") ? "video" : "text",
     });
 
-    /* =========================================
-       CALCULATE VIDEO TOTAL DURATION
-    ========================================= */
     lesson.totalDuration = lesson.materials
       .filter((m) => m.type === "video")
       .reduce((sum, m) => sum + (m.duration || 0), 0);
 
     await lesson.save();
-
-    /* =========================================
-       UPDATE COURSE TOTAL DURATION
-    ========================================= */
     await updateCourseDuration(courseId);
 
     res.status(201).json({
@@ -125,6 +123,74 @@ exports.createLesson = async (req, res) => {
   }
 };
 
+/* =========================================
+   GET TUTOR LESSON PREVIEW
+   - For tutors to preview their lessons
+   - Returns lesson with all course lessons for navigation
+========================================= */
+exports.getTutorLessonPreview = async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const tutorId = req.user.id;
+
+    // Get the lesson
+    const lesson = await Lesson.findById(lessonId).populate('courseId');
+    
+    if (!lesson) {
+      return res.status(404).json({
+        success: false,
+        message: "Lesson not found",
+      });
+    }
+
+    // Verify tutor owns this course
+    if (lesson.courseId.createdBy.toString() !== tutorId) {
+      return res.status(403).json({
+        success: false,
+        message: "You don't have permission to preview this lesson",
+      });
+    }
+
+    // Get all lessons from this course for sidebar navigation
+    const allLessons = await Lesson.find({ courseId: lesson.courseId._id })
+      .sort({ order: 1 })
+      .select('_id title order duration lessonType isPreview');
+
+    // Format materials with signed URLs for videos if needed
+    const formattedMaterials = lesson.materials.map((m) => {
+      if (m.type === "video" && m.public_id) {
+        const signedUrl = cloudinary.url(m.public_id, {
+          resource_type: "video",
+          type: "authenticated",
+          sign_url: true,
+          expires_at: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+        });
+        return { ...m._doc, url: signedUrl };
+      }
+      return m;
+    });
+
+    res.status(200).json({
+      success: true,
+      lesson: {
+        ...lesson._doc,
+        materials: formattedMaterials,
+      },
+      allLessons,
+      course: {
+        _id: lesson.courseId._id,
+        title: lesson.courseId.title,
+      }
+    });
+
+  } catch (error) {
+    console.error("Get Tutor Lesson Preview Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
 
 /* =========================================
    GET LESSON WITH SIGNED URL
@@ -138,10 +204,12 @@ exports.getLessonById = async (req, res) => {
         message: "Lesson not found",
       });
     }
+
     const progress = await LessonProgress.findOne({
-  studentId: req.user.id,
-  lessonId: lesson._id,
-});
+      studentId: req.user.id,
+      lessonId: lesson._id,
+    });
+
     const updatedMaterials = lesson.materials.map((m) => {
       if (m.type === "video" && m.public_id) {
         const signedUrl = cloudinary.url(m.public_id, {
@@ -150,22 +218,20 @@ exports.getLessonById = async (req, res) => {
           sign_url: true,
           expires_at: Math.floor(Date.now() / 1000) + 300,
         });
-
         return { ...m._doc, url: signedUrl };
       }
-
       return m;
     });
 
-   res.status(200).json({
-  success: true,
-  lesson: {
-    ...lesson._doc,
-    materials: updatedMaterials,
-  },
-  resumeFrom: progress?.lastWatchedTime || 0,
-  progress: progress?.progress || 0,
-});
+    res.status(200).json({
+      success: true,
+      lesson: {
+        ...lesson._doc,
+        materials: updatedMaterials,
+      },
+      resumeFrom: progress?.lastWatchedTime || 0,
+      progress: progress?.progress || 0,
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -196,15 +262,28 @@ exports.updateLesson = async (req, res) => {
       const type = req.body[`materials[${i}][type]`];
       const name = req.body[`materials[${i}][name]`] || "Material";
       const url = req.body[`materials[${i}][url]`];
+      const description = req.body[`materials[${i}][description]`] || "";
       const file = req.files?.find(
         (f) => f.fieldname === `materials[${i}][file]`
       );
 
-      if (type === "link" && url) {
-        materials.push({ type: "link", name, url });
+      // LINK TYPE OR VIDEO URL
+      if (url && !file) {
+        // Auto-detect video URLs
+        let materialType = type;
+        if (/youtube\.com|youtu\.be|vimeo\.com|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(url)) {
+          materialType = 'video';
+        }
+        
+        materials.push({ 
+          type: materialType, 
+          name, 
+          url,
+          description,
+        });
       }
-
-      if (file) {
+      // FILE UPLOAD
+      else if (file) {
         let materialType = "document";
         if (file.mimetype.startsWith("video")) {
           materialType = "video";
@@ -214,40 +293,50 @@ exports.updateLesson = async (req, res) => {
           type: materialType,
           name,
           url: file.secure_url || file.path,
+          description,
           public_id: file.filename || file.public_id,
           duration: file.duration || 0,
           size: file.size,
           format: file.mimetype,
         });
       }
+      // KEEP EXISTING MATERIAL
+      else {
+        const existingMaterial = lesson.materials[i];
+        if (existingMaterial) {
+          materials.push({
+            ...existingMaterial,
+            type,
+            name,
+            description,
+          });
+        }
+      }
     }
+
     const newOrder = parseInt(req.body.order);
-const oldOrder = lesson.order;
-if (newOrder && newOrder !== oldOrder) {
-
-  if (newOrder > oldOrder) {
-    // Moving down
-    await Lesson.updateMany(
-      {
-        courseId: lesson.courseId,
-        order: { $gt: oldOrder, $lte: newOrder },
-      },
-      { $inc: { order: -1 } }
-    );
-  } else {
-    // Moving up
-    await Lesson.updateMany(
-      {
-        courseId: lesson.courseId,
-        order: { $gte: newOrder, $lt: oldOrder },
-      },
-      { $inc: { order: 1 } }
-    );
-  }
-
-  lesson.order = newOrder;
-}
-
+    const oldOrder = lesson.order;
+    
+    if (newOrder && newOrder !== oldOrder) {
+      if (newOrder > oldOrder) {
+        await Lesson.updateMany(
+          {
+            courseId: lesson.courseId,
+            order: { $gt: oldOrder, $lte: newOrder },
+          },
+          { $inc: { order: -1 } }
+        );
+      } else {
+        await Lesson.updateMany(
+          {
+            courseId: lesson.courseId,
+            order: { $gte: newOrder, $lt: oldOrder },
+          },
+          { $inc: { order: 1 } }
+        );
+      }
+      lesson.order = newOrder;
+    }
 
     lesson.title = req.body.title;
     lesson.description = req.body.description;
@@ -291,9 +380,6 @@ exports.deleteLesson = async (req, res) => {
     const deletedOrder = lesson.order;
     const courseId = lesson.courseId;
 
-    /* ----------------------------
-       DELETE CLOUDINARY FILES
-    ----------------------------- */
     for (const material of lesson.materials) {
       if (material.public_id) {
         await cloudinary.uploader.destroy(material.public_id, {
@@ -302,14 +388,8 @@ exports.deleteLesson = async (req, res) => {
       }
     }
 
-    /* ----------------------------
-       DELETE LESSON
-    ----------------------------- */
     await lesson.deleteOne();
 
-    /* ----------------------------
-       AUTO REORDER REMAINING LESSONS
-    ----------------------------- */
     await Lesson.updateMany(
       {
         courseId,
@@ -320,9 +400,6 @@ exports.deleteLesson = async (req, res) => {
       }
     );
 
-    /* ----------------------------
-       UPDATE COURSE DURATION
-    ----------------------------- */
     await updateCourseDuration(courseId);
 
     res.status(200).json({
@@ -361,6 +438,9 @@ exports.getLessonsByCourse = async (req, res) => {
   }
 };
 
+/* =========================================
+   UPDATE PROGRESS
+========================================= */
 exports.updateProgress = async (req, res) => {
   try {
     const { progress, lastWatchedTime } = req.body;
@@ -398,9 +478,13 @@ exports.updateProgress = async (req, res) => {
     });
   }
 };
+
+/* =========================================
+   REORDER LESSONS
+========================================= */
 exports.reorderLessons = async (req, res) => {
   try {
-    const updates = req.body; // array of { lessonId, order }
+    const updates = req.body;
 
     const bulkOps = updates.map((item) => ({
       updateOne: {
@@ -438,4 +522,3 @@ async function updateCourseDuration(courseId) {
     totalDuration: total,
   });
 }
-

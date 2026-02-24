@@ -170,7 +170,7 @@ const ViewLessons = () => {
                     <span className="hidden sm:inline">Delete</span>
                   </button>
                   <button
-                    onClick={() => navigate(`/lesson/${lesson._id}`)}
+                    onClick={() => navigate(`/tutor/course/${courseId}/lesson/${lesson._id}/preview`)}
                     className="px-3 py-2 border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-2"
                     title="Preview lesson"
                   >

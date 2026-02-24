@@ -12,57 +12,100 @@ exports.getEnrolledCourses = async (req, res) => {
   try {
     const studentId = req.user.id;
 
+    // Step 1: Fetch enrollments with populated course
     const enrollments = await Enrollment.find({ studentId })
       .populate({
-        path: 'courseId',
-        select: 'title description thumbnail price level category createdBy',
-        populate: { 
-          path: 'createdBy', 
-          select: 'name avatar' 
-        }
+        path: "courseId",
+        select:
+          "title description thumbnail price level category createdBy",
+        populate: {
+          path: "createdBy",
+          select: "name avatar",
+        },
       })
-      .sort('-createdAt');
+      .sort("-createdAt");
 
     if (!enrollments.length) {
-      return res.status(200).json({ 
-        success: true, 
-        enrollments: [] 
+      return res.status(200).json({
+        success: true,
+        enrollments: [],
       });
     }
 
-    // Calculate progress for each enrollment
-    const enrollmentsWithProgress = await Promise.all(
-      enrollments.map(async (enrollment) => {
-        const totalLessons = await Lesson.countDocuments({
-          courseId: enrollment.courseId._id
-        });
-        
-        const completedLessons = enrollment.completedLessons?.length || 0;
-        const progress = totalLessons > 0 
-          ? Math.round((completedLessons / totalLessons) * 100) 
-          : 0;
-
-        return {
-          _id: enrollment._id,
-          course: enrollment.courseId,
-          enrolledAt: enrollment.createdAt,
-          progress,
-          totalLessons,
-          completedLessons,
-          lastAccessed: enrollment.updatedAt
-        };
-      })
+    // Step 2: Remove broken enrollments (course deleted)
+    const brokenEnrollments = enrollments.filter(
+      (enrollment) => !enrollment.courseId
     );
 
-    res.status(200).json({ 
-      success: true, 
-      enrollments: enrollmentsWithProgress 
+    if (brokenEnrollments.length > 0) {
+      await Enrollment.deleteMany({
+        _id: { $in: brokenEnrollments.map((e) => e._id) },
+      });
+    }
+
+    const validEnrollments = enrollments.filter(
+      (enrollment) => enrollment.courseId
+    );
+
+    // Step 3: Get all course IDs
+    const courseIds = validEnrollments.map(
+      (enrollment) => enrollment.courseId._id
+    );
+
+    // Step 4: Get lesson counts for all courses in ONE query
+    const lessonCounts = await Lesson.aggregate([
+      {
+        $match: {
+          courseId: { $in: courseIds },
+        },
+      },
+      {
+        $group: {
+          _id: "$courseId",
+          totalLessons: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Convert to lookup map
+    const lessonCountMap = {};
+    lessonCounts.forEach((item) => {
+      lessonCountMap[item._id.toString()] = item.totalLessons;
+    });
+
+    // Step 5: Format response
+    const enrollmentsWithProgress = validEnrollments.map((enrollment) => {
+      const courseIdStr = enrollment.courseId._id.toString();
+
+      const totalLessons = lessonCountMap[courseIdStr] || 0;
+      const completedLessons =
+        enrollment.completedLessons?.length || 0;
+
+      const progress =
+        totalLessons > 0
+          ? Math.round((completedLessons / totalLessons) * 100)
+          : 0;
+
+      return {
+        _id: enrollment._id,
+        course: enrollment.courseId,
+        enrolledAt: enrollment.createdAt,
+        progress,
+        totalLessons,
+        completedLessons,
+        lastAccessed: enrollment.updatedAt,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      enrollments: enrollmentsWithProgress,
     });
   } catch (error) {
-    console.error('Get enrolled courses error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error fetching enrolled courses' 
+    console.error("Get enrolled courses error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error fetching enrolled courses",
     });
   }
 };
@@ -71,47 +114,102 @@ exports.getEnrolledCourses = async (req, res) => {
 exports.getStudentDashboardStats = async (req, res) => {
   try {
     const studentId = req.user.id;
-    
-    // Get enrolled courses count
-    const enrolledCount = await Enrollment.countDocuments({ studentId });
-    
-    // Get completed courses (where progress is 100%)
-    const enrollments = await Enrollment.find({ studentId });
-    let completedCount = 0;
-    
-    for (const enrollment of enrollments) {
-      const totalLessons = await Lesson.countDocuments({ 
-        courseId: enrollment.courseId 
+
+    // 1️⃣ Fetch enrollments
+    const enrollments = await Enrollment.find({ studentId })
+      .select("courseId completedLessons");
+
+    if (!enrollments.length) {
+      return res.status(200).json({
+        success: true,
+        stats: {
+          enrolledCourses: 0,
+          completedCourses: 0,
+          certificates: 0,
+        },
       });
-      
-      if (totalLessons > 0) {
-        const progress = Math.round((enrollment.completedLessons?.length / totalLessons) * 100);
-        if (progress === 100) {
-          completedCount++;
+    }
+
+    // 2️⃣ Remove broken enrollments (course deleted)
+    const brokenEnrollments = enrollments.filter(
+      (e) => !e.courseId
+    );
+
+    if (brokenEnrollments.length > 0) {
+      await Enrollment.deleteMany({
+        _id: { $in: brokenEnrollments.map(e => e._id) }
+      });
+    }
+
+    const validEnrollments = enrollments.filter(
+      (e) => e.courseId
+    );
+
+    const enrolledCount = validEnrollments.length;
+
+    // 3️⃣ Get lesson counts for all courses in ONE query
+    const courseIds = validEnrollments.map(e => e.courseId);
+
+    const lessonCounts = await Lesson.aggregate([
+      {
+        $match: {
+          courseId: { $in: courseIds }
+        }
+      },
+      {
+        $group: {
+          _id: "$courseId",
+          totalLessons: { $sum: 1 }
         }
       }
+    ]);
+
+    // Convert to lookup map
+    const lessonCountMap = {};
+    lessonCounts.forEach(item => {
+      lessonCountMap[item._id.toString()] = item.totalLessons;
+    });
+
+    // 4️⃣ Calculate completed courses
+    let completedCount = 0;
+
+    for (const enrollment of validEnrollments) {
+      const totalLessons =
+        lessonCountMap[enrollment.courseId.toString()] || 0;
+
+      const completedLessons =
+        enrollment.completedLessons?.length || 0;
+
+      if (
+        totalLessons > 0 &&
+        completedLessons === totalLessons
+      ) {
+        completedCount++;
+      }
     }
-    
-    // Get certificates count
-    const certificatesCount = await Certificate.countDocuments({ studentId });
-    
-    res.status(200).json({
+
+    // 5️⃣ Certificate count
+    const certificatesCount = await Certificate.countDocuments({
+      studentId
+    });
+
+    return res.status(200).json({
       success: true,
       stats: {
         enrolledCourses: enrolledCount,
         completedCourses: completedCount,
-        certificates: certificatesCount || 0
-      }
+        certificates: certificatesCount || 0,
+      },
     });
+
   } catch (error) {
     console.error("Get dashboard stats error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Server error fetching dashboard stats"
+      message: "Server error fetching dashboard stats",
     });
   }
 };
-
 /**
  * Get all available courses with enrollment status
  */

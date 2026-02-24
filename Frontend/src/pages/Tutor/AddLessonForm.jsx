@@ -18,6 +18,7 @@ const AddLessonForm = () => {
       file: null,
       url: "",
       name: "",
+      description: "",
       isPreview: false,
       preview: null,
     },
@@ -42,6 +43,7 @@ const AddLessonForm = () => {
     if (field === "type") {
       updated[index].file = null;
       updated[index].preview = null;
+      updated[index].url = "";
     }
 
     setMaterials(updated);
@@ -69,6 +71,7 @@ const AddLessonForm = () => {
         file: null,
         url: "",
         name: "",
+        description: "",
         isPreview: false,
         preview: null,
       },
@@ -96,6 +99,21 @@ const AddLessonForm = () => {
         return;
       }
 
+      // Validate materials
+      for (let i = 0; i < materials.length; i++) {
+        const m = materials[i];
+        if (m.type === "link" && !m.url) {
+          setError(`Material ${i + 1}: URL is required for link type`);
+          setLoading(false);
+          return;
+        }
+        if ((m.type === "video" || m.type === "document") && !m.file && !m.url) {
+          setError(`Material ${i + 1}: File or URL is required`);
+          setLoading(false);
+          return;
+        }
+      }
+
       const fd = new FormData();
       fd.append("title", formData.title);
       fd.append("description", formData.description);
@@ -104,17 +122,26 @@ const AddLessonForm = () => {
 
       materials.forEach((m, i) => {
         fd.append(`materials[${i}][type]`, m.type);
-        fd.append(`materials[${i}][name]`, m.name || "Material");
+        fd.append(`materials[${i}][name]`, m.name || m.file?.name || "Material");
         fd.append(`materials[${i}][isPreview]`, m.isPreview);
+        
+        // Add description
+        if (m.description) {
+          fd.append(`materials[${i}][description]`, m.description);
+        }
 
-        if (m.type === "link") {
+        // Add URL (for links OR video URLs)
+        if (m.url) {
           fd.append(`materials[${i}][url]`, m.url);
         }
 
+        // Add file
         if (m.file) {
           fd.append(`materials[${i}][file]`, m.file);
         }
       });
+
+      console.log("Submitting lesson with materials:", materials);
 
       await axiosInstance.post(`/lessons/course/${courseId}`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -122,6 +149,7 @@ const AddLessonForm = () => {
 
       navigate(-1);
     } catch (err) {
+      console.error("Submit error:", err);
       setError(err.response?.data?.message || "Failed to create lesson");
     } finally {
       setLoading(false);
@@ -155,32 +183,49 @@ const AddLessonForm = () => {
 
           {/* Lesson Info */}
           <div className="space-y-4">
-            <input
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="Lesson Title"
-              className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Lesson Title *
+              </label>
+              <input
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                placeholder="e.g., Introduction to React Hooks"
+                className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                required
+              />
+            </div>
 
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Lesson Description"
-              className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Lesson Description
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="What will students learn in this lesson?"
+                rows={3}
+                className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
 
-            <input
-              type="number"
-              name="duration"
-              value={formData.duration}
-              onChange={handleChange}
-              placeholder="Duration (minutes)"
-              className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Duration (minutes) *
+              </label>
+              <input
+                type="number"
+                name="duration"
+                value={formData.duration}
+                onChange={handleChange}
+                placeholder="15"
+                min="1"
+                className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                required
+              />
+            </div>
           </div>
 
           {/* Materials */}
@@ -202,46 +247,102 @@ const AddLessonForm = () => {
                     <button
                       type="button"
                       onClick={() => removeMaterial(i)}
-                      className="text-red-500 text-sm"
+                      className="text-red-500 text-sm hover:text-red-700"
                     >
                       Remove
                     </button>
                   )}
                 </div>
 
-                <select
-                  value={m.type}
-                  onChange={(e) =>
-                    handleMaterialChange(i, "type", e.target.value)
-                  }
-                  className="w-full border p-2 rounded-lg"
-                >
-                  <option value="video">Video</option>
-                  <option value="document">Document</option>
-                  <option value="link">Link</option>
-                </select>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Material Type
+                  </label>
+                  <select
+                    value={m.type}
+                    onChange={(e) =>
+                      handleMaterialChange(i, "type", e.target.value)
+                    }
+                    className="w-full border p-2 rounded-lg"
+                  >
+                    <option value="video">Video (Upload or URL)</option>
+                    <option value="document">Document</option>
+                    <option value="link">External Link</option>
+                  </select>
+                </div>
 
-                {m.type === "link" ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Material Name
+                  </label>
                   <input
-                    placeholder="https://example.com"
+                    value={m.name}
+                    onChange={(e) =>
+                      handleMaterialChange(i, "name", e.target.value)
+                    }
+                    placeholder="e.g., Introduction Video, Course Slides"
+                    className="w-full border p-2 rounded-lg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description (Optional)
+                  </label>
+                  <input
+                    value={m.description}
+                    onChange={(e) =>
+                      handleMaterialChange(i, "description", e.target.value)
+                    }
+                    placeholder="Brief description of this material"
+                    className="w-full border p-2 rounded-lg"
+                  />
+                </div>
+
+                {/* URL Input for Links or Video URLs */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {m.type === "link" ? "URL *" : "URL (Optional - for YouTube, Vimeo, etc.)"}
+                  </label>
+                  <input
                     value={m.url}
                     onChange={(e) =>
                       handleMaterialChange(i, "url", e.target.value)
                     }
+                    placeholder="https://example.com or https://youtube.com/..."
                     className="w-full border p-2 rounded-lg"
                   />
-                ) : (
-                  <input
-                    type="file"
-                    accept={
-                      m.type === "video"
-                        ? "video/*"
-                        : "image/png, image/jpeg"
-                    }
-                    onChange={(e) =>
-                      handleFileChange(i, e.target.files[0])
-                    }
-                  />
+                  {m.type === "video" && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter a YouTube/Vimeo URL OR upload a video file below
+                    </p>
+                  )}
+                </div>
+
+                {/* File Upload (Not for links) */}
+                {m.type !== "link" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Upload File {!m.url && "*"}
+                    </label>
+                    <input
+                      type="file"
+                      accept={
+                        m.type === "video"
+                          ? "video/*"
+                          : ".pdf,.doc,.docx,.ppt,.pptx,.txt"
+                      }
+                      onChange={(e) =>
+                        handleFileChange(i, e.target.files[0])
+                      }
+                      className="w-full"
+                    />
+                    {m.file && (
+                      <p className="text-xs text-green-600 mt-1">
+                        ✓ Selected: {m.file.name}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {m.preview && (
@@ -260,7 +361,9 @@ const AddLessonForm = () => {
                       handleMaterialChange(i, "isPreview", e.target.checked)
                     }
                   />
-                  Make Free Preview
+                  <span className="text-gray-700">
+                    Make this a free preview (students can view without enrolling)
+                  </span>
                 </label>
               </div>
             ))}
@@ -268,18 +371,25 @@ const AddLessonForm = () => {
             <button
               type="button"
               onClick={addMaterial}
-              className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm"
+              className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
-              + Add Material
+              + Add Another Material
             </button>
           </div>
 
           {/* Submit */}
-          <div className="flex justify-end">
+          <div className="flex gap-3 justify-end">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
             >
               {loading ? "Creating..." : "Create Lesson"}
             </button>
