@@ -50,14 +50,14 @@ const PurchaseHistory = () => {
               <div className="flex justify-between items-start">
                 <div>
                  <h2 className="text-lg font-semibold text-gray-800">
-  {item.course.title}
-</h2>
+                    {item.course.title}
+                  </h2>
 
-{!item.course._id && (
-  <span className="text-xs text-red-500">
-    This course has been removed
-  </span>
-)}
+                  {!item.course._id && (
+                    <span className="text-xs text-red-500">
+                      This course has been removed
+                    </span>
+                  )}
 
                   <p className="text-sm text-gray-500 mt-1">
                     {new Date(item.createdAt).toLocaleString()}

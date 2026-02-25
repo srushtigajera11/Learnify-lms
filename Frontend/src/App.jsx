@@ -38,7 +38,7 @@ import Unauthorized from "./pages/Unothorized";
 import AdminProtectedRoute from "./pages/Admin/AdminProtectedRoute";
 import { AuthProvider } from "./Context/authContext";
 import TutorLessonPreview from "./pages/Tutor/TutorLessonPreview";
-
+import UnifiedCourseLearn from "./pages/Student/CourseContent/UnifiedCourseContent";
 function AppRoutes() {
   const { user } = useAuth();
 
@@ -54,7 +54,7 @@ function AppRoutes() {
         <Route path="/student" element={<StudentDashboardLayout />}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="mylearning" element={<MyLearning />} />
-          <Route path="course/:courseId/learn" element={<CourseLearn />} />
+          <Route path="course/:courseId/learn" element={<UnifiedCourseLearn />} />
           <Route path="wishlist" element={<WishList />} />
           <Route path="review" element={<Reviews />} />
           <Route path="purchaseHistory" element={<PurchaseHistory />} />

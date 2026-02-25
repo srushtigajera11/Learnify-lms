@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { LessonSidebar } from './CourseLearnComponents/LessonSidebar';
-import { LessonContent } from './CourseLearnComponents/LessonContent';
-import { fetchCourseData, markLessonComplete } from './CourseLearnComponents/fetchCourseData';
+import { LessonSidebar } from './CourseContent/LessonSidebar';
+import { LessonContent } from './CourseContent/LessonContent';
+import { fetchCourseData, markLessonComplete } from './CourseContent/fetchCourseData';
 import { ChevronLeft, ChevronRight, BookOpen, Loader2 } from 'lucide-react';
 
 const CourseLearn = () => {

@@ -9,7 +9,27 @@ const quizSchema = new mongoose.Schema({
   courseId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Course', 
-    required: [true, 'Course ID is required'] 
+    required: [true, 'Course ID is required'],
+    index: true
+  },
+  
+  // Link to lesson (for practice quizzes)
+  lessonId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Lesson'
+  },
+  
+  // Quiz type determines its purpose
+  quizType: {
+    type: String,
+    enum: ['practice', 'final'],
+    default: 'practice'
+  },
+  
+  // Order in course content (for sidebar display)
+  order: {
+    type: Number,
+    required: true
   },
 
   questions: [{
@@ -31,7 +51,7 @@ const quizSchema = new mongoose.Schema({
       default: 1,
       min: [1, 'Points must be at least 1']
     },
-    explanation: String // For review
+    explanation: String
   }],
   
   // Quiz settings
@@ -43,11 +63,11 @@ const quizSchema = new mongoose.Schema({
   },
   timeLimit: { 
     type: Number, 
-    min: [1, 'Time limit must be at least 1 minute'] 
-  }, // in minutes
+    min: [0, 'Time limit cannot be negative']
+  },
   maxAttempts: { 
     type: Number, 
-    default: 1,
+    default: 3, // More attempts for practice quizzes
     min: [1, 'Max attempts must be at least 1']
   },
   isPublished: { 
@@ -57,22 +77,26 @@ const quizSchema = new mongoose.Schema({
   shuffleQuestions: { 
     type: Boolean, 
     default: false 
-  },lessonId: { 
-  type: mongoose.Schema.Types.ObjectId, 
-  ref: 'Lesson' 
-},
+  },
   
-  // Gamification & Certification
-  isFinalQuiz: { 
-    type: Boolean, 
-    default: false 
-  }, // Marks if this is the certificate-qualifying quiz
+  // Gamification
   xpReward: { 
     type: Number, 
-    default: 0 
-  }, // XP awarded for completing (not necessarily passing)
+    default: function() {
+      // Practice quizzes give XP, final quizzes don't (they give certificate)
+      return this.quizType === 'practice' ? 10 : 0;
+    }
+  },
   
-  // Tutor who created this quiz
+  // Certificate settings (only for final quizzes)
+  generatesCertificate: {
+    type: Boolean,
+    default: function() {
+      return this.quizType === 'final';
+    }
+  },
+  
+  // Tutor who created
   createdBy: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
@@ -82,7 +106,8 @@ const quizSchema = new mongoose.Schema({
   timestamps: true 
 });
 
-// Index for better query performance
+// Compound index for course content ordering
+quizSchema.index({ courseId: 1, order: 1 });
 quizSchema.index({ courseId: 1, isPublished: 1 });
 quizSchema.index({ createdBy: 1 });
 
@@ -91,11 +116,31 @@ quizSchema.virtual('totalPoints').get(function() {
   return this.questions.reduce((total, question) => total + question.points, 0);
 });
 
-// Method to check if student can attempt quiz
-quizSchema.methods.canAttempt = function(studentId, currentAttempts) {
-  if (!this.isPublished) return { canAttempt: false, reason: 'Quiz is not published' };
-  if (currentAttempts >= this.maxAttempts) return { canAttempt: false, reason: 'Maximum attempts reached' };
+// Method to check if student can attempt
+quizSchema.methods.canAttempt = function(currentAttempts) {
+  if (!this.isPublished) {
+    return { canAttempt: false, reason: 'Quiz is not published' };
+  }
+  if (currentAttempts >= this.maxAttempts) {
+    return { canAttempt: false, reason: 'Maximum attempts reached' };
+  }
   return { canAttempt: true, reason: '' };
 };
+
+// Auto-set defaults based on quiz type
+quizSchema.pre('save', function(next) {
+  if (this.isNew || this.isModified('quizType')) {
+    if (this.quizType === 'final') {
+      this.maxAttempts = this.maxAttempts || 1;
+      this.xpReward = 0;
+      this.generatesCertificate = true;
+    } else {
+      this.maxAttempts = this.maxAttempts || 3;
+      this.xpReward = this.xpReward || 10;
+      this.generatesCertificate = false;
+    }
+  }
+  next();
+});
 
 module.exports = mongoose.model('Quiz', quizSchema);
