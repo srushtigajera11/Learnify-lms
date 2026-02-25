@@ -45,7 +45,7 @@ app.use('/api/payment', paymentRoute);
 app.use('/api/history', historyRoutes);
 app.use('/api/quizzes', quizRoute);
 app.use('/api/quiz-results', quizResultRoute);
-app.use('/api/students', studentContentRoutes);
+app.use('/api/students', StudentContentRoute);
 
 
 // Error handling middleware

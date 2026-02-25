@@ -33,12 +33,11 @@ import CreateQuiz from "./pages/Tutor/CreateQuiz";
 import { useAuth } from "./Context/authContext";
 import QuizPreview from "./pages/Tutor/QuizPreview";
 import MyLearning from "./pages/Student/MyLearning";
-import CourseLearn from "./pages/Student/CourseLearn"; 
 import Unauthorized from "./pages/Unothorized"; 
 import AdminProtectedRoute from "./pages/Admin/AdminProtectedRoute";
 import { AuthProvider } from "./Context/authContext";
 import TutorLessonPreview from "./pages/Tutor/TutorLessonPreview";
-import UnifiedCourseLearn from "./pages/Student/CourseContent/UnifiedCourseContent";
+import UnifiedCourseLearn from "./pages/Student/CourseContent/CoursePlayer";
 function AppRoutes() {
   const { user } = useAuth();
 

@@ -4,9 +4,9 @@ import {
   PlayCircle,
   Description,
   Quiz as QuizIcon,
-  Clock,
-  Zap,
-  Award,
+  AccessTime,          // instead of AccessTime
+  Bolt,                // instead of Bolt
+  WorkspacePremium,    // instead of WorkspacePremium
   Close,
   Lock
 } from '@mui/icons-material';
@@ -74,14 +74,14 @@ const ContentSidebar = ({
         {/* XP Display */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-200">
-            <Zap style={{ fontSize: '16px', color: '#d97706' }} />
+            <Bolt style={{ fontSize: '16px', color: '#d97706' }} />
             <span className="text-sm font-bold text-yellow-700">
               {progress?.totalXP || 0} XP
             </span>
           </div>
           {progress?.certificateIssued && (
             <div className="flex items-center gap-1 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200">
-              <Award style={{ fontSize: '16px', color: '#9333ea' }} />
+              <WorkspacePremium style={{ fontSize: '16px', color: '#9333ea' }} />
               <span className="text-xs font-bold text-purple-700">Certified</span>
             </div>
           )}
@@ -134,7 +134,7 @@ const ContentSidebar = ({
                     {item.title}
                   </h3>
                   {item.type === 'quiz' && item.quizType === 'final' && (
-                    <Award style={{ fontSize: '14px', color: '#9333ea' }} className="flex-shrink-0" />
+                    <WorkspacePremium style={{ fontSize: '14px', color: '#9333ea' }} className="flex-shrink-0" />
                   )}
                 </div>
 
@@ -151,7 +151,7 @@ const ContentSidebar = ({
                     <>
                       <span className="text-gray-400">•</span>
                       <div className="flex items-center gap-0.5">
-                        <Clock style={{ fontSize: '12px', color: '#9ca3af' }} />
+                        <AccessTime style={{ fontSize: '12px', color: '#9ca3af' }} />
                         <span className="text-[11px] text-gray-500">
                           {Math.floor(item.duration / 60)}:{(item.duration % 60).toString().padStart(2, '0')}
                         </span>

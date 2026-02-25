@@ -5,6 +5,7 @@ const Enrollment = require('../models/Enrollment');
 const Gamification = require('../models/Gamification');
 const Certificate = require('../models/Certificate');
 const QuizResult = require('../models/QuizResult');
+const StudentProgress = require('../models/StudentProgress');
 
 /**
  * Get unified course content (lessons + quizzes) for student
