@@ -4,9 +4,9 @@ import {
   PlayCircle,
   Description,
   Quiz as QuizIcon,
-  AccessTime,          // instead of AccessTime
-  Bolt,                // instead of Bolt
-  WorkspacePremium,    // instead of WorkspacePremium
+  AccessTime,
+  Bolt,
+  WorkspacePremium,
   Close,
   Lock
 } from '@mui/icons-material';
@@ -32,6 +32,18 @@ const ContentSidebar = ({
       return item.lessonType === 'video' ? 'text-red-500' : 'text-blue-500';
     }
     return item.quizType === 'final' ? 'text-purple-600' : 'text-orange-500';
+  };
+
+  const formatDuration = (item) => {
+    if (item.type === 'quiz') {
+      // Quiz duration is in minutes
+      return `${item.duration} min`;
+    } else {
+      // Lesson duration is in seconds
+      const mins = Math.floor(item.duration / 60);
+      const secs = item.duration % 60;
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
   };
 
   const progressPercentage = progress?.completionPercentage || 0;
@@ -153,7 +165,7 @@ const ContentSidebar = ({
                       <div className="flex items-center gap-0.5">
                         <AccessTime style={{ fontSize: '12px', color: '#9ca3af' }} />
                         <span className="text-[11px] text-gray-500">
-                          {Math.floor(item.duration / 60)}:{(item.duration % 60).toString().padStart(2, '0')}
+                          {formatDuration(item)}
                         </span>
                       </div>
                     </>
@@ -196,7 +208,7 @@ const ContentSidebar = ({
         <div className="text-center">
           <div className="text-xs text-gray-600 mb-1">Course Progress</div>
           <div className="flex items-center justify-center gap-2">
-            <div className="w-32 h-32">
+            <div className="w-24 h-24">
               <svg viewBox="0 0 36 36" className="circular-chart">
                 <path
                   className="circle-bg"

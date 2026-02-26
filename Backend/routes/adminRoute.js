@@ -177,7 +177,7 @@ router.put('/course/:id/status', isAuthenticated, isAdmin, async (req, res) => {
     res.status(500).json({ message: 'Failed to update status' });
   }
 });
-router.delete('/course/:id/delete',isAuthenticated,isAdmin,courseController.deleteCourse)
+router.delete('/course/:id/delete',isAuthenticated,isAdmin,adminController.adminDeleteCourse)
 
 
 module.exports = router;

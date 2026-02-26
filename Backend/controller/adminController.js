@@ -175,3 +175,23 @@ exports.exportCoursesCSV = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+// ADMIN DELETE COURSE
+exports.adminDeleteCourse = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    await course.deleteOne();
+
+    res.json({
+      success: true,
+      message: "Course deleted by admin successfully",
+    });
+  } catch (error) {
+    console.error("Admin Delete Error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};

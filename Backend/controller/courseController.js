@@ -289,17 +289,29 @@ exports.deleteCourse = async (req, res) => {
     const courseId = req.params.id;
 
     const course = await Course.findById(courseId);
-    if (!course) return res.status(404).json({ message: 'Course not found' });
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
 
-    if (course.createdBy.toString() !== req.user.id.toString()) {
-      return res.status(403).json({ message: 'Unauthorized' });
+    // Allow admin OR course owner
+    const isOwner =
+      course.createdBy.toString() === req.user.id.toString();
+
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Unauthorized" });
     }
 
     await course.deleteOne();
-    res.json({ message: 'Course deleted successfully' });
+
+    res.json({
+      success: true,
+      message: "Course deleted successfully",
+    });
   } catch (error) {
-    console.error('Delete Course Error:', error);
-    res.status(500).json({ message: 'Server Error' });
+    console.error("Delete Course Error:", error);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
