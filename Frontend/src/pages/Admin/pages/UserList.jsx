@@ -59,7 +59,7 @@ const UserList = ({ users, refresh }) => {
   const getRoleColor = (role) => {
     switch (role) {
       case 'admin': return 'bg-red-100 text-red-800 border-red-300';
-      case 'instructor': return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'tutor': return 'bg-blue-100 text-blue-800 border-blue-300';
       case 'student': return 'bg-gray-100 text-gray-800 border-gray-300';
       default: return 'bg-gray-100 text-gray-800 border-gray-300';
     }
@@ -68,7 +68,7 @@ const UserList = ({ users, refresh }) => {
   const getRoleIcon = (role) => {
     switch (role) {
       case 'admin': return <Shield className="w-3 h-3" />;
-      case 'instructor': return <GraduationCap className="w-3 h-3" />;
+      case 'tutor': return <GraduationCap className="w-3 h-3" />;
       case 'student': return <Users className="w-3 h-3" />;
       default: return <User className="w-3 h-3" />;
     }
@@ -113,8 +113,8 @@ const UserList = ({ users, refresh }) => {
               >
                 <option value="all">All Roles</option>
                 <option value="student">Student</option>
-                <option value="instructor">Instructor</option>
-                <option value="admin">Admin</option>
+                <option value="tutor">Tutor</option>
+                {/* <option value="admin">Admin</option> */}
               </select>
             </div>
             

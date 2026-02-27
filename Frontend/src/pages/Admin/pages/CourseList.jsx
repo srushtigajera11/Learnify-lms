@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Search,
   IndianRupee,
@@ -16,16 +16,14 @@ const CourseList = () => {
   const [loading, setLoading] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
 
-  const dropdownRef = useRef(null);
-
-  // ================= FETCH =================
+  // ================= FETCH COURSES =================
   const fetchCourses = async () => {
     try {
       setLoading(true);
       const res = await axiosInstance.get("/admin/courses");
       setCourses(res.data || []);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch Courses Error:", err.response?.data || err.message);
     } finally {
       setLoading(false);
     }
@@ -38,27 +36,35 @@ const CourseList = () => {
   // ================= CLOSE DROPDOWN ON OUTSIDE CLICK =================
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target)
-      ) {
+      if (!event.target.closest(".dropdown-wrapper")) {
         setOpenDropdown(null);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
+    return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
-  // ================= STATUS =================
+  // ================= STATUS CHANGE =================
   const handleStatusChange = async (id, status) => {
     try {
       await axiosInstance.put(`/admin/course/${id}/status`, { status });
-      fetchCourses();
+
+      // Optimistic UI update
+      setCourses((prev) =>
+        prev.map((course) =>
+          course._id === id ? { ...course, status } : course
+        )
+      );
+
       setOpenDropdown(null);
     } catch (err) {
-      console.error(err.response?.data || err.message);
+      console.error(
+        "Status Update Error:",
+        err.response?.data || err.message
+      );
     }
   };
 
@@ -70,10 +76,14 @@ const CourseList = () => {
     if (!confirmDelete) return;
 
     try {
-      await axiosInstance.delete(`/admin/course/${id}`);
-      fetchCourses();
+      await axiosInstance.delete(`/admin/course/${id}/delete`);
+
+      // Remove instantly from UI
+      setCourses((prev) => prev.filter((course) => course._id !== id));
+
       setOpenDropdown(null);
     } catch (err) {
+      console.error("Delete Error:", err.response?.data || err.message);
       alert(err.response?.data?.message || "Delete failed");
     }
   };
@@ -94,6 +104,7 @@ const CourseList = () => {
     });
   }, [courses, search, statusFilter]);
 
+  // ================= STATUS BADGE =================
   const getStatusBadge = (status) => {
     switch (status) {
       case "published":
@@ -102,6 +113,8 @@ const CourseList = () => {
         return "bg-yellow-100 text-yellow-700";
       case "rejected":
         return "bg-red-100 text-red-700";
+      case "draft":
+        return "bg-gray-100 text-gray-700";
       default:
         return "bg-gray-100 text-gray-700";
     }
@@ -109,7 +122,7 @@ const CourseList = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Search & Filter Only (Removed Duplicate Heading) */}
+      {/* Search & Filter */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex gap-3">
           <div className="relative">
@@ -137,12 +150,14 @@ const CourseList = () => {
         </div>
       </div>
 
+      {/* Loader */}
       {loading && (
         <div className="flex justify-center py-10">
           <Loader2 className="animate-spin w-6 h-6" />
         </div>
       )}
 
+      {/* Courses Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredCourses.map((course) => {
           const revenue =
@@ -153,6 +168,7 @@ const CourseList = () => {
               key={course._id}
               className="bg-white rounded-lg shadow-sm border hover:shadow-md transition"
             >
+              {/* Thumbnail */}
               <div className="h-28 bg-gray-200">
                 <img
                   src={course.thumbnail || "/placeholder.jpg"}
@@ -161,7 +177,7 @@ const CourseList = () => {
                 />
               </div>
 
-              <div className="p-4 relative" ref={dropdownRef}>
+              <div className="p-4 relative dropdown-wrapper">
                 {/* Dropdown Trigger */}
                 <button
                   onClick={() =>
@@ -176,9 +192,9 @@ const CourseList = () => {
                   <MoreVertical className="w-5 h-5 text-gray-600" />
                 </button>
 
-                {/* Smooth Dropdown */}
+                {/* Dropdown */}
                 <div
-                  className={`absolute right-3 top-10 w-40 bg-white border rounded-md shadow-md text-sm transition-all duration-200 ${
+                  className={`absolute right-3 top-10 w-40 bg-white border rounded-md shadow-md text-sm transition-all duration-200 z-20 ${
                     openDropdown === course._id
                       ? "opacity-100 scale-100"
                       : "opacity-0 scale-95 pointer-events-none"
@@ -219,14 +235,17 @@ const CourseList = () => {
                   </button>
                 </div>
 
+                {/* Title */}
                 <h3 className="font-semibold text-base line-clamp-2">
                   {course.title}
                 </h3>
 
+                {/* Instructor */}
                 <p className="text-sm text-gray-600 mt-1">
                   {course.createdBy?.name || "Unknown Instructor"}
                 </p>
 
+                {/* Stats */}
                 <div className="flex justify-between mt-3 text-sm">
                   <div className="flex items-center gap-1">
                     <IndianRupee className="w-4 h-4" />
@@ -235,19 +254,19 @@ const CourseList = () => {
 
                   <div className="flex items-center gap-1">
                     <Users className="w-4 h-4" />
-                    {course.enrollmentCount || 0}
+                    {course.enrollmentCount  || 0}
                   </div>
 
-                  <div className="font-medium">
-                    ₹{revenue}
-                  </div>
+                  <div className="font-medium">₹{revenue}</div>
                 </div>
 
+                {/* Date */}
                 <div className="flex items-center gap-1 text-xs text-gray-500 mt-2">
                   <CalendarDays className="w-4 h-4" />
                   {new Date(course.createdAt).toLocaleDateString()}
                 </div>
 
+                {/* Status */}
                 <div className="mt-3">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(

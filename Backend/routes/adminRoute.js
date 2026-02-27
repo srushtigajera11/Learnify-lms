@@ -12,9 +12,32 @@ const courseController = require("../controller/courseController")
 
 // Get all courses
 router.get('/courses', isAuthenticated, isAdmin, async (req, res) => {
-  console.log("Authenticated User:", req.user);  // 👈 Debug
-  const courses = await Course.find().populate('createdBy', 'name email');
-  res.json(courses);
+  try {
+    const courses = await Course.aggregate([
+      {
+        $lookup: {
+          from: "enrollments",
+          localField: "_id",
+          foreignField: "courseId",
+          as: "enrollments"
+        }
+      },
+      {
+        $addFields: {
+          enrollmentCount: { $size: "$enrollments" }
+        }
+      }
+    ]);
+
+    const populated = await Course.populate(courses, {
+      path: "createdBy",
+      select: "name email"
+    });
+
+    res.json(populated);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch courses" });
+  }
 });
 // Get all users
 router.get('/users', isAuthenticated, isAdmin, async (req, res) => {
