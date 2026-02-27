@@ -24,12 +24,18 @@ const ContentSidebar = ({
     if (item.type === 'lesson') {
       return item.lessonType === 'video' ? PlayCircle : Description;
     }
+    if (item.type === 'certificate') {
+      return WorkspacePremium;
+    }
     return QuizIcon;
   };
 
   const getItemColor = (item) => {
     if (item.type === 'lesson') {
       return item.lessonType === 'video' ? 'text-red-500' : 'text-blue-500';
+    }
+    if (item.type === 'certificate') {
+      return 'text-purple-600';
     }
     return item.quizType === 'final' ? 'text-purple-600' : 'text-orange-500';
   };
@@ -107,7 +113,8 @@ const ContentSidebar = ({
           const iconColor = getItemColor(item);
           const isCompleted = item.isCompleted;
           const isCurrent = currentItem?._id === item._id;
-          const isLocked = false; // You can implement locking logic
+          const isLocked = item.isLocked || false; // Certificate can be locked
+          const isCertificate = item.type === 'certificate';
 
           return (
             <button
@@ -118,7 +125,7 @@ const ContentSidebar = ({
                 isCurrent 
                   ? 'bg-indigo-50 border-l-4 border-l-indigo-600' 
                   : 'hover:bg-gray-50 border-l-4 border-l-transparent'
-              } ${isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              } ${isLocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
             >
               {/* Number/Status Circle */}
               <div className={`flex items-center justify-center min-w-[24px] w-6 h-6 rounded-full mt-0.5 flex-shrink-0 ${
@@ -126,12 +133,16 @@ const ContentSidebar = ({
                   ? 'bg-green-100 border-2 border-green-500' 
                   : isCurrent
                     ? 'bg-indigo-100 border-2 border-indigo-500'
-                    : 'border-2 border-gray-300'
+                    : isLocked
+                      ? 'bg-gray-100 border-2 border-gray-300'
+                      : 'border-2 border-gray-300'
               }`}>
                 {isLocked ? (
                   <Lock style={{ fontSize: '14px', color: '#9ca3af' }} />
                 ) : isCompleted ? (
                   <CheckCircle style={{ fontSize: '16px', color: '#10b981' }} />
+                ) : isCertificate ? (
+                  <WorkspacePremium style={{ fontSize: '16px', color: '#9333ea' }} />
                 ) : (
                   <span className="text-[11px] font-bold text-gray-600">{idx + 1}</span>
                 )}
@@ -141,10 +152,14 @@ const ContentSidebar = ({
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <h3 className={`text-sm font-medium leading-tight ${
-                    isCurrent ? 'text-indigo-700' : 'text-gray-900'
+                    isCurrent ? 'text-indigo-700' : isLocked ? 'text-gray-500' : 'text-gray-900'
                   }`}>
                     {item.title}
+                    {isLocked && ' 🔒'}
                   </h3>
+                  {isCertificate && isCompleted && (
+                    <WorkspacePremium style={{ fontSize: '14px', color: '#9333ea' }} className="flex-shrink-0" />
+                  )}
                   {item.type === 'quiz' && item.quizType === 'final' && (
                     <WorkspacePremium style={{ fontSize: '14px', color: '#9333ea' }} className="flex-shrink-0" />
                   )}
@@ -159,7 +174,7 @@ const ContentSidebar = ({
                     </span>
                   </div>
 
-                  {item.duration > 0 && (
+                  {!isCertificate && item.duration > 0 && (
                     <>
                       <span className="text-gray-400">•</span>
                       <div className="flex items-center gap-0.5">
@@ -168,6 +183,26 @@ const ContentSidebar = ({
                           {formatDuration(item)}
                         </span>
                       </div>
+                    </>
+                  )}
+
+                  {/* Certificate Status */}
+                  {isCertificate && (
+                    <>
+                      <span className="text-gray-400">•</span>
+                      {isLocked ? (
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-full">
+                          Complete all content
+                        </span>
+                      ) : isCompleted ? (
+                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full">
+                          Claimed
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-full">
+                          Ready!
+                        </span>
+                      )}
                     </>
                   )}
 

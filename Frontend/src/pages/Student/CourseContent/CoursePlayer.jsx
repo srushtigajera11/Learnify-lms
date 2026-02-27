@@ -10,9 +10,10 @@ import {
   Star
 } from "@mui/icons-material";
 
-import ContentSidebar from "./ContentSidebar";
-import { LessonContent } from "./LessonContent";
+import ContentSidebar from "./ContentSidebar_Fixed";
+import { LessonContent } from "./LessonContent_Simple";
 import QuizTaker from "./QuizTaker";
+import CertificateViewer from "./CertificateViewer";
 
 import {
   fetchCourseContent,
@@ -201,6 +202,16 @@ export default function CoursePlayer() {
                 courseId={courseId}
                 quizId={currentItem?._id}
                 onComplete={handleQuizComplete}
+              />
+            ) : currentItem?.type === "certificate" ? (
+              <CertificateViewer
+                courseId={courseId}
+                certificate={currentItem.certificate}
+                isLocked={currentItem.isLocked}
+                onClaim={async (cert) => {
+                  // Reload content to update certificate status
+                  await loadContent();
+                }}
               />
             ) : (
               <div className="flex items-center justify-center min-h-[60vh]">

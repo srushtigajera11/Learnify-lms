@@ -6,99 +6,158 @@ const Gamification = require('../models/Gamification');
 // @desc    Submit quiz attempt
 // @route   POST /api/quiz-results/quiz/:quizId/attempt
 // @access  Private/Student
+// @desc    Submit quiz attempt
+// @route   POST /api/quiz-results/quiz/:quizId/attempt
+// @access  Private/Student
 exports.submitQuizAttempt = asyncHandler(async (req, res) => {
-  const { quizId } = req.params;
-  const { answers, timeSpent } = req.body;
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  // Find the quiz
-  const quiz = await Quiz.findById(quizId);
-  if (!quiz) {
-    res.status(404);
-    throw new Error('Quiz not found');
-  }
+  try {
+    const { quizId } = req.params;
+    let { answers, timeSpent } = req.body;
 
-  if (!quiz.isPublished) {
-    res.status(403);
-    throw new Error('Quiz is not available');
-  }
-
-  // Check if student can attempt (max attempts)
-  const previousAttempts = await QuizResult.countDocuments({
-    studentId: req.user.id,
-    quizId
-  });
-
-  if (previousAttempts >= quiz.maxAttempts) {
-    res.status(400);
-    throw new Error('Maximum attempts reached for this quiz');
-  }
-
-  // Calculate score and check answers
-  let correctAnswers = 0;
-  let totalPoints = 0;
-  let earnedPoints = 0;
-
-  const evaluatedAnswers = answers.map(answer => {
-    const question = quiz.questions.id(answer.questionId);
-    if (!question) return null;
-
-    let isCorrect = false;
-    let pointsEarned = 0;
-
-    if (question.questionType === 'multiple-choice') {
-      const selectedOption = question.options.id(answer.selectedOption);
-      isCorrect = selectedOption ? selectedOption.isCorrect : false;
-    } else if (question.questionType === 'true-false') {
-      const selectedOption = question.options.id(answer.selectedOption);
-      isCorrect = selectedOption ? selectedOption.isCorrect : false;
-    } else if (question.questionType === 'short-answer') {
-      isCorrect = question.correctAnswer.toLowerCase() === answer.textAnswer.toLowerCase();
+    // ===============================
+    // 1️⃣ Validate Input
+    // ===============================
+    if (!answers || !Array.isArray(answers) || answers.length === 0) {
+      res.status(400);
+      throw new Error('Answers are required');
     }
 
-    pointsEarned = isCorrect ? question.points : 0;
-    correctAnswers += isCorrect ? 1 : 0;
-    earnedPoints += pointsEarned;
-    totalPoints += question.points;
+    if (!timeSpent || timeSpent < 0) {
+      timeSpent = 0;
+    }
 
-    return {
-      questionId: answer.questionId,
-      selectedOption: answer.selectedOption,
-      textAnswer: answer.textAnswer,
-      isCorrect,
-      pointsEarned
-    };
-  }).filter(Boolean);
+    // ===============================
+    // 2️⃣ Find Quiz
+    // ===============================
+    const quiz = await Quiz.findById(quizId).session(session);
 
-  const score = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
-  const passed = score >= quiz.passingScore;
+    if (!quiz) {
+      res.status(404);
+      throw new Error('Quiz not found');
+    }
 
-  // Create quiz result
-  const quizResult = await QuizResult.create({
-    studentId: req.user.id,
-    quizId,
-    courseId: quiz.courseId,
-    attemptNumber: previousAttempts + 1,
-    answers: evaluatedAnswers,
-    totalQuestions: quiz.questions.length,
-    correctAnswers,
-    score,
-    passed,
-    timeSpent,
-    startedAt: new Date(Date.now() - timeSpent * 60000), // Assuming timeSpent is in minutes
-    completedAt: new Date()
-  });
+    if (!quiz.isPublished) {
+      res.status(403);
+      throw new Error('Quiz is not available');
+    }
 
-  // TODO: Add XP reward logic here (we'll implement in gamification phase)
-  if (passed && quiz.xpReward > 0) {
-    console.log(`Student would earn ${quiz.xpReward} XP for passing`);
-    // We'll implement this in gamification phase
+    // ===============================
+    // 3️⃣ Check Enrollment
+    // ===============================
+    const isEnrolled = await Enrollment.findOne({
+      studentId: req.user.id,
+      courseId: quiz.courseId
+    }).session(session);
+
+    if (!isEnrolled) {
+      res.status(403);
+      throw new Error('You must be enrolled in this course to attempt this quiz');
+    }
+
+    // ===============================
+    // 4️⃣ Check Max Attempts
+    // ===============================
+    const previousAttempts = await QuizResult.countDocuments({
+      studentId: req.user.id,
+      quizId
+    }).session(session);
+
+    if (previousAttempts >= quiz.maxAttempts) {
+      res.status(400);
+      throw new Error('Maximum attempts reached for this quiz');
+    }
+
+    // ===============================
+    // 5️⃣ Evaluate Answers
+    // ===============================
+    let correctAnswers = 0;
+    let totalPoints = 0;
+    let earnedPoints = 0;
+
+    const evaluatedAnswers = answers.map(answer => {
+      const question = quiz.questions.id(answer.questionId);
+      if (!question) return null;
+
+      let isCorrect = false;
+      let pointsEarned = 0;
+
+      if (
+        question.questionType === 'multiple-choice' ||
+        question.questionType === 'true-false'
+      ) {
+        const selectedOption = question.options.find(
+          opt => opt._id.toString() === answer.selectedOption
+        );
+
+        isCorrect = selectedOption ? selectedOption.isCorrect : false;
+      }
+
+      pointsEarned = isCorrect ? question.points : 0;
+
+      correctAnswers += isCorrect ? 1 : 0;
+      earnedPoints += pointsEarned;
+      totalPoints += question.points;
+
+      return {
+        questionId: answer.questionId,
+        selectedOption: answer.selectedOption,
+        textAnswer: answer.textAnswer,
+        isCorrect,
+        pointsEarned
+      };
+    }).filter(Boolean);
+
+    if (evaluatedAnswers.length === 0) {
+      res.status(400);
+      throw new Error('Invalid quiz submission');
+    }
+
+    // ===============================
+    // 6️⃣ Calculate Score
+    // ===============================
+    const score = totalPoints > 0
+      ? (earnedPoints / totalPoints) * 100
+      : 0;
+
+    const passed = score >= quiz.passingScore;
+
+    // ===============================
+    // 7️⃣ Save Quiz Result
+    // ===============================
+    const quizResult = await QuizResult.create([{
+      studentId: req.user.id,
+      quizId,
+      courseId: quiz.courseId,
+      attemptNumber: previousAttempts + 1,
+      answers: evaluatedAnswers,
+      totalQuestions: evaluatedAnswers.length,
+      correctAnswers,
+      score,
+      passed,
+      timeSpent,
+      startedAt: new Date(Date.now() - timeSpent * 60000),
+      completedAt: new Date()
+    }], { session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(201).json({
+      success: true,
+      message: passed
+        ? 'Quiz submitted successfully. You passed!'
+        : 'Quiz submitted successfully.',
+      data: quizResult[0]
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  res.status(201).json({
-    success: true,
-    message: 'Quiz submitted successfully',
-    data: quizResult
-  });
 });
 
 // @desc    Get quiz results for a student

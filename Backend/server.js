@@ -18,6 +18,7 @@ const quizRoute = require('./routes/quizRoute');
 const quizResultRoute = require('./routes/quizResultRoute');
 const errorHandler = require('./middleware/errorHandler');
 const StudentContentRoute = require('./routes/StudentContentRoute');
+const certificateRoutes = require('./routes/certificateRoutes');
 const path = require("path");
 const PORT = process.env.PORT || 5000;
 
@@ -46,7 +47,7 @@ app.use('/api/history', historyRoutes);
 app.use('/api/quizzes', quizRoute);
 app.use('/api/quiz-results', quizResultRoute);
 app.use('/api/students', StudentContentRoute);
-
+app.use('/api/certificates', certificateRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

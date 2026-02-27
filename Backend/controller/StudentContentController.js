@@ -5,10 +5,9 @@ const Enrollment = require('../models/Enrollment');
 const Gamification = require('../models/Gamification');
 const Certificate = require('../models/Certificate');
 const QuizResult = require('../models/QuizResult');
-const StudentProgress = require('../models/StudentProgress');
 
 /**
- * Get unified course content (lessons + quizzes) for student
+ * Get unified course content (lessons + quizzes + certificate) for student
  * Returns ordered list of all course content items
  */
 exports.getUnifiedCourseContent = async (req, res) => {
@@ -58,6 +57,13 @@ exports.getUnifiedCourseContent = async (req, res) => {
       studentId,
       courseId
     }).lean();
+
+    // Check for certificate
+    const certificate = await Certificate.findOne({
+      studentId,
+      courseId,
+      status: 'active'
+    });
 
     // Combine and sort by order
     const contentItems = [];
@@ -116,11 +122,32 @@ exports.getUnifiedCourseContent = async (req, res) => {
       ? Math.round((completedItems / totalItems) * 100) 
       : 0;
 
-    // Check for certificate
-    const certificate = await Certificate.findOne({
-      studentId,
-      courseId,
-      status: 'active'
+    // Check if certificate should be unlocked (all content complete + final quiz passed)
+    const finalQuizPassed = quizzes.some(quiz => {
+      if (!quiz.generatesCertificate) return false;
+      const results = quizResults.filter(r => r.quizId.toString() === quiz._id.toString());
+      return results.some(r => r.passed);
+    });
+
+    const allContentComplete = completedItems === totalItems;
+    const certificateUnlocked = finalQuizPassed && allContentComplete;
+
+    // Add certificate item at the end
+    const maxOrder = contentItems.length > 0 
+      ? Math.max(...contentItems.map(item => item.order)) 
+      : 0;
+
+    contentItems.push({
+      _id: certificate?._id || 'certificate',
+      type: 'certificate',
+      title: 'Certificate of Completion',
+      description: 'Claim your certificate',
+      order: maxOrder + 1,
+      duration: 0,
+      isCompleted: !!certificate,
+      isLocked: !certificateUnlocked,
+      certificate: certificate || null,
+      certificateId: certificate?.certificateId || null
     });
 
     res.status(200).json({
@@ -133,7 +160,7 @@ exports.getUnifiedCourseContent = async (req, res) => {
         progressToNextLevel: gamification.progressToNextLevel,
         currentStreak: gamification.currentStreak,
         completedItems,
-        totalItems,
+        totalItems: totalItems + 1, // Include certificate in total
         completionPercentage,
         certificateIssued: !!certificate,
         certificate: certificate || null

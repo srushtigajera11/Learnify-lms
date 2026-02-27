@@ -36,14 +36,12 @@ const certificateSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-certificateSchema.index({ certificateId: 1 });
-certificateSchema.index({ studentId: 1, courseId: 1 }); // For quick student-course certificate lookup
+certificateSchema.index({ studentId: 1, courseId: 1 },{unique: true}); // For quick student-course certificate lookup
 
 // Pre-save hook to generate certificate ID
-certificateSchema.pre('save', async function(next) {
+certificateSchema.pre('save', function(next) {
   if (!this.certificateId) {
-    const count = await mongoose.model('Certificate').countDocuments();
-    this.certificateId = `CERT-${String(count + 1).padStart(4, '0')}-${Date.now().toString().slice(-4)}`;
+    this.certificateId = `CERT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     this.verificationUrl = `/verify-certificate/${this.certificateId}`;
   }
   next();
