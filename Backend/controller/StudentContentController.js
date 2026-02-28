@@ -204,9 +204,8 @@ exports.getLessonContent = async (req, res) => {
       });
     }
 
-    // Get progress
-    const progress = await StudentProgress.findOne({ studentId, courseId });
-    const isCompleted = progress?.completedLessons.includes(lessonId) || false;
+    // Get progress from enrollment
+    const isCompleted = enrollment.completedLessons?.includes(lessonId) || false;
 
     res.status(200).json({
       success: true,

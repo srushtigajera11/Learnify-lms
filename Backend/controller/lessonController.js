@@ -8,7 +8,7 @@ const LessonProgress = require("../models/LessonProgress");
 ========================================= */
 exports.createLesson = async (req, res) => {
   try {
-    const { title, description, order, duration } = req.body;
+    const { title, description = "", duration = 0 } = req.body;
     const courseId = req.params.courseId;
 
     if (!title || !courseId) {
@@ -18,91 +18,95 @@ exports.createLesson = async (req, res) => {
       });
     }
 
-    const materialCount = parseInt(req.body.materialCount) || 0;
+    // Parse materials JSON
+    let materialsInput = [];
+    if (req.body.materials) {
+      materialsInput = JSON.parse(req.body.materials);
+    }
+
     const materials = [];
 
-    for (let i = 0; i < materialCount; i++) {
-      const type = req.body[`materials[${i}][type]`];
-      const name = req.body[`materials[${i}][name]`] || "Material";
-      const url = req.body[`materials[${i}][url]`];
-      const description = req.body[`materials[${i}][description]`] || "";
-      const file = req.files?.find(
-        (f) => f.fieldname === `materials[${i}][file]`
-      );
+    for (let i = 0; i < materialsInput.length; i++) {
+      const material = materialsInput[i];
+      const file = req.files?.[i]; // files come in order
 
-      // LINK TYPE
-      if (type === "link" && url) {
-        // Auto-detect video URLs
-        let materialType = type;
-        if (/youtube\.com|youtu\.be|vimeo\.com|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(url)) {
-          materialType = 'video';
-        }
-        
+      /* =========================
+         FILE MATERIAL
+      ========================= */
+      if (file) {
+        const materialType = file.mimetype.startsWith("video")
+          ? "video"
+          : "document";
+
         materials.push({
           type: materialType,
-          name,
-          url,
-          description,
+          name: material.name || file.originalname,
+          url: file.path,
+          public_id: file.filename,
+          description: material.description || "",
+          duration: file.duration || 0,
+          size: file.size,
+          format: file.mimetype,
+          isPreview: material.isPreview === true,
         });
+
+        continue;
       }
-      // FILE TYPE
-      else if (file) {
-        let materialType = "document";
-        if (file.mimetype.startsWith("video")) {
+
+      /* =========================
+         URL MATERIAL
+      ========================= */
+      if (material.url && material.url.trim()) {
+        let normalizedUrl = material.url.trim();
+
+        if (!/^https?:\/\//i.test(normalizedUrl)) {
+          normalizedUrl = `https://${normalizedUrl}`;
+        }
+
+        let materialType = material.type || "link";
+
+        if (
+          /youtube\.com|youtu\.be|vimeo\.com|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(
+            normalizedUrl
+          )
+        ) {
           materialType = "video";
         }
 
         materials.push({
           type: materialType,
-          name,
-          url: file.secure_url || file.path,
-          description,
-          public_id: file.filename || file.public_id,
-          duration: file.duration || 0,
-          size: file.size,
-          format: file.mimetype,
-        });
-      }
-      // VIDEO URL WITHOUT FILE
-      else if ((type === "video" || type === "document") && url) {
-        let materialType = type;
-        if (/youtube\.com|youtu\.be|vimeo\.com|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(url)) {
-          materialType = 'video';
-        }
-        
-        materials.push({
-          type: materialType,
-          name,
-          url,
-          description,
+          name: material.name || "Resource",
+          url: normalizedUrl,
+          description: material.description || "",
+          isPreview: material.isPreview === true,
         });
       }
     }
 
-    let finalOrder;
-
-    if (order) {
-      finalOrder = parseInt(order);
-      await Lesson.updateMany(
-        { courseId, order: { $gte: finalOrder } },
-        { $inc: { order: 1 } }
-      );
-    } else {
-      const lastLesson = await Lesson.findOne({ courseId }).sort({ order: -1 });
-      finalOrder = lastLesson ? lastLesson.order + 1 : 1;
+    if (materials.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one material is required",
+      });
     }
+
+    // Order logic
+    const lastLesson = await Lesson.findOne({ courseId }).sort({ order: -1 });
+    const finalOrder = lastLesson ? lastLesson.order + 1 : 1;
 
     const lesson = await Lesson.create({
       title,
       description,
+      duration,
       order: finalOrder,
       courseId,
       materials,
-      duration: duration || 0,
-      lessonType: materials.find((m) => m.type === "video") ? "video" : "text",
+      lessonType: materials.some((m) => m.type === "video")
+        ? "video"
+        : "text",
     });
 
-    lesson.totalDuration = lesson.materials
+    lesson.totalDuration = materials
       .filter((m) => m.type === "video")
       .reduce((sum, m) => sum + (m.duration || 0), 0);
 
@@ -113,7 +117,6 @@ exports.createLesson = async (req, res) => {
       success: true,
       lesson,
     });
-
   } catch (error) {
     console.error("Create Lesson Error:", error);
     res.status(500).json({
@@ -255,92 +258,53 @@ exports.updateLesson = async (req, res) => {
       });
     }
 
-    const materialCount = parseInt(req.body.materialCount) || 0;
+    let materialsInput = [];
+    if (req.body.materials) {
+      materialsInput = JSON.parse(req.body.materials);
+    }
+
     const materials = [];
 
-    for (let i = 0; i < materialCount; i++) {
-      const type = req.body[`materials[${i}][type]`];
-      const name = req.body[`materials[${i}][name]`] || "Material";
-      const url = req.body[`materials[${i}][url]`];
-      const description = req.body[`materials[${i}][description]`] || "";
-      const file = req.files?.find(
-        (f) => f.fieldname === `materials[${i}][file]`
-      );
+    for (let i = 0; i < materialsInput.length; i++) {
+      const material = materialsInput[i];
+      const file = req.files?.[i];
 
-      // LINK TYPE OR VIDEO URL
-      if (url && !file) {
-        // Auto-detect video URLs
-        let materialType = type;
-        if (/youtube\.com|youtu\.be|vimeo\.com|\.mp4|\.webm|\.ogg|\.mov|\.m4v/i.test(url)) {
-          materialType = 'video';
-        }
-        
-        materials.push({ 
-          type: materialType, 
-          name, 
-          url,
-          description,
-        });
-      }
-      // FILE UPLOAD
-      else if (file) {
-        let materialType = "document";
-        if (file.mimetype.startsWith("video")) {
-          materialType = "video";
-        }
+      if (file) {
+        const materialType = file.mimetype.startsWith("video")
+          ? "video"
+          : "document";
 
         materials.push({
           type: materialType,
-          name,
-          url: file.secure_url || file.path,
-          description,
-          public_id: file.filename || file.public_id,
+          name: material.name || file.originalname,
+          url: file.path,
+          public_id: file.filename,
+          description: material.description || "",
           duration: file.duration || 0,
           size: file.size,
           format: file.mimetype,
+          isPreview: material.isPreview === true,
+        });
+      } else if (material.url) {
+        let normalizedUrl = material.url.trim();
+
+        if (!/^https?:\/\//i.test(normalizedUrl)) {
+          normalizedUrl = `https://${normalizedUrl}`;
+        }
+
+        materials.push({
+          type: material.type || "link",
+          name: material.name || "Resource",
+          url: normalizedUrl,
+          description: material.description || "",
+          isPreview: material.isPreview === true,
         });
       }
-      // KEEP EXISTING MATERIAL
-      else {
-        const existingMaterial = lesson.materials[i];
-        if (existingMaterial) {
-          materials.push({
-            ...existingMaterial,
-            type,
-            name,
-            description,
-          });
-        }
-      }
-    }
-
-    const newOrder = parseInt(req.body.order);
-    const oldOrder = lesson.order;
-    
-    if (newOrder && newOrder !== oldOrder) {
-      if (newOrder > oldOrder) {
-        await Lesson.updateMany(
-          {
-            courseId: lesson.courseId,
-            order: { $gt: oldOrder, $lte: newOrder },
-          },
-          { $inc: { order: -1 } }
-        );
-      } else {
-        await Lesson.updateMany(
-          {
-            courseId: lesson.courseId,
-            order: { $gte: newOrder, $lt: oldOrder },
-          },
-          { $inc: { order: 1 } }
-        );
-      }
-      lesson.order = newOrder;
     }
 
     lesson.title = req.body.title;
     lesson.description = req.body.description;
-    lesson.duration = req.body.duration || lesson.duration;
+    lesson.duration = req.body.duration;
     lesson.materials = materials;
 
     lesson.totalDuration = materials

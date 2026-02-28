@@ -5,6 +5,24 @@ const { isAuthenticated, authorizeRoles } = require("../middleware/auth");
 const { upload } = require("../middleware/upload");
 
 /* ===================================================
+   MULTER CONFIGURATION FOR LESSONS
+   =================================================== */
+
+// Configure multer to accept up to 10 material files
+const uploadLessonMaterials = upload.fields([
+  { name: 'materials[0][file]', maxCount: 1 },
+  { name: 'materials[1][file]', maxCount: 1 },
+  { name: 'materials[2][file]', maxCount: 1 },
+  { name: 'materials[3][file]', maxCount: 1 },
+  { name: 'materials[4][file]', maxCount: 1 },
+  { name: 'materials[5][file]', maxCount: 1 },
+  { name: 'materials[6][file]', maxCount: 1 },
+  { name: 'materials[7][file]', maxCount: 1 },
+  { name: 'materials[8][file]', maxCount: 1 },
+  { name: 'materials[9][file]', maxCount: 1 },
+]);
+
+/* ===================================================
    TUTOR / ADMIN ROUTES
    =================================================== */
 
@@ -13,7 +31,7 @@ router.post(
   "/course/:courseId",
   isAuthenticated,
   authorizeRoles("tutor"),
-  upload.any(),
+  uploadLessonMaterials,
   lessonController.createLesson
 );
 
@@ -45,7 +63,7 @@ router.put(
   "/:lessonId",
   isAuthenticated,
   authorizeRoles("tutor"),
-  upload.any(),
+  uploadLessonMaterials,
   lessonController.updateLesson
 );
 

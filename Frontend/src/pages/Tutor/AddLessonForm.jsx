@@ -88,73 +88,72 @@ const AddLessonForm = () => {
   ========================= */
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  e.preventDefault();
+  setLoading(true);
+  setError("");
 
-    try {
-      if (!formData.title || !formData.duration) {
-        setError("Title and Duration are required");
-        setLoading(false);
-        return;
-      }
-
-      // Validate materials
-      for (let i = 0; i < materials.length; i++) {
-        const m = materials[i];
-        if (m.type === "link" && !m.url) {
-          setError(`Material ${i + 1}: URL is required for link type`);
-          setLoading(false);
-          return;
-        }
-        if ((m.type === "video" || m.type === "document") && !m.file && !m.url) {
-          setError(`Material ${i + 1}: File or URL is required`);
-          setLoading(false);
-          return;
-        }
-      }
-
-      const fd = new FormData();
-      fd.append("title", formData.title);
-      fd.append("description", formData.description);
-      fd.append("duration", formData.duration);
-      fd.append("materialCount", materials.length);
-
-      materials.forEach((m, i) => {
-        fd.append(`materials[${i}][type]`, m.type);
-        fd.append(`materials[${i}][name]`, m.name || m.file?.name || "Material");
-        fd.append(`materials[${i}][isPreview]`, m.isPreview);
-        
-        // Add description
-        if (m.description) {
-          fd.append(`materials[${i}][description]`, m.description);
-        }
-
-        // Add URL (for links OR video URLs)
-        if (m.url) {
-          fd.append(`materials[${i}][url]`, m.url);
-        }
-
-        // Add file
-        if (m.file) {
-          fd.append(`materials[${i}][file]`, m.file);
-        }
-      });
-
-      console.log("Submitting lesson with materials:", materials);
-
-      await axiosInstance.post(`/lessons/course/${courseId}`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      navigate(-1);
-    } catch (err) {
-      console.error("Submit error:", err);
-      setError(err.response?.data?.message || "Failed to create lesson");
-    } finally {
+  try {
+    if (!formData.title || !formData.duration) {
+      setError("Title and Duration are required");
       setLoading(false);
+      return;
     }
-  };
+
+    if (!materials.length) {
+      setError("At least one material is required");
+      setLoading(false);
+      return;
+    }
+
+    const fd = new FormData();
+
+    // Lesson basic fields
+    fd.append("title", formData.title);
+    fd.append("description", formData.description);
+    fd.append("duration", formData.duration);
+
+    // Prepare materials without file objects
+    const materialsData = materials.map((m) => ({
+      type: m.type,
+      name: m.name,
+      description: m.description,
+      url: m.url,
+      isPreview: m.isPreview,
+    }));
+
+    fd.append("materials", JSON.stringify(materialsData));
+
+    // Append files separately (order matters)
+    materials.forEach((m) => {
+      if (m.file) {
+        fd.append("files", m.file);
+      }
+    });
+
+    // Debug (optional)
+    console.log("Submitting lesson...");
+    console.log("Materials JSON:", materialsData);
+    console.log("Files:", materials.filter(m => m.file));
+
+    await axiosInstance.post(
+      `/lessons/course/${courseId}`,
+      fd,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    navigate(-1);
+
+  } catch (err) {
+    console.error("Submit error:", err);
+    setError(err.response?.data?.message || "Failed to create lesson");
+  } finally {
+    setLoading(false);
+  }
+};
 
   /* =========================
      UI

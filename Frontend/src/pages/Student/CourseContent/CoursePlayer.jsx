@@ -10,8 +10,8 @@ import {
   Star
 } from "@mui/icons-material";
 
-import ContentSidebar from "./ContentSidebar_Fixed";
-import { LessonContent } from "./LessonContent_Simple";
+import ContentSidebar from "./ContentSidebar";
+import { LessonContent } from "./LessonContent";
 import QuizTaker from "./QuizTaker";
 import CertificateViewer from "./CertificateViewer";
 

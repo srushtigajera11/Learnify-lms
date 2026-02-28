@@ -2,6 +2,12 @@ import React from 'react';
 import { Play, Image as ImageIcon, ExternalLink, FileText } from 'lucide-react';
 
 export const LessonContent = ({ materials, title, description }) => {
+  // Debug logging
+  console.log('=== LessonContent Debug ===');
+  console.log('Title:', title);
+  console.log('Materials:', materials);
+  console.log('Materials count:', materials?.length);
+
   if (!materials || materials.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-gray-400 bg-white rounded-xl border border-gray-200 p-8">
@@ -10,8 +16,6 @@ export const LessonContent = ({ materials, title, description }) => {
       </div>
     );
   }
-
-
 
   return (
     <div className="space-y-6">
@@ -30,19 +34,57 @@ export const LessonContent = ({ materials, title, description }) => {
       {/* Materials */}
       <div className="space-y-4">
         {materials.map((material, idx) => {
-          const url = material.url || "";
-          const type = material.type || "";
-          const name = material.name || "Resource";
-    
+          // Get material properties - check multiple possible field names
+          const url = material.url || material.fileUrl || material.link || "";
+          const type = material.type || material.materialType || "";
+          const name = material.name || material.title || "Resource";
           
-          // Determine material type
+          console.log(`Material ${idx}:`, { type, url, name, fullMaterial: material });
+          
+          // Determine material type with comprehensive checks
           const isYouTube = /youtube\.com|youtu\.be/i.test(url);
           const isVimeo = /vimeo\.com/i.test(url);
-          const isDirectVideo = /\.(mp4|webm|ogg|mov|m4v)$/i.test(url);
-          const isVideo = type === 'video' || type === 'video_lesson' || isYouTube || isVimeo || isDirectVideo;
-          const isImage = type === 'image' || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url);
-          const isDocument = type === 'document' || /\.(pdf|doc|docx|txt|ppt|pptx|xls|xlsx)$/i.test(url);
-          const isLink = type === 'link' && !isVideo;
+          const isDirectVideo = /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
+          const isVideo = type === 'video' || 
+                         type === 'video_lesson' || 
+                         type === 'videoLesson' ||
+                         isYouTube || 
+                         isVimeo || 
+                         isDirectVideo;
+          
+          const isImage = type === 'image' || /\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(url);
+          const isDocument = type === 'document' || /\.(pdf|doc|docx|txt|ppt|pptx|xls|xlsx)(\?|$)/i.test(url);
+          const isLink = (type === 'link' || type === 'external') && !isVideo;
+
+          // Convert YouTube URLs to embed format
+          let embedUrl = url;
+          if (isYouTube) {
+            if (url.includes('watch?v=')) {
+              embedUrl = url.replace('watch?v=', 'embed/');
+            } else if (url.includes('youtu.be/')) {
+              const videoId = url.split('youtu.be/')[1].split('?')[0];
+              embedUrl = `https://www.youtube.com/embed/${videoId}`;
+            }
+          }
+
+          // Convert Vimeo URLs to player format
+          if (isVimeo && !url.includes('player.vimeo.com')) {
+            const vimeoId = url.split('vimeo.com/')[1]?.split('?')[0];
+            if (vimeoId) {
+              embedUrl = `https://player.vimeo.com/video/${vimeoId}`;
+            }
+          }
+
+          console.log(`Material ${idx} detected as:`, {
+            isVideo,
+            isYouTube,
+            isVimeo,
+            isDirectVideo,
+            isImage,
+            isDocument,
+            isLink,
+            embedUrl
+          });
 
           return (
             <div
@@ -74,11 +116,12 @@ export const LessonContent = ({ materials, title, description }) => {
               {isYouTube && (
                 <div className="relative bg-black rounded-lg overflow-hidden" style={{ paddingBottom: '56.25%' }}>
                   <iframe
-                    src={url.replace('watch?v=', 'embed/')}
+                    src={embedUrl}
                     className="absolute top-0 left-0 w-full h-full"
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
+                    title={name}
                   />
                 </div>
               )}
@@ -87,11 +130,12 @@ export const LessonContent = ({ materials, title, description }) => {
               {isVimeo && !isYouTube && (
                 <div className="relative bg-black rounded-lg overflow-hidden" style={{ paddingBottom: '56.25%' }}>
                   <iframe
-                    src={url.replace('vimeo.com/', 'player.vimeo.com/video/')}
+                    src={embedUrl}
                     className="absolute top-0 left-0 w-full h-full"
                     frameBorder="0"
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
+                    title={name}
                   />
                 </div>
               )}
@@ -103,8 +147,11 @@ export const LessonContent = ({ materials, title, description }) => {
                     controls
                     className="w-full"
                     preload="metadata"
+                    controlsList="nodownload"
                   >
                     <source src={url} type="video/mp4" />
+                    <source src={url} type="video/webm" />
+                    <source src={url} type="video/ogg" />
                     Your browser does not support the video tag.
                   </video>
                 </div>
@@ -118,6 +165,7 @@ export const LessonContent = ({ materials, title, description }) => {
                     alt={name}
                     className="max-w-full max-h-96 object-contain rounded shadow-sm"
                     onError={(e) => {
+                      console.error('Image failed to load:', url);
                       e.target.style.display = 'none';
                       e.target.parentElement.innerHTML = '<p class="text-gray-500 text-sm">Failed to load image</p>';
                     }}
@@ -149,6 +197,32 @@ export const LessonContent = ({ materials, title, description }) => {
                   <FileText size={18} />
                   Download Document
                 </a>
+              )}
+
+              {/* Fallback if nothing matches */}
+              {!isVideo && !isImage && !isDocument && !isLink && (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800 mb-2">
+                    <strong>Debug Info:</strong>
+                  </p>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Type: <span className="font-mono bg-white px-2 py-1 rounded">{type || 'unknown'}</span>
+                  </p>
+                  <p className="text-xs text-gray-600 mb-3 break-all">
+                    URL: <span className="font-mono bg-white px-2 py-1 rounded">{url || 'no url'}</span>
+                  </p>
+                  {url && (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 underline"
+                    >
+                      <ExternalLink size={16} />
+                      Open Resource
+                    </a>
+                  )}
+                </div>
               )}
             </div>
           );
