@@ -1,216 +1,359 @@
-// controller/progressController.js
-const UserProgress = require('../models/UserProgress');
-const Course = require('../models/courseModel');
-const mongoose = require("mongoose");
-const Lesson = require('../models/Lesson');
+/**
+ * progressController.js
+ *
+ * Handles all student progress: lesson completion, quiz results,
+ * XP awards, and certificate eligibility checks.
+ *
+ * Uses ONE model: StudentProgress — no more split between
+ * UserProgress / LessonProgress / Enrollment.completedLessons
+ */
+const mongoose  = require('mongoose');
+const Lesson    = require('../models/Lesson');
+const Quiz      = require('../models/Quiz');
+const Course    = require('../models/courseModel');
+const QuizResult      = require('../models/QuizResult');
+const Certificate     = require('../models/Certificate');
+const Gamification    = require('../models/Gamification');
+const StudentProgress = require('../models/StudentProgress');
 
-// Mark lesson as completed
-exports.markLessonCompleted = async (req, res) => {
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+/** Fetch arrays of published lesson IDs and quiz IDs for a course. */
+async function getCourseContentIds(courseId) {
+  const [lessonDocs, quizDocs] = await Promise.all([
+    Lesson.find({ courseId, status: 'published' }).select('_id').lean(),
+    Quiz.find({ courseId, isPublished: true  }).select('_id').lean()
+  ]);
+  return {
+    lessonIds: lessonDocs.map(l => l._id),
+    quizIds:   quizDocs.map(q => q._id)
+  };
+}
+
+/** Get or create a StudentProgress document. */
+async function getOrCreateProgress(studentId, courseId) {
+  let progress = await StudentProgress.findOne({ studentId, courseId });
+  if (!progress) {
+    progress = await StudentProgress.create({ studentId, courseId });
+  }
+  return progress;
+}
+
+// ─── exports ─────────────────────────────────────────────────────────────────
+
+/**
+ * POST /students/course/:courseId/lesson/:lessonId/complete
+ * Mark a lesson as complete, update XP, recalculate overall progress.
+ */
+exports.markLessonComplete = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const studentId            = req.user.id;
     const { courseId, lessonId } = req.params;
-    if (!lessonId) {
-      return res.status(400).json({
-        success: false,
-        message: "Lesson ID is missing"
-      });
-    }
-     if (!mongoose.Types.ObjectId.isValid(lessonId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid Lesson ID"
-      });
+
+    // Validate IDs
+    if (!mongoose.Types.ObjectId.isValid(lessonId)) {
+      return res.status(400).json({ success: false, message: 'Invalid lesson ID' });
     }
 
-    // Get the lesson
-    const lesson = await Lesson.findById(lessonId);
+    // Confirm lesson belongs to this course
+    const lesson = await Lesson.findOne({ _id: lessonId, courseId });
     if (!lesson) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Lesson not found' 
-      });
+      return res.status(404).json({ success: false, message: 'Lesson not found' });
     }
 
-    // Get or create user progress
-    let userProgress = await UserProgress.findOne({ userId, courseId });
-    
-    if (!userProgress) {
-      // Create new progress entry
-      const totalLessons = await Lesson.countDocuments({ courseId });
-      userProgress = await UserProgress.create({
-        userId,
-        courseId,
-        totalLessons,
-        completedLessons: [{ lessonId, completedAt: new Date() }],
-        progressPercentage: calculateProgress(1, totalLessons)
-      });
-    } else {
-      // Check if already completed
-      const alreadyCompleted = userProgress.completedLessons.some(
-        cl => cl.lessonId.toString() === lessonId
+    const progress                    = await getOrCreateProgress(studentId, courseId);
+    const wasAlreadyComplete           = progress.completedLessons.some(
+      l => l.lessonId.toString() === lessonId
+    );
+
+    if (!wasAlreadyComplete) {
+      // Mark lesson done
+      progress.completeLesson(lessonId);
+
+      // Award XP for lesson completion (5 XP per lesson)
+      const XP_PER_LESSON = 5;
+      progress.addXP(XP_PER_LESSON);
+
+      // Recalculate overall progress
+      const { lessonIds, quizIds } = await getCourseContentIds(courseId);
+      progress.recalculate(lessonIds, quizIds);
+
+      // Update gamification streak
+      const gamification = await Gamification.findOne({ studentId, courseId });
+      if (gamification) {
+        gamification.updateStreak();
+        await gamification.save();
+      }
+
+      await progress.save();
+    }
+
+    return res.status(200).json({
+      success:              true,
+      message:              wasAlreadyComplete ? 'Already completed' : 'Lesson marked complete',
+      completionPercentage: progress.completionPercentage,
+      totalXP:              progress.totalXP,
+      isCourseCompleted:    progress.isCourseCompleted
+    });
+
+  } catch (err) {
+    console.error('markLessonComplete error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+/**
+ * POST /students/course/:courseId/quiz/:quizId/submit
+ * Grade a quiz attempt, update progress + XP, optionally issue certificate.
+ */
+exports.submitQuizAttempt = async (req, res) => {
+  try {
+    const studentId            = req.user.id;
+    const { courseId, quizId } = req.params;
+    const { answers }          = req.body;   // { [questionId]: selectedOptionId }
+
+    const quiz = await Quiz.findOne({ _id: quizId, courseId, isPublished: true });
+    if (!quiz) {
+      return res.status(404).json({ success: false, message: 'Quiz not found' });
+    }
+
+    // ── Attempt count check ──────────────────────────────────────────────
+    const previousAttempts = await QuizResult.find({ studentId, quizId })
+      .sort('-attemptNumber').lean();
+    const attemptNumber = previousAttempts.length > 0
+      ? previousAttempts[0].attemptNumber + 1
+      : 1;
+
+    if (attemptNumber > quiz.maxAttempts) {
+      return res.status(400).json({ success: false, message: 'Maximum attempts reached' });
+    }
+
+    // ── Grade answers ────────────────────────────────────────────────────
+    let correctCount = 0;
+    let totalPoints  = 0;
+    let earnedPoints = 0;
+
+    const gradedAnswers = quiz.questions.map(question => {
+      totalPoints += question.points;
+      const studentAnswer  = answers[question._id.toString()];
+      const correctOption  = question.options.find(o => o.isCorrect);
+      const isCorrect      = studentAnswer === correctOption?._id.toString();
+
+      if (isCorrect) {
+        correctCount++;
+        earnedPoints += question.points;
+      }
+
+      return {
+        questionId:    question._id,
+        selectedOption: studentAnswer,
+        isCorrect,
+        pointsEarned:  isCorrect ? question.points : 0
+      };
+    });
+
+    const score  = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+    const passed = score >= quiz.passingScore;
+
+    // ── Persist QuizResult ───────────────────────────────────────────────
+    const quizResult = await QuizResult.create({
+      studentId,
+      quizId,
+      courseId,
+      attemptNumber,
+      answers:        gradedAnswers,
+      totalQuestions: quiz.questions.length,
+      correctAnswers: correctCount,
+      score,
+      passed,
+      startedAt:      new Date(),
+      completedAt:    new Date()
+    });
+
+    // ── Update StudentProgress ───────────────────────────────────────────
+    const progress = await getOrCreateProgress(studentId, courseId);
+    progress.updateQuiz(quizId, { score, passed, attemptNumber });
+
+    // XP: only on first-pass (attempt === 1) and only if quiz rewards XP
+    let xpEarned = 0;
+    if (passed && attemptNumber === 1 && quiz.xpReward > 0) {
+      xpEarned = quiz.xpReward;
+      progress.addXP(xpEarned);
+      quizResult.xpEarned = xpEarned;
+      await quizResult.save();
+    }
+
+    const { lessonIds, quizIds } = await getCourseContentIds(courseId);
+    progress.recalculate(lessonIds, quizIds);
+
+    // ── Certificate check ────────────────────────────────────────────────
+    let certificateGenerated = false;
+    let certificate          = null;
+
+    if (quiz.generatesCertificate && passed) {
+      const allLessonsDone = lessonIds.every(id =>
+        progress.completedLessons.some(l => l.lessonId.toString() === id.toString())
       );
-      
-      if (!alreadyCompleted) {
-        // Add to completed lessons
-        userProgress.completedLessons.push({
-          lessonId,
-          completedAt: new Date()
+      const allQuizzesDone = quizIds.every(id =>
+        progress.completedQuizzes.some(q => q.quizId.toString() === id.toString() && q.passed)
+      );
+
+      const existingCert = await Certificate.findOne({ studentId, courseId });
+
+      if (allLessonsDone && allQuizzesDone && !existingCert) {
+        const course = await Course.findById(courseId);
+
+        certificate = await Certificate.create({
+          studentId,
+          courseId,
+          title:          `Certificate of Completion - ${course.title}`,
+          finalScore:     score,
+          completionDate: new Date(),
+          quizResultId:   quizResult._id,
+          issuedBy:       course.createdBy,
+          status:         'active'
         });
-        
-        // Update progress
-        const totalLessons = userProgress.totalLessons || await Lesson.countDocuments({ courseId });
-        const completedCount = userProgress.completedLessons.length;
-        
-        userProgress.progressPercentage = calculateProgress(completedCount, totalLessons);
-        
-        // Check if course is completed
-        if (completedCount >= totalLessons) {
-          userProgress.isCompleted = true;
-          userProgress.completedAt = new Date();
+
+        progress.issueCertificate(certificate._id);
+        certificateGenerated = true;
+        quizResult.certificateIssued = true;
+        await quizResult.save();
+
+        // Badge for completing the course
+        let gamification = await Gamification.findOne({ studentId, courseId });
+        if (!gamification) {
+          gamification = await Gamification.create({ studentId, courseId });
         }
-        
-        await userProgress.save();
+        await gamification.addBadge({
+          badgeName:   'Course Completed',
+          badgeType:   'completion',
+          badgeIcon:   '🏆',
+          description: `Completed ${course.title}`,
+          xpReward:    50
+        });
+
+        // Add certificate XP to StudentProgress too
+        progress.addXP(50);
       }
     }
 
-    res.status(200).json({
+    // Update gamification streak
+    let gamification = await Gamification.findOne({ studentId, courseId });
+    if (gamification) {
+      gamification.updateStreak();
+      await gamification.save();
+    }
+
+    await progress.save();
+
+    return res.status(200).json({
       success: true,
-      message: 'Lesson marked as completed',
-      progress: userProgress
+      result: {
+        score,
+        passed,
+        correctAnswers:  correctCount,
+        totalQuestions:  quiz.questions.length,
+        earnedPoints,
+        totalPoints,
+        attemptNumber,
+        xpEarned,
+        certificateGenerated,
+        certificate,
+        answers:         gradedAnswers
+      },
+      progress: {
+        completionPercentage: progress.completionPercentage,
+        totalXP:              progress.totalXP,
+        isCourseCompleted:    progress.isCourseCompleted,
+        certificateIssued:    progress.certificateIssued
+      }
     });
-  } catch (error) {
-    console.error('Error marking lesson complete:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server Error' 
-    });
+
+  } catch (err) {
+    console.error('submitQuizAttempt error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-// Get course progress
+/**
+ * GET /students/course/:courseId/progress
+ * Return the current student's full progress for a course.
+ */
 exports.getCourseProgress = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { courseId } = req.params;
+    const studentId        = req.user.id;
+    const { courseId }     = req.params;
+    const { lessonIds, quizIds } = await getCourseContentIds(courseId);
 
-    let userProgress = await UserProgress.findOne({ userId, courseId })
-      .populate('completedLessons.lessonId', 'title lessonType order duration')
-      .populate('certificateId');
+    let progress = await StudentProgress.findOne({ studentId, courseId })
+      .populate('certificateId')
+      .lean();
 
-    if (!userProgress) {
-      // If no progress exists, create one with 0 progress
-      const totalLessons = await Lesson.countDocuments({ courseId });
-      userProgress = {
-        userId,
-        courseId,
-        totalLessons,
-        completedLessons: [],
-        progressPercentage: 0,
-        isCompleted: false,
-        averageScore: 0,
-        quizResults: []
-      };
+    if (!progress) {
+      // Return zeroed-out shape so the UI never has to null-check
+      return res.status(200).json({
+        success: true,
+        progress: {
+          studentId,
+          courseId,
+          completedLessons:     [],
+          completedQuizzes:     [],
+          completionPercentage: 0,
+          isCourseCompleted:    false,
+          totalXP:              0,
+          certificateIssued:    false,
+          certificateId:        null,
+          totalLessons:         lessonIds.length,
+          totalQuizzes:         quizIds.length,
+          totalItems:           lessonIds.length + quizIds.length
+        }
+      });
     }
 
-    res.status(200).json({
-      success: true,
-      progress: userProgress
+    return res.status(200).json({
+      success:  true,
+      progress: {
+        ...progress,
+        totalLessons: lessonIds.length,
+        totalQuizzes: quizIds.length,
+        totalItems:   lessonIds.length + quizIds.length
+      }
     });
-  } catch (error) {
-    console.error('Error fetching progress:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server Error' 
-    });
+
+  } catch (err) {
+    console.error('getCourseProgress error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-// Get all enrolled courses progress
+/**
+ * GET /students/progress/all
+ * Summary of all courses the student is enrolled in.
+ */
 exports.getAllProgress = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const studentId = req.user.id;
 
-    const progresses = await UserProgress.find({ userId })
-      .populate('courseId', 'title thumbnail description instructor')
-      .populate('completedLessons.lessonId', 'title')
-      .sort('-updatedAt');
+    const progresses = await StudentProgress.find({ studentId })
+      .populate('courseId', 'title thumbnail description')
+      .sort('-updatedAt')
+      .lean();
 
-    // Calculate statistics
     const stats = {
-      totalCourses: progresses.length,
-      completedCourses: progresses.filter(p => p.isCompleted).length,
-      inProgressCourses: progresses.filter(p => !p.isCompleted && p.progressPercentage > 0).length,
-      notStartedCourses: progresses.filter(p => p.progressPercentage === 0).length,
-      totalTimeSpent: progresses.reduce((sum, p) => sum + (p.timeSpent || 0), 0),
-      averageProgress: progresses.reduce((sum, p) => sum + p.progressPercentage, 0) / (progresses.length || 1)
+      totalCourses:     progresses.length,
+      completedCourses: progresses.filter(p => p.isCourseCompleted).length,
+      inProgress:       progresses.filter(p => !p.isCourseCompleted && p.completionPercentage > 0).length,
+      notStarted:       progresses.filter(p => p.completionPercentage === 0).length,
+      totalXP:          progresses.reduce((sum, p) => sum + (p.totalXP || 0), 0),
+      averageCompletion: progresses.length
+        ? Math.round(progresses.reduce((sum, p) => sum + p.completionPercentage, 0) / progresses.length)
+        : 0
     };
 
-    res.status(200).json({
-      success: true,
-      progresses,
-      stats
-    });
-  } catch (error) {
-    console.error('Error fetching all progress:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server Error' 
-    });
+    return res.status(200).json({ success: true, progresses, stats });
+
+  } catch (err) {
+    console.error('getAllProgress error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
-};
-
-// Update quiz score
-exports.updateQuizScore = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { courseId } = req.params;
-    const { score, quizId, maxScore } = req.body;
-
-    let userProgress = await UserProgress.findOne({ userId, courseId });
-    
-    if (!userProgress) {
-      // Create progress if doesn't exist
-      const totalLessons = await Lesson.countDocuments({ courseId });
-      userProgress = await UserProgress.create({
-        userId,
-        courseId,
-        totalLessons,
-        quizResults: [{ quizId, score, maxScore, takenAt: new Date() }],
-        averageScore: score
-      });
-    } else {
-      // Add quiz result
-      userProgress.quizResults.push({
-        quizId,
-        score,
-        maxScore,
-        takenAt: new Date()
-      });
-      
-      // Recalculate average score
-      const totalQuizzes = userProgress.quizResults.length;
-      const totalScore = userProgress.quizResults.reduce((sum, q) => sum + q.score, 0);
-      userProgress.averageScore = totalScore / totalQuizzes;
-      
-      await userProgress.save();
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Quiz score updated',
-      averageScore: userProgress.averageScore
-    });
-  } catch (error) {
-    console.error('Error updating quiz score:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server Error' 
-    });
-  }
-};
-
-// Calculate progress percentage
-const calculateProgress = (completed, total) => {
-  if (total === 0) return 0;
-  return Math.round((completed / total) * 100);
 };

@@ -7,26 +7,21 @@ const asyncHandler = require('express-async-handler');
 // @access  Private/Tutor
 exports.createQuiz = asyncHandler(async (req, res) => {
   const { courseId } = req.params;
-  const { 
-    title, 
-    description, 
-    questions, 
-    timeLimit, 
-    passingScore, 
-    maxAttempts,
-    shuffleQuestions,
-    isPublished 
-  } = req.body;
+  const { title, description, questions, timeLimit, passingScore, maxAttempts, shuffleQuestions, isPublished } = req.body;
 
   if (!title) {
     res.status(400);
     throw new Error('Quiz title is required');
   }
 
+  // Auto-calculate order based on existing quizzes in the course
+  const existingCount = await Quiz.countDocuments({ courseId });
+
   const quiz = await Quiz.create({
     title,
     description,
     courseId,
+    order: existingCount + 1,  // 👈 auto-assigned
     questions: questions || [],
     timeLimit,
     passingScore: passingScore || 70,
@@ -36,11 +31,7 @@ exports.createQuiz = asyncHandler(async (req, res) => {
     createdBy: req.user.id
   });
 
-  res.status(201).json({
-    success: true,
-    message: 'Quiz created successfully',
-    data: quiz
-  });
+  res.status(201).json({ success: true, message: 'Quiz created successfully', data: quiz });
 });
 
 // @desc    Get all quizzes for a course

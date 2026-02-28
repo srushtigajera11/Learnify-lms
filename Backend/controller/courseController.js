@@ -454,23 +454,27 @@ exports.updateCourseStatus = async (req, res) => {
 exports.getTutorStats = async (req, res) => {
   try {
     const userId = req.user.id;
-    
-    const courses = await Course.find({ createdBy: userId });
-    
-    const stats = {
-      total: courses.length,
-      draft: courses.filter(c => c.status === 'draft').length,
-      pending: courses.filter(c => c.status === 'pending').length,
-      published: courses.filter(c => c.status === 'published').length,
-      rejected: courses.filter(c => c.status === 'rejected').length,
-      totalRevenue: 0, // Calculate from enrollments
-      totalStudents: 0, // Calculate from enrollments
-    };
 
-    res.status(200).json(stats);
+    const courses = await Course.find({ createdBy: userId });
+
+    const draftCount = courses.filter(c => c.status === "draft").length;
+    const pendingCount = courses.filter(c => c.status === "pending").length;
+    const publishedCount = courses.filter(c => c.status === "published").length;
+    const rejectedCount = courses.filter(c => c.status === "rejected").length;
+
+    res.status(200).json({
+      totalCourses: courses.length,
+      draftCount,
+      pendingApprovals: pendingCount,
+      publishedCount,
+      rejectedCount,
+      monthlyEarnings: 0,
+      totalEnrollments: 0
+    });
+
   } catch (error) {
-    console.error('Get Tutor Stats Error:', error);
-    res.status(500).json({ message: 'Server Error' });
+    console.error("Get Tutor Stats Error:", error);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 

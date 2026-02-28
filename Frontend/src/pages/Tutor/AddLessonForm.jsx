@@ -87,7 +87,7 @@ const AddLessonForm = () => {
      SUBMIT
   ========================= */
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
   setError("");
@@ -105,14 +105,23 @@ const AddLessonForm = () => {
       return;
     }
 
+    const hasValidMaterial = materials.some(
+  (m) => m.file || m.url.trim()
+);
+
+if (!hasValidMaterial) {
+  setError("Each material must have either a file or a URL");
+  setLoading(false);
+  return;
+}
     const fd = new FormData();
 
-    // Lesson basic fields
+    // Lesson fields
     fd.append("title", formData.title);
     fd.append("description", formData.description);
     fd.append("duration", formData.duration);
 
-    // Prepare materials without file objects
+    // Prepare metadata (NO file objects inside this)
     const materialsData = materials.map((m) => ({
       type: m.type,
       name: m.name,
@@ -123,26 +132,16 @@ const AddLessonForm = () => {
 
     fd.append("materials", JSON.stringify(materialsData));
 
-    // Append files separately (order matters)
+    // IMPORTANT: append files using SAME field name as multer expects
     materials.forEach((m) => {
       if (m.file) {
-        fd.append("files", m.file);
+        fd.append("materials", m.file); // ✅ NOT "files"
       }
     });
 
-    // Debug (optional)
-    console.log("Submitting lesson...");
-    console.log("Materials JSON:", materialsData);
-    console.log("Files:", materials.filter(m => m.file));
-
     await axiosInstance.post(
       `/lessons/course/${courseId}`,
-      fd,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
+      fd
     );
 
     navigate(-1);

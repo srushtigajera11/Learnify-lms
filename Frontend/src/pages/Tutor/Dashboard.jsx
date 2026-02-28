@@ -226,12 +226,11 @@ const Dashboard = () => {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 h-full">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Earnings Overview
-            </h2>
-            <EarningsChart />
-          </div>
+          
+<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+  <h2 className="text-lg font-semibold text-gray-900 mb-4">Earnings Overview</h2>
+  <EarningsChart />
+</div>
         </div>
         <div className="space-y-6">
           <QuickStatsChart />

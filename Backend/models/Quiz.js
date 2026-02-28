@@ -28,8 +28,7 @@ const quizSchema = new mongoose.Schema({
   
   // Order in course content (for sidebar display)
   order: {
-    type: Number,
-    required: true
+    type: Number
   },
 
   questions: [{

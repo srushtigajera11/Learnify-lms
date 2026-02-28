@@ -1,168 +1,228 @@
-const asyncHandler = require('express-async-handler');
-const QuizResult = require('../models/QuizResult');
-const Quiz = require('../models/Quiz');
-const Gamification = require('../models/Gamification');
+const mongoose      = require('mongoose');
+const asyncHandler  = require('express-async-handler');
+const QuizResult    = require('../models/QuizResult');
+const Quiz          = require('../models/Quiz');
+const Lesson        = require('../models/Lesson');
+const Enrollment    = require('../models/Enrollment');
+const Certificate   = require('../models/Certificate');
+const Course        = require('../models/courseModel');
+const Gamification  = require('../models/Gamification');
+const StudentProgress = require('../models/StudentProgress');
 
-// @desc    Submit quiz attempt
-// @route   POST /api/quiz-results/quiz/:quizId/attempt
-// @access  Private/Student
-// @desc    Submit quiz attempt
-// @route   POST /api/quiz-results/quiz/:quizId/attempt
-// @access  Private/Student
+// ─── helper: sync a quiz result into StudentProgress ─────────────────────────
+
+async function syncToStudentProgress(studentId, courseId, quizId, { score, passed, attemptNumber, xpEarned, quiz }) {
+  // Get or create the progress doc
+  let sp = await StudentProgress.findOne({ studentId, courseId });
+  if (!sp) sp = await StudentProgress.create({ studentId, courseId });
+
+  // Update quiz entry (keeps bestScore, tracks passed flag)
+  sp.updateQuiz(quizId, { score, passed, attemptNumber });
+
+  // XP: only on first pass
+  if (passed && attemptNumber === 1 && xpEarned > 0) {
+    sp.addXP(xpEarned);
+  }
+
+  // Recalculate overall completion
+  const [lessonDocs, quizDocs] = await Promise.all([
+    Lesson.find({ courseId, status: 'published' }).select('_id').lean(),
+    Quiz.find({ courseId, isPublished: true }).select('_id').lean()
+  ]);
+  sp.recalculate(
+    lessonDocs.map(l => l._id),
+    quizDocs.map(q => q._id)
+  );
+
+  // ── Certificate check ──────────────────────────────────────────────────
+  let certificateGenerated = false;
+  let certificate          = null;
+
+  if (quiz.generatesCertificate && passed) {
+    const allLessonsDone = lessonDocs.every(l =>
+      sp.completedLessons.some(cl => cl.lessonId.toString() === l._id.toString())
+    );
+    const allQuizzesDone = quizDocs.every(q =>
+      sp.completedQuizzes.some(cq => cq.quizId.toString() === q._id.toString() && cq.passed)
+    );
+
+    const existingCert = await Certificate.findOne({ studentId, courseId });
+
+    if (allLessonsDone && allQuizzesDone && !existingCert) {
+      const course = await Course.findById(courseId);
+      certificate = await Certificate.create({
+        studentId,
+        courseId,
+        title:          `Certificate of Completion - ${course.title}`,
+        finalScore:     score,
+        completionDate: new Date(),
+        issuedBy:       course.createdBy,
+        status:         'active'
+      });
+
+      sp.issueCertificate(certificate._id);
+      certificateGenerated = true;
+
+      // Award completion badge
+      let gam = await Gamification.findOne({ studentId, courseId });
+      if (!gam) gam = await Gamification.create({ studentId, courseId });
+      await gam.addBadge({
+        badgeName:   'Course Completed',
+        badgeType:   'completion',
+        badgeIcon:   '🏆',
+        description: `Completed ${course.title}`,
+        xpReward:    50
+      });
+      sp.addXP(50);
+    }
+  }
+
+  await sp.save();
+  return { sp, certificateGenerated, certificate };
+}
+
+// ─── POST /api/quiz-results/quiz/:quizId/attempt ──────────────────────────────
+
 exports.submitQuizAttempt = asyncHandler(async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const { quizId }            = req.params;
+  let   { answers, timeSpent } = req.body;
+  const studentId             = req.user.id;
 
-  try {
-    const { quizId } = req.params;
-    let { answers, timeSpent } = req.body;
+  // ── Validate ─────────────────────────────────────────────────────────────
+  if (!answers || !Array.isArray(answers) || answers.length === 0) {
+    res.status(400);
+    throw new Error('Answers are required');
+  }
+  if (!timeSpent || timeSpent < 0) timeSpent = 0;
 
-    // ===============================
-    // 1️⃣ Validate Input
-    // ===============================
-    if (!answers || !Array.isArray(answers) || answers.length === 0) {
-      res.status(400);
-      throw new Error('Answers are required');
-    }
+  // ── Load quiz ─────────────────────────────────────────────────────────────
+  const quiz = await Quiz.findById(quizId);
+  if (!quiz) { res.status(404); throw new Error('Quiz not found'); }
+  if (!quiz.isPublished) { res.status(403); throw new Error('Quiz is not available'); }
 
-    if (!timeSpent || timeSpent < 0) {
-      timeSpent = 0;
-    }
+  // ── Enrollment check ──────────────────────────────────────────────────────
+  const enrollment = await Enrollment.findOne({ studentId, courseId: quiz.courseId });
+  if (!enrollment) { res.status(403); throw new Error('You must be enrolled to attempt this quiz'); }
 
-    // ===============================
-    // 2️⃣ Find Quiz
-    // ===============================
-    const quiz = await Quiz.findById(quizId).session(session);
+  // ── Attempt count ─────────────────────────────────────────────────────────
+  const previousAttempts = await QuizResult.countDocuments({ studentId, quizId });
+  if (previousAttempts >= quiz.maxAttempts) {
+    res.status(400);
+    throw new Error('Maximum attempts reached for this quiz');
+  }
+  const attemptNumber = previousAttempts + 1;
 
-    if (!quiz) {
-      res.status(404);
-      throw new Error('Quiz not found');
-    }
+  // ── Grade answers ─────────────────────────────────────────────────────────
+  let correctAnswers = 0;
+  let totalPoints    = 0;
+  let earnedPoints   = 0;
 
-    if (!quiz.isPublished) {
-      res.status(403);
-      throw new Error('Quiz is not available');
-    }
+  const evaluatedAnswers = answers.map(answer => {
+    const question = quiz.questions.id(answer.questionId);
+    if (!question) return null;
 
-    // ===============================
-    // 3️⃣ Check Enrollment
-    // ===============================
-    const isEnrolled = await Enrollment.findOne({
-      studentId: req.user.id,
-      courseId: quiz.courseId
-    }).session(session);
+    const selectedOption = question.options.find(
+      opt => opt._id.toString() === answer.selectedOption
+    );
+    const isCorrect    = selectedOption?.isCorrect ?? false;
+    const pointsEarned = isCorrect ? question.points : 0;
 
-    if (!isEnrolled) {
-      res.status(403);
-      throw new Error('You must be enrolled in this course to attempt this quiz');
-    }
+    correctAnswers += isCorrect ? 1 : 0;
+    earnedPoints   += pointsEarned;
+    totalPoints    += question.points;
 
-    // ===============================
-    // 4️⃣ Check Max Attempts
-    // ===============================
-    const previousAttempts = await QuizResult.countDocuments({
-      studentId: req.user.id,
-      quizId
-    }).session(session);
+    return {
+      questionId:     answer.questionId,
+      selectedOption: answer.selectedOption,
+      textAnswer:     answer.textAnswer,
+      isCorrect,
+      pointsEarned
+    };
+  }).filter(Boolean);
 
-    if (previousAttempts >= quiz.maxAttempts) {
-      res.status(400);
-      throw new Error('Maximum attempts reached for this quiz');
-    }
+  if (evaluatedAnswers.length === 0) {
+    res.status(400);
+    throw new Error('Invalid quiz submission');
+  }
 
-    // ===============================
-    // 5️⃣ Evaluate Answers
-    // ===============================
-    let correctAnswers = 0;
-    let totalPoints = 0;
-    let earnedPoints = 0;
+  const score  = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+  const passed = score >= quiz.passingScore;
 
-    const evaluatedAnswers = answers.map(answer => {
-      const question = quiz.questions.id(answer.questionId);
-      if (!question) return null;
+  // ── XP calculation ────────────────────────────────────────────────────────
+  const xpEarned = (passed && attemptNumber === 1 && quiz.xpReward > 0) ? quiz.xpReward : 0;
 
-      let isCorrect = false;
-      let pointsEarned = 0;
+  // ── Save QuizResult ───────────────────────────────────────────────────────
+  const quizResult = await QuizResult.create({
+    studentId,
+    quizId,
+    courseId:      quiz.courseId,
+    attemptNumber,
+    answers:       evaluatedAnswers,
+    totalQuestions: evaluatedAnswers.length,
+    correctAnswers,
+    score,
+    passed,
+    timeSpent,
+    xpEarned,
+    startedAt:   new Date(Date.now() - timeSpent * 60000),
+    completedAt: new Date()
+  });
 
-      if (
-        question.questionType === 'multiple-choice' ||
-        question.questionType === 'true-false'
-      ) {
-        const selectedOption = question.options.find(
-          opt => opt._id.toString() === answer.selectedOption
-        );
+  // ── Sync to StudentProgress (THE KEY STEP that was missing) ──────────────
+  const { sp, certificateGenerated, certificate } = await syncToStudentProgress(
+    studentId,
+    quiz.courseId,
+    quizId,
+    { score, passed, attemptNumber, xpEarned, quiz }
+  );
 
-        isCorrect = selectedOption ? selectedOption.isCorrect : false;
-      }
+  // Update gamification streak
+  let gam = await Gamification.findOne({ studentId, courseId: quiz.courseId });
+  if (!gam) gam = await Gamification.create({ studentId, courseId: quiz.courseId });
+  if (xpEarned > 0) {
+    await gam.addXp(xpEarned, 'quiz_completion');
+  } else {
+    gam.updateStreak();
+    await gam.save();
+  }
 
-      pointsEarned = isCorrect ? question.points : 0;
+  // Update quizResult with certificate flag if issued
+  if (certificateGenerated) {
+    quizResult.certificateIssued = true;
+    await quizResult.save();
+  }
 
-      correctAnswers += isCorrect ? 1 : 0;
-      earnedPoints += pointsEarned;
-      totalPoints += question.points;
-
-      return {
-        questionId: answer.questionId,
-        selectedOption: answer.selectedOption,
-        textAnswer: answer.textAnswer,
-        isCorrect,
-        pointsEarned
-      };
-    }).filter(Boolean);
-
-    if (evaluatedAnswers.length === 0) {
-      res.status(400);
-      throw new Error('Invalid quiz submission');
-    }
-
-    // ===============================
-    // 6️⃣ Calculate Score
-    // ===============================
-    const score = totalPoints > 0
-      ? (earnedPoints / totalPoints) * 100
-      : 0;
-
-    const passed = score >= quiz.passingScore;
-
-    // ===============================
-    // 7️⃣ Save Quiz Result
-    // ===============================
-    const quizResult = await QuizResult.create([{
-      studentId: req.user.id,
-      quizId,
-      courseId: quiz.courseId,
-      attemptNumber: previousAttempts + 1,
-      answers: evaluatedAnswers,
-      totalQuestions: evaluatedAnswers.length,
-      correctAnswers,
+  res.status(201).json({
+    success: true,
+    message: passed ? 'Quiz submitted successfully. You passed!' : 'Quiz submitted successfully.',
+    // Shape that QuizTaker.jsx expects
+    result: {
       score,
       passed,
-      timeSpent,
-      startedAt: new Date(Date.now() - timeSpent * 60000),
-      completedAt: new Date()
-    }], { session });
-
-    await session.commitTransaction();
-    session.endSession();
-
-    res.status(201).json({
-      success: true,
-      message: passed
-        ? 'Quiz submitted successfully. You passed!'
-        : 'Quiz submitted successfully.',
-      data: quizResult[0]
-    });
-
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw error;
-  }
+      correctAnswers,
+      totalQuestions:  evaluatedAnswers.length,
+      earnedPoints,
+      totalPoints,
+      attemptNumber,
+      xpEarned,
+      certificateGenerated,
+      certificate,
+      answers:         evaluatedAnswers
+    },
+    // Updated progress snapshot for the UI
+    progress: {
+      completionPercentage: sp.completionPercentage,
+      totalXP:              sp.totalXP,
+      isCourseCompleted:    sp.isCourseCompleted,
+      certificateIssued:    sp.certificateIssued
+    },
+    // Keep old `data` field so any existing code that reads res.data.data still works
+    data: quizResult
+  });
 });
 
-// @desc    Get quiz results for a student
-// @route   GET /api/quiz-results/quiz/:quizId
-// @access  Private/Student
+// ─── GET /api/quiz-results/quiz/:quizId ──────────────────────────────────────
+
 exports.getStudentQuizResults = asyncHandler(async (req, res) => {
   const { quizId } = req.params;
 
@@ -171,76 +231,50 @@ exports.getStudentQuizResults = asyncHandler(async (req, res) => {
     quizId
   }).sort({ attemptNumber: 1 });
 
-  res.json({
-    success: true,
-    count: results.length,
-    data: results
-  });
+  res.json({ success: true, count: results.length, data: results });
 });
 
-// @desc    Get quiz results for a tutor (all students)
-// @route   GET /api/quiz-results/quiz/:quizId/tutor
-// @access  Private/Tutor
+// ─── GET /api/quiz-results/quiz/:quizId/tutor ────────────────────────────────
+
 exports.getQuizResultsForTutor = asyncHandler(async (req, res) => {
   const { quizId } = req.params;
 
-  // Verify the tutor owns this quiz
   const quiz = await Quiz.findOne({ _id: quizId, createdBy: req.user.id });
-  if (!quiz) {
-    res.status(404);
-    throw new Error('Quiz not found or access denied');
-  }
+  if (!quiz) { res.status(404); throw new Error('Quiz not found or access denied'); }
 
   const results = await QuizResult.find({ quizId })
     .populate('studentId', 'name email')
     .sort({ score: -1 });
 
-  // Calculate statistics
+  const total = results.length;
   const stats = {
-    totalAttempts: results.length,
-    averageScore: results.reduce((sum, result) => sum + result.score, 0) / results.length,
-    passRate: (results.filter(result => result.passed).length / results.length) * 100,
-    topScore: results.length > 0 ? Math.max(...results.map(r => r.score)) : 0
+    totalAttempts: total,
+    averageScore:  total ? results.reduce((s, r) => s + r.score, 0) / total : 0,
+    passRate:      total ? (results.filter(r => r.passed).length / total) * 100 : 0,
+    topScore:      total ? Math.max(...results.map(r => r.score)) : 0
   };
 
-  res.json({
-    success: true,
-    stats,
-    data: results
-  });
+  res.json({ success: true, stats, data: results });
 });
 
-// @desc    Get single quiz result by ID
-// @route   GET /api/quiz-results/:resultId
-// @access  Private/Student, Tutor
-exports.getQuizResultById = asyncHandler(async (req, res) => {
-  const { resultId } = req.params;
+// ─── GET /api/quiz-results/:resultId ─────────────────────────────────────────
 
-  const result = await QuizResult.findById(resultId)
+exports.getQuizResultById = asyncHandler(async (req, res) => {
+  const result = await QuizResult.findById(req.params.resultId)
     .populate('quizId', 'title passingScore')
     .populate('studentId', 'name email');
 
-  if (!result) {
-    res.status(404);
-    throw new Error('Quiz result not found');
-  }
+  if (!result) { res.status(404); throw new Error('Quiz result not found'); }
 
-  // Authorization check
   if (req.user.role === 'student' && result.studentId._id.toString() !== req.user.id) {
-    res.status(403);
-    throw new Error('Access denied');
+    res.status(403); throw new Error('Access denied');
   }
-
   if (req.user.role === 'tutor') {
     const quiz = await Quiz.findById(result.quizId);
     if (quiz.createdBy.toString() !== req.user.id) {
-      res.status(403);
-      throw new Error('Access denied');
+      res.status(403); throw new Error('Access denied');
     }
   }
 
-  res.json({
-    success: true,
-    data: result
-  });
+  res.json({ success: true, data: result });
 });

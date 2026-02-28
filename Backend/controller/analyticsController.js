@@ -1,62 +1,83 @@
 
 const Course = require('../models/courseModel');
 const Enrollment = require('../models/Enrollment');
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-exports.getMonthlyEarnings = async(req,res)=>{
-    try{
-        const tutorId = req.user.id;
-       const earnings = await Enrollment.aggregate([
+
+exports.getMonthlyEarnings = async (req, res) => {
+  try {
+    const tutorId = new mongoose.Types.ObjectId(req.user.id);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-11
+
+    const earnings = await Enrollment.aggregate([
       {
         $lookup: {
           from: "courses",
           localField: "courseId",
           foreignField: "_id",
-          as: "course",
-        },
+          as: "course"
+        }
       },
       { $unwind: "$course" },
-      { $match: { "course.createdBy": new mongoose.Types.ObjectId(tutorId) } },
+      {
+        $match: {
+          "course.createdBy": tutorId,
+          createdAt: {
+            $gte: new Date(`${currentYear}-01-01`),
+            $lte: now
+          }
+        }
+      },
       {
         $group: {
-          _id: {
-            month: { $month: "$createdAt" },
-            year: { $year: "$createdAt" },
-          },
-          totalEarnings: { $sum: "$course.price" },
-        },
-      },
-      {
-        $sort: {
-          "_id.year": 1,
-          "_id.month": 1,
-        },
-      },
+          _id: { $month: "$createdAt" },
+          totalEarnings: { $sum: "$course.price" }
+        }
+      }
     ]);
+
     const monthNames = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      "Jan","Feb","Mar","Apr","May","Jun",
+      "Jul","Aug","Sep","Oct","Nov","Dec"
     ];
-    const formatted = earnings.map(item => ({
-        month : `${monthNames[item._id.month]} ${item._id.year}`,
-        earnings: item.totalEarnings,
-    }));
+
+    // Build months only up to current month
+    let formatted = monthNames
+      .slice(0, currentMonth + 1)
+      .map((month, index) => {
+        const found = earnings.find(e => e._id === index + 1);
+        return {
+          month,
+          earnings: found ? found.totalEarnings : 0
+        };
+      });
+
+    // Remove leading zero months
+    const firstNonZeroIndex = formatted.findIndex(m => m.earnings > 0);
+    if (firstNonZeroIndex > 0) {
+      formatted = formatted.slice(firstNonZeroIndex);
+    }
+
+    // If everything is zero → show last 3 months only
+    if (firstNonZeroIndex === -1) {
+      formatted = formatted.slice(-3);
+    }
 
     res.status(200).json({
-        success: true,
-        formatted,
+      success: true,
+      formatted
     });
 
-    }
-    catch(err){
-        console.error("Error fetching monthly earnings:", err);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
-    }
-}
-
+  } catch (err) {
+    console.error("Monthly Earnings Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
 exports.getTutorStats = async (req, res) => {
   try {
     const tutorId = req.user.id;
