@@ -2,11 +2,7 @@ import React from 'react';
 import { Play, Image as ImageIcon, ExternalLink, FileText } from 'lucide-react';
 
 export const LessonContent = ({ materials, title, description }) => {
-  // Debug logging
-  console.log('=== LessonContent Debug ===');
-  console.log('Title:', title);
-  console.log('Materials:', materials);
-  console.log('Materials count:', materials?.length);
+ 
 
   if (!materials || materials.length === 0) {
     return (
@@ -38,8 +34,6 @@ export const LessonContent = ({ materials, title, description }) => {
           const url = material.url || material.fileUrl || material.link || "";
           const type = material.type || material.materialType || "";
           const name = material.name || material.title || "Resource";
-          
-          console.log(`Material ${idx}:`, { type, url, name, fullMaterial: material });
           
           // Determine material type with comprehensive checks
           const isYouTube = /youtube\.com|youtu\.be/i.test(url);
@@ -75,16 +69,7 @@ export const LessonContent = ({ materials, title, description }) => {
             }
           }
 
-          console.log(`Material ${idx} detected as:`, {
-            isVideo,
-            isYouTube,
-            isVimeo,
-            isDirectVideo,
-            isImage,
-            isDocument,
-            isLink,
-            embedUrl
-          });
+      
 
           return (
             <div

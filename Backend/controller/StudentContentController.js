@@ -132,7 +132,7 @@ exports.getUnifiedCourseContent = async (req, res) => {
     const certificateUnlocked = finalQuizPassed && allLessonsDone && allQuizzesDone;
 
     // Add certificate slot
-    const maxOrder = contentItems.length > 0 ? Math.max(...contentItems.map(i => i.order)) : 0;
+    const maxOrder = contentItems.reduce((max, i) => Math.max(max, i.order || 0), 0);
     contentItems.push({
       _id:           certificate?._id || 'certificate',
       type:          'certificate',

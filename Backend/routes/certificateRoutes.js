@@ -10,7 +10,8 @@ const {
 
 
 const {isAuthenticated , authorizeRoles} = require('../middleware/auth');
-
+const debugCertificate = require('../controller/debugCertificate');
+router.get('/debug/:courseId', isAuthenticated, debugCertificate);
 router.post('/claim/:courseId',isAuthenticated,authorizeRoles('student'), claimCertificate);
 router.get('/my-certificates',isAuthenticated,authorizeRoles('student'), getMyCertificates);
 router.get('/:certificateId',isAuthenticated,authorizeRoles('student'), getCertificateById);
