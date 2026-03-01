@@ -1,7 +1,5 @@
 /**
  * StudentContentController.js
- *
- * Provides unified course content + live progress for the CoursePlayer UI.
  * Uses StudentProgress as the single source of truth.
  */
 const Lesson          = require('../models/Lesson');
@@ -13,54 +11,42 @@ const Certificate     = require('../models/Certificate');
 const QuizResult      = require('../models/QuizResult');
 const StudentProgress = require('../models/StudentProgress');
 
-// ─── helper ──────────────────────────────────────────────────────────────────
-
 async function getOrCreateProgress(studentId, courseId) {
   let p = await StudentProgress.findOne({ studentId, courseId });
   if (!p) p = await StudentProgress.create({ studentId, courseId });
   return p;
 }
 
-// ─── GET unified course content ───────────────────────────────────────────────
-
 exports.getUnifiedCourseContent = async (req, res) => {
   try {
     const { courseId } = req.params;
     const studentId    = req.user.id;
 
-    // Must be enrolled
     const enrollment = await Enrollment.findOne({ courseId, studentId });
     if (!enrollment) {
       return res.status(403).json({ success: false, message: 'Not enrolled in this course' });
     }
 
-    // Course meta
     const course = await Course.findById(courseId)
       .select('title description thumbnail')
       .populate('createdBy', 'name');
 
-    // All published lessons + quizzes
     const [lessons, quizzes] = await Promise.all([
-      Lesson.find({ courseId, status: 'published'  }).sort('order').lean(),
-      Quiz.find  ({ courseId, isPublished: true     }).sort('order').lean()
+      Lesson.find({ courseId, status: 'published' }).sort('order').lean(),
+      Quiz.find({ courseId, isPublished: true }).sort('order').lean()
     ]);
 
-    // Student progress (single doc)
-    const progress = await getOrCreateProgress(studentId, courseId);
-
-    // Quiz attempt history
+    const progress    = await getOrCreateProgress(studentId, courseId);
     const quizResults = await QuizResult.find({ studentId, courseId }).lean();
 
-    // Gamification
     let gamification = await Gamification.findOne({ studentId, courseId });
     if (!gamification) {
       gamification = await Gamification.create({ studentId, courseId, totalXp: 0, level: 1 });
     }
 
-    // Certificate (if any)
     const certificate = await Certificate.findOne({ studentId, courseId, status: 'active' });
 
-    // ── Build content list ───────────────────────────────────────────────
+    // Build content list
     const contentItems = [];
 
     lessons.forEach(lesson => {
@@ -85,7 +71,6 @@ exports.getUnifiedCourseContent = async (req, res) => {
         ? attempts.reduce((b, c) => c.score > b.score ? c : b)
         : null;
 
-      // Also check StudentProgress.completedQuizzes for passed status
       const progressEntry = progress.completedQuizzes.find(
         q => q.quizId.toString() === quiz._id.toString()
       );
@@ -104,34 +89,49 @@ exports.getUnifiedCourseContent = async (req, res) => {
         maxAttempts:          quiz.maxAttempts,
         attempts:             attempts.length,
         bestScore:            progressEntry?.bestScore ?? best?.score ?? 0,
-        isCompleted:          progressEntry?.passed ?? (best?.passed ?? false)
+        isCompleted:          progressEntry?.passed ?? best?.passed ?? false
       });
     });
 
-    // Sort by order field
     contentItems.sort((a, b) => a.order - b.order);
 
-    // ── Recompute overall progress ───────────────────────────────────────
     const lessonIds = lessons.map(l => l._id);
     const quizIds   = quizzes.map(q => q._id);
     progress.recalculate(lessonIds, quizIds);
     await progress.save();
 
-    const totalItems         = contentItems.length;
-    const completedItems     = contentItems.filter(i => i.isCompleted).length;
-    const completionPct      = totalItems > 0
-      ? Math.round((completedItems / totalItems) * 100)
-      : 0;
+    const totalItems     = contentItems.length;
+    const completedItems = contentItems.filter(i => i.isCompleted).length;
+    const completionPct  = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
-    // ── Certificate unlock logic ─────────────────────────────────────────
+    // === CERTIFICATE UNLOCK — checked against StudentProgress + QuizResult fallback ===
+
+    // 1. Is the final quiz (generatesCertificate: true) passed?
     const finalQuizPassed = quizzes.some(quiz => {
       if (!quiz.generatesCertificate) return false;
-      return quizResults.some(r => r.quizId.toString() === quiz._id.toString() && r.passed);
+      const qid     = quiz._id.toString();
+      const spEntry = progress.completedQuizzes.find(cq => cq.quizId.toString() === qid);
+      if (spEntry && spEntry.passed) return true;
+      // Fallback for pre-migration quiz results
+      return quizResults.some(r => r.quizId.toString() === qid && r.passed);
     });
-    const allContentComplete   = completedItems === totalItems;
-    const certificateUnlocked  = finalQuizPassed && allContentComplete;
 
-    // Add certificate as last item
+    // 2. Are all lessons marked complete?
+    const allLessonsDone = lessonIds.length === 0 || lessonIds.every(id =>
+      progress.completedLessons.some(cl => cl.lessonId.toString() === id.toString())
+    );
+
+    // 3. Are all quizzes passed? (no quizzes = automatically satisfied)
+    const allQuizzesDone = quizIds.length === 0 || quizIds.every(id => {
+      const qid     = id.toString();
+      const spEntry = progress.completedQuizzes.find(cq => cq.quizId.toString() === qid);
+      if (spEntry && spEntry.passed) return true;
+      return quizResults.some(r => r.quizId.toString() === qid && r.passed);
+    });
+
+    const certificateUnlocked = finalQuizPassed && allLessonsDone && allQuizzesDone;
+
+    // Add certificate slot
     const maxOrder = contentItems.length > 0 ? Math.max(...contentItems.map(i => i.order)) : 0;
     contentItems.push({
       _id:           certificate?._id || 'certificate',
@@ -142,7 +142,7 @@ exports.getUnifiedCourseContent = async (req, res) => {
       duration:      0,
       isCompleted:   !!certificate,
       isLocked:      !certificateUnlocked,
-      certificate:   certificate  || null,
+      certificate:   certificate || null,
       certificateId: certificate?.certificateId || null
     });
 
@@ -152,14 +152,14 @@ exports.getUnifiedCourseContent = async (req, res) => {
       content: contentItems,
       progress: {
         completedItems,
-        totalItems:          totalItems + 1,  // include certificate slot
+        totalItems:           totalItems + 1,
         completionPercentage: completionPct,
-        totalXP:             progress.totalXP,
-        level:               gamification.level,
-        progressToNextLevel: gamification.progressToNextLevel,
-        currentStreak:       gamification.currentStreak,
-        certificateIssued:   !!certificate,
-        certificate:         certificate || null
+        totalXP:              progress.totalXP,
+        level:                gamification.level,
+        progressToNextLevel:  gamification.progressToNextLevel,
+        currentStreak:        gamification.currentStreak,
+        certificateIssued:    !!certificate,
+        certificate:          certificate || null
       }
     });
 
@@ -168,8 +168,6 @@ exports.getUnifiedCourseContent = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
-// ─── GET lesson content ───────────────────────────────────────────────────────
 
 exports.getLessonContent = async (req, res) => {
   try {
@@ -202,8 +200,6 @@ exports.getLessonContent = async (req, res) => {
   }
 };
 
-// ─── GET quiz content ─────────────────────────────────────────────────────────
-
 exports.getQuizContent = async (req, res) => {
   try {
     const { courseId, quizId } = req.params;
@@ -225,7 +221,6 @@ exports.getQuizContent = async (req, res) => {
       ? quizResults.reduce((b, c) => c.score > b.score ? c : b)
       : null;
 
-    // Cross-check StudentProgress for passed status
     const sp      = await StudentProgress.findOne({ studentId, courseId });
     const spEntry = sp?.completedQuizzes.find(q => q.quizId.toString() === quizId);
 
@@ -246,10 +241,5 @@ exports.getQuizContent = async (req, res) => {
   }
 };
 
-// ─── Mark lesson complete (thin wrapper – delegates to progressController) ────
-
-exports.markLessonComplete = require('./progressController').markLessonComplete;
-
-// ─── Submit quiz attempt (thin wrapper – delegates to progressController) ─────
-
-exports.submitQuizAttempt = require('./progressController').submitQuizAttempt;
+// NOTE: markLessonComplete and submitQuizAttempt live in progressController.js
+// Import them directly from there in your routes file.
