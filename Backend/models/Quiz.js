@@ -94,7 +94,10 @@ const quizSchema = new mongoose.Schema({
       return this.quizType === 'final';
     }
   },
-  
+  isFinal :{
+    type : Boolean,
+    default: false
+  },
   // Tutor who created
   createdBy: { 
     type: mongoose.Schema.Types.ObjectId, 

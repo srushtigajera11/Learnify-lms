@@ -88,17 +88,22 @@ exports.claimCertificate = asyncHandler(async (req, res) => {
 
   const course = await Course.findById(courseId);
 
-  // Create certificate — pre('save') hook generates certificateId automatically
+  // Generate certificateId explicitly — Mongoose validates 'required' fields
+  // BEFORE pre('save') hooks run, so we must set it here, not in the hook.
+  const certId = `CERT-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
   const certificate = new Certificate({
     studentId,
     courseId,
-    title:          `Certificate of Completion - ${course.title}`,
-    finalScore:     eligibility.finalScore,
-    completionDate: new Date(),
-    issuedBy:       course.createdBy,
-    status:         'active'
+    certificateId:   certId,
+    verificationUrl: `/verify-certificate/${certId}`,
+    title:           `Certificate of Completion - ${course.title}`,
+    finalScore:      eligibility.finalScore,
+    completionDate:  new Date(),
+    issuedBy:        course.createdBy,
+    status:          'active'
   });
-  await certificate.save();  // triggers pre('save') to set certificateId + verificationUrl
+  await certificate.save();
 
   // Sync to StudentProgress
   let sp = await StudentProgress.findOne({ studentId, courseId });

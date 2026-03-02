@@ -32,8 +32,8 @@ exports.getUnifiedCourseContent = async (req, res) => {
       .populate('createdBy', 'name');
 
     const [lessons, quizzes] = await Promise.all([
-      Lesson.find({ courseId, status: 'published' }).sort('order').lean(),
-      Quiz.find({ courseId, isPublished: true }).sort('order').lean()
+      Lesson.find({ courseId, status: 'published' }).sort({ createdAt: 1 }).lean(),
+      Quiz.find({ courseId, isPublished: true }).sort({ createdAt: 1 }).lean()
     ]);
 
     const progress    = await getOrCreateProgress(studentId, courseId);
@@ -58,7 +58,7 @@ exports.getUnifiedCourseContent = async (req, res) => {
         type:        'lesson',
         title:       lesson.title,
         description: lesson.description,
-        order:       lesson.order,
+        createdAt:   lesson.createdAt,
         duration:    lesson.totalDuration || 0,
         lessonType:  lesson.lessonType,
         isCompleted
@@ -80,11 +80,12 @@ exports.getUnifiedCourseContent = async (req, res) => {
         type:                 'quiz',
         title:                quiz.title,
         description:          quiz.description,
-        order:                quiz.order,
+        createdAt:            quiz.createdAt,
         duration:             quiz.timeLimit || 0,
         quizType:             quiz.quizType,
+        isFinal:              quiz.isFinal || quiz.generatesCertificate || false,
+        generatesCertificate: quiz.generatesCertificate || quiz.isFinal || false,
         xpReward:             quiz.xpReward,
-        generatesCertificate: quiz.generatesCertificate,
         passingScore:         quiz.passingScore,
         maxAttempts:          quiz.maxAttempts,
         attempts:             attempts.length,
@@ -93,7 +94,8 @@ exports.getUnifiedCourseContent = async (req, res) => {
       });
     });
 
-    contentItems.sort((a, b) => a.order - b.order);
+    // Sort all content by creation time so lessons and quizzes interleave correctly
+    contentItems.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
     const lessonIds = lessons.map(l => l._id);
     const quizIds   = quizzes.map(q => q._id);
@@ -108,7 +110,7 @@ exports.getUnifiedCourseContent = async (req, res) => {
 
     // 1. Is the final quiz (generatesCertificate: true) passed?
     const finalQuizPassed = quizzes.some(quiz => {
-      if (!quiz.generatesCertificate) return false;
+      if (!quiz.generatesCertificate && !quiz.isFinal) return false;
       const qid     = quiz._id.toString();
       const spEntry = progress.completedQuizzes.find(cq => cq.quizId.toString() === qid);
       if (spEntry && spEntry.passed) return true;
@@ -132,13 +134,14 @@ exports.getUnifiedCourseContent = async (req, res) => {
     const certificateUnlocked = finalQuizPassed && allLessonsDone && allQuizzesDone;
 
     // Add certificate slot
-    const maxOrder = contentItems.reduce((max, i) => Math.max(max, i.order || 0), 0);
+    // Certificate always goes last — use array length as its position
+    const certPosition = contentItems.length + 1;
     contentItems.push({
       _id:           certificate?._id || 'certificate',
       type:          'certificate',
       title:         'Certificate of Completion',
       description:   'Claim your certificate',
-      order:         maxOrder + 1,
+      order:         certPosition,
       duration:      0,
       isCompleted:   !!certificate,
       isLocked:      !certificateUnlocked,
