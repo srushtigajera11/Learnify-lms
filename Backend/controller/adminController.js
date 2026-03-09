@@ -1,5 +1,4 @@
 // backend/src/controllers/admin.controller.js
-const ActivityLog = require('../models/ActivityLog');
 const User = require('../models/User');
 const Course = require('../models/courseModel');
 const Payment = require('../models/Payment');

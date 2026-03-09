@@ -1,7 +1,7 @@
 const Lesson = require("../models/Lesson");
 const Course = require("../models/courseModel");
 const cloudinary = require("../utils/cloudinary");
-const LessonProgress = require("../models/LessonProgress");
+
 
 /* =========================================
    CREATE LESSON
