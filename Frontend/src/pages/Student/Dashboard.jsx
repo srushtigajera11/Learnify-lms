@@ -10,8 +10,10 @@ import {
   fetchWishlist,
 } from "../../Components/Api/WishlistApi";
 import StudentDashboardRightSidebar from "./StudentDashboardRightSide";
+import { useAuth } from "../../context/authContext"; // ← adjust path if needed
 
 const Dashboard = () => {
+  const { user } = useAuth(); // ← studentId lives here as user._id
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -22,12 +24,16 @@ const Dashboard = () => {
     const fetchCoursesAndWishlist = async () => {
       try {
         setLoading(true);
+
+        // ── Fetch courses ────────────────────────────────────────────────
         const res = await axiosInstance.get("/students/courses");
         if (Array.isArray(res.data.courses)) {
           setCourses(res.data.courses);
         } else {
           setError("Invalid data format received from server");
         }
+
+        // ── Fetch wishlist ───────────────────────────────────────────────
         const wishlistData = await fetchWishlist();
         setWishlist(wishlistData.map((item) => item.courseId._id));
       } catch (error) {
@@ -112,7 +118,7 @@ const Dashboard = () => {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="mt-20 mx-4">
@@ -125,16 +131,15 @@ const Dashboard = () => {
 
   return (
     <div className="px-4 md:px-8 py-6 bg-gray-50 min-h-screen">
-      {/* Grid layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
-        {/* Main content area - 2/3 width on large screens */}
+
+        {/* Main content */}
         <div className="lg:col-span-2 xl:col-span-3">
-          {/* Recommended Courses Section */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">
               Recommended for You
             </h2>
-            
+
             {courses.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-xl text-gray-600">
@@ -148,7 +153,7 @@ const Dashboard = () => {
                     key={course._id}
                     className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
                   >
-                    {/* Course Thumbnail */}
+                    {/* Thumbnail */}
                     <div className="relative h-48">
                       {course.thumbnail ? (
                         <img
@@ -161,24 +166,19 @@ const Dashboard = () => {
                           No Image
                         </div>
                       )}
-                      
-                      {/* Trending Badge */}
                       <div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold">
                         🔥 Trending
                       </div>
                     </div>
 
-                    {/* Course Content */}
+                    {/* Content */}
                     <div className="p-4 flex-grow">
                       <h3 className="text-lg font-semibold text-gray-800 mb-2 truncate">
                         {course.title}
                       </h3>
-                      
                       <p className="text-gray-600 text-sm mb-4 line-clamp-2 min-h-[40px]">
                         {course.description}
                       </p>
-                      
-                      {/* Course Tags */}
                       <div className="flex flex-wrap gap-2 mb-4">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           Lessons: {course.totalLessons}
@@ -194,12 +194,12 @@ const Dashboard = () => {
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="px-4 py-3 border-t border-gray-100 flex justify-between items-center text-center">
+                    {/* Actions */}
+                    <div className="px-4 py-3 border-t border-gray-100 flex justify-between items-center">
                       {course.isEnrolled ? (
                         <button
                           onClick={() => navigate(`/student/course/${course._id}/learn`)}
-                          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700  text-white rounded-lg font-medium transition"
+                          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition"
                         >
                           Continue Learning
                         </button>
@@ -213,7 +213,6 @@ const Dashboard = () => {
                         </button>
                       )}
 
-                      
                       {!course.isEnrolled && (
                         <button
                           onClick={() => handleWishlistToggle(course._id)}
@@ -226,7 +225,6 @@ const Dashboard = () => {
                           )}
                         </button>
                       )}
-
                     </div>
                   </div>
                 ))}
@@ -235,12 +233,14 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Sidebar - 1/3 width on large screens */}
+        {/* Sidebar */}
         <div className="lg:col-span-1">
           <div className="sticky top-24">
-            <StudentDashboardRightSidebar />
+            {/* ✅ user._id comes directly from AuthContext — no extra API call */}
+            <StudentDashboardRightSidebar studentId={user?._id} />
           </div>
         </div>
+
       </div>
     </div>
   );

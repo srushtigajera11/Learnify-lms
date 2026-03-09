@@ -19,7 +19,9 @@ const quizResultRoute = require('./routes/quizResultRoute');
 const errorHandler = require('./middleware/errorHandler');
 const StudentContentRoute = require('./routes/StudentContentRoute');
 const certificateRoutes = require('./routes/certificateRoutes');
+const gamificationRoutes = require('./routes/gamificationRoute');
 const path = require("path");
+
 const PORT = process.env.PORT || 5000;
 
 connectDB();
@@ -47,6 +49,7 @@ app.use('/api/history', historyRoutes);
 app.use('/api/quizzes', quizRoute);
 app.use('/api/quiz-results', quizResultRoute);
 app.use('/api/students', StudentContentRoute);
+app.use('/api/students', gamificationRoutes);
 app.use('/api/certificates', certificateRoutes);
 
 // Error handling middleware
