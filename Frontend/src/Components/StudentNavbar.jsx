@@ -10,7 +10,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import BookIcon from "@mui/icons-material/MenuBook";
 import SchoolIcon from "@mui/icons-material/School";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import { useAuth } from "../Context/AuthContext";
+import { useAuth } from "../Context/authContext";
 
 const StudentNavbar = () => {
   const { user, logout } = useAuth();

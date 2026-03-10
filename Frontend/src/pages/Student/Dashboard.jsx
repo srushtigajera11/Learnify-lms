@@ -236,7 +236,7 @@ const Dashboard = () => {
         {/* Sidebar */}
         <div className="lg:col-span-1">
           <div className="sticky top-24">
-            {/* ✅ user._id comes directly from AuthContext — no extra API call */}
+            {/* ✅ user._id comes directly from authContext — no extra API call */}
             <StudentDashboardRightSidebar studentId={user?._id} />
           </div>
         </div>

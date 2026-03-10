@@ -32,7 +32,7 @@ const handleLogin = async (e) => {
 
     toast.success(data.message || "Login successful");
 
-    // 🔥 Let AuthContext re-check cookie & set user
+    // 🔥 Let authContext re-check cookie & set user
     await refreshUser();
 
     const role = data.user.role.toLowerCase();
