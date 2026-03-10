@@ -10,7 +10,7 @@ import {
   fetchWishlist,
 } from "../../Components/Api/WishlistApi";
 import StudentDashboardRightSidebar from "./StudentDashboardRightSide";
-import { useAuth } from "../../context/authContext"; // ← adjust path if needed
+import { useAuth } from "../../Context/authContext";
 
 const Dashboard = () => {
   const { user } = useAuth(); // ← studentId lives here as user._id
