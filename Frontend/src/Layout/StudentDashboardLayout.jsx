@@ -2,7 +2,7 @@ import { Outlet } from "react-router-dom";
 import StudentNavbar from "../Components/StudentNavbar";
 import Footer from "../Components/Footer";
 import WelcomeBanner from "../Components/WelcomeBanner";
-import { useAuth } from "../Context/AuthContext";
+import { useAuth } from "../Context/authContext";
 
 const StudentDashboardLayout = () => {
   const { loading } = useAuth();
