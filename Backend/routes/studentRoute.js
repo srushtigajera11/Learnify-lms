@@ -45,13 +45,13 @@ router.get(
   studentController.getLesson
 );
 
-// Mark lesson as complete
-router.post(
-  '/courses/:courseId/lessons/:lessonId/complete',
-  isAuthenticated,
-  authorizeRoles('student'),
-  studentController.markLessonComplete
-);
+// // Mark lesson as complete
+// router.post(
+//   '/courses/:courseId/lessons/:lessonId/complete',
+//   isAuthenticated,
+//   authorizeRoles('student'),
+//   studentController.markLessonComplete
+// );
 
 // Get available courses
 router.get(
@@ -61,13 +61,13 @@ router.get(
   studentController.getAvailableCourses
 );
 
-// Get course progress
-router.get(
-  '/courses/:courseId/progress',
-  isAuthenticated,
-  authorizeRoles('student'),
-  studentController.getCourseProgress
-);
+// // Get course progress
+// router.get(
+//   '/courses/:courseId/progress',
+//   isAuthenticated,
+//   authorizeRoles('student'),
+//   studentController.getCourseProgress
+// );
 
 // Search courses
 router.get(

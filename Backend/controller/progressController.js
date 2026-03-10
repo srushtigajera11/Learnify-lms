@@ -1,129 +1,127 @@
 /**
  * progressController.js
- *
- * Handles all student progress: lesson completion, quiz results,
- * XP awards, and certificate eligibility checks.
- *
- * Uses ONE model: StudentProgress — no more split between
- * UserProgress / LessonProgress / Enrollment.completedLessons
  */
-const mongoose  = require('mongoose');
-const Lesson    = require('../models/Lesson');
-const Quiz      = require('../models/Quiz');
-const Course    = require('../models/courseModel');
+const mongoose        = require('mongoose');
+const Lesson          = require('../models/Lesson');
+const Quiz            = require('../models/Quiz');
+const Course          = require('../models/courseModel');
 const QuizResult      = require('../models/QuizResult');
 const Certificate     = require('../models/Certificate');
 const Gamification    = require('../models/Gamification');
 const StudentProgress = require('../models/StudentProgress');
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
-/** Fetch arrays of published lesson IDs and quiz IDs for a course. */
 async function getCourseContentIds(courseId) {
   const [lessonDocs, quizDocs] = await Promise.all([
     Lesson.find({ courseId, status: 'published' }).select('_id').lean(),
-    Quiz.find({ courseId, isPublished: true  }).select('_id').lean()
+    Quiz.find({ courseId, isPublished: true }).select('_id').lean(),
   ]);
   return {
-    lessonIds: lessonDocs.map(l => l._id),
-    quizIds:   quizDocs.map(q => q._id)
+    lessonIds: lessonDocs.map((l) => l._id),
+    quizIds:   quizDocs.map((q) => q._id),
   };
 }
 
-/** Get or create a StudentProgress document. */
 async function getOrCreateProgress(studentId, courseId) {
   let progress = await StudentProgress.findOne({ studentId, courseId });
-  if (!progress) {
-    progress = await StudentProgress.create({ studentId, courseId });
-  }
+  if (!progress) progress = await StudentProgress.create({ studentId, courseId });
   return progress;
 }
 
-// ─── exports ─────────────────────────────────────────────────────────────────
+// ─── Mark lesson complete ─────────────────────────────────────────────────────
 
-/**
- * POST /students/course/:courseId/lesson/:lessonId/complete
- * Mark a lesson as complete, update XP, recalculate overall progress.
- */
 exports.markLessonComplete = async (req, res) => {
   try {
-    const studentId            = req.user.id;
+    const studentId              = req.user.id;
     const { courseId, lessonId } = req.params;
 
-    // Validate IDs
     if (!mongoose.Types.ObjectId.isValid(lessonId)) {
       return res.status(400).json({ success: false, message: 'Invalid lesson ID' });
     }
 
-    // Confirm lesson belongs to this course
     const lesson = await Lesson.findOne({ _id: lessonId, courseId });
     if (!lesson) {
       return res.status(404).json({ success: false, message: 'Lesson not found' });
     }
 
-    const progress                    = await getOrCreateProgress(studentId, courseId);
-    const wasAlreadyComplete           = progress.completedLessons.some(
-      l => l.lessonId.toString() === lessonId
+    const progress = await getOrCreateProgress(studentId, courseId);
+
+    const wasAlreadyComplete = progress.completedLessons.some(
+      (l) => l.lessonId.toString() === lessonId
     );
 
+    let xpEarned = 0;
+
     if (!wasAlreadyComplete) {
-      // Mark lesson done
+      // ✅ Mark lesson complete
       progress.completeLesson(lessonId);
 
-      // Award XP for lesson completion (5 XP per lesson)
+      // ✅ Award base XP
       const XP_PER_LESSON = 5;
+      xpEarned += XP_PER_LESSON;
       progress.addXP(XP_PER_LESSON);
-      // Award "First Step" badge on very first lesson
-const totalCompleted = progress.completedLessons.length;
 
-let gamification = await Gamification.findOne({ studentId, courseId });
-if (!gamification) {
-  gamification = await Gamification.create({ studentId, courseId });
-}
+      // ✅ Recalculate BEFORE checking badge thresholds
+      const { lessonIds, quizIds } = await getCourseContentIds(courseId);
+      progress.recalculate(lessonIds, quizIds);
 
-gamification.updateStreak();
+      // ── Gamification ──────────────────────────────────────────────────────
+      let gamification = await Gamification.findOne({ studentId, courseId });
+      if (!gamification) {
+        gamification = await Gamification.create({ studentId, courseId });
+      }
+      gamification.updateStreak();
 
-if (totalCompleted === 1) {
-  const alreadyHas = gamification.badges.some(b => b.badgeName === 'First Step');
-  if (!alreadyHas) {
-    gamification.badges.push({
-      badgeName:   'First Step',
-      badgeType:   'completion',
-      badgeIcon:   '👣',
-      description: 'Completed your first lesson!',
-      xpReward:    10
-    });
-    progress.addXP(10);
-  }
-}
+      const totalCompleted = progress.completedLessons.length;
 
-// Award "Halfway There" badge at 50% lessons
-const { lessonIds, quizIds } = await getCourseContentIds(courseId);
-const halfwayPoint = Math.ceil(lessonIds.length / 2);
+      // Badge: First Step
+      if (totalCompleted === 1) {
+        const alreadyHas = gamification.badges.some((b) => b.badgeName === 'First Step');
+        if (!alreadyHas) {
+          gamification.badges.push({
+            badgeName:   'First Step',
+            badgeType:   'completion',
+            badgeIcon:   '👣',
+            description: 'Completed your first lesson!',
+            xpReward:    10,
+          });
+          xpEarned += 10;
+          progress.addXP(10);
+        }
+      }
 
-if (totalCompleted === halfwayPoint) {
-  const alreadyHas = gamification.badges.some(b => b.badgeName === 'Halfway There');
-  if (!alreadyHas) {
-    gamification.badges.push({
-      badgeName:   'Halfway There',
-      badgeType:   'completion',
-      badgeIcon:   '⚡',
-      description: 'Completed half the course!',
-      xpReward:    20
-    });
-    progress.addXP(20);
-  }
-}
+      // Badge: Halfway There
+      const halfwayPoint = Math.ceil(lessonIds.length / 2);
+      if (lessonIds.length > 0 && totalCompleted === halfwayPoint) {
+        const alreadyHas = gamification.badges.some((b) => b.badgeName === 'Halfway There');
+        if (!alreadyHas) {
+          gamification.badges.push({
+            badgeName:   'Halfway There',
+            badgeType:   'completion',
+            badgeIcon:   '⚡',
+            description: 'Completed half the course!',
+            xpReward:    20,
+          });
+          xpEarned += 20;
+          progress.addXP(20);
+        }
+      }
 
-await gamification.save();
-}
+      // ✅ Save BOTH documents
+      await Promise.all([
+        progress.save(),
+        gamification.save(),
+      ]);
+    }
 
     return res.status(200).json({
       success:              true,
       message:              wasAlreadyComplete ? 'Already completed' : 'Lesson marked complete',
+      xpEarned,
       completionPercentage: progress.completionPercentage,
       totalXP:              progress.totalXP,
-      isCourseCompleted:    progress.isCourseCompleted
+      isCourseCompleted:    progress.isCourseCompleted,
     });
 
   } catch (err) {
@@ -132,24 +130,23 @@ await gamification.save();
   }
 };
 
-/**
- * POST /students/course/:courseId/quiz/:quizId/submit
- * Grade a quiz attempt, update progress + XP, optionally issue certificate.
- */
+// ─── Submit quiz attempt ──────────────────────────────────────────────────────
+
 exports.submitQuizAttempt = async (req, res) => {
   try {
-    const studentId            = req.user.id;
-    const { courseId, quizId } = req.params;
-    const { answers }          = req.body;
+    const studentId              = req.user.id;
+    const { courseId, quizId }   = req.params;
+    const { answers }            = req.body;
 
     const quiz = await Quiz.findOne({ _id: quizId, courseId, isPublished: true });
     if (!quiz) {
       return res.status(404).json({ success: false, message: 'Quiz not found' });
     }
 
-    // ── Attempt count check ──────────────────────────────────────────────
+    // Attempt count check
     const previousAttempts = await QuizResult.find({ studentId, quizId })
-      .sort('-attemptNumber').lean();
+      .sort('-attemptNumber')
+      .lean();
     const attemptNumber = previousAttempts.length > 0
       ? previousAttempts[0].attemptNumber + 1
       : 1;
@@ -158,15 +155,15 @@ exports.submitQuizAttempt = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Maximum attempts reached' });
     }
 
-    // ── Grade answers ────────────────────────────────────────────────────
+    // Grade answers
     let correctCount = 0;
     let totalPoints  = 0;
     let earnedPoints = 0;
 
-    const gradedAnswers = quiz.questions.map(question => {
+    const gradedAnswers = quiz.questions.map((question) => {
       totalPoints += question.points;
       const studentAnswer = answers[question._id.toString()];
-      const correctOption = question.options.find(o => o.isCorrect);
+      const correctOption = question.options.find((o) => o.isCorrect);
       const isCorrect     = studentAnswer === correctOption?._id.toString();
 
       if (isCorrect) {
@@ -178,14 +175,14 @@ exports.submitQuizAttempt = async (req, res) => {
         questionId:     question._id,
         selectedOption: studentAnswer,
         isCorrect,
-        pointsEarned:   isCorrect ? question.points : 0
+        pointsEarned:   isCorrect ? question.points : 0,
       };
     });
 
     const score  = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
     const passed = score >= quiz.passingScore;
 
-    // ── Persist QuizResult ───────────────────────────────────────────────
+    // Persist QuizResult
     const quizResult = await QuizResult.create({
       studentId,
       quizId,
@@ -197,14 +194,13 @@ exports.submitQuizAttempt = async (req, res) => {
       score,
       passed,
       startedAt:      new Date(),
-      completedAt:    new Date()
+      completedAt:    new Date(),
     });
 
-    // ── Update StudentProgress ───────────────────────────────────────────
+    // Update StudentProgress
     const progress = await getOrCreateProgress(studentId, courseId);
     progress.updateQuiz(quizId, { score, passed, attemptNumber });
 
-    // XP: only on first pass and only if quiz rewards XP
     let xpEarned = 0;
     if (passed && attemptNumber === 1 && quiz.xpReward > 0) {
       xpEarned = quiz.xpReward;
@@ -216,59 +212,57 @@ exports.submitQuizAttempt = async (req, res) => {
     const { lessonIds, quizIds } = await getCourseContentIds(courseId);
     progress.recalculate(lessonIds, quizIds);
 
-    // ── Gamification: get or create doc ─────────────────────────────────
+    // Gamification
     let gamification = await Gamification.findOne({ studentId, courseId });
-    if (!gamification) {
-      gamification = await Gamification.create({ studentId, courseId });
-    }
-
-    // Update streak on every quiz attempt
+    if (!gamification) gamification = await Gamification.create({ studentId, courseId });
     gamification.updateStreak();
 
-    // ── Badges on pass ───────────────────────────────────────────────────
     if (passed) {
-
-      // 🚀 Quick Learner — passed on first attempt
+      // Badge: Quick Learner
       if (attemptNumber === 1) {
-        const alreadyHas = gamification.badges.some(b => b.badgeName === 'Quick Learner');
+        const alreadyHas = gamification.badges.some((b) => b.badgeName === 'Quick Learner');
         if (!alreadyHas) {
           gamification.badges.push({
             badgeName:   'Quick Learner',
             badgeType:   'performance',
             badgeIcon:   '🚀',
             description: 'Passed a quiz on the first attempt!',
-            xpReward:    15
+            xpReward:    15,
           });
           progress.addXP(15);
+          xpEarned += 15;
         }
       }
 
-      // ⭐ Perfect Score — scored 100%
+      // Badge: Perfect Score
       if (score === 100) {
-        const alreadyHas = gamification.badges.some(b => b.badgeName === 'Perfect Score');
+        const alreadyHas = gamification.badges.some((b) => b.badgeName === 'Perfect Score');
         if (!alreadyHas) {
           gamification.badges.push({
             badgeName:   'Perfect Score',
             badgeType:   'performance',
             badgeIcon:   '⭐',
             description: 'Scored 100% on a quiz!',
-            xpReward:    25
+            xpReward:    25,
           });
           progress.addXP(25);
+          xpEarned += 25;
         }
       }
     }
 
-    // ── Certificate check ────────────────────────────────────────────────
+    // Certificate check
     let certificateGenerated = false;
     let certificate          = null;
 
     if (quiz.generatesCertificate && passed) {
-      const allLessonsDone = lessonIds.every(id =>
-        progress.completedLessons.some(l => l.lessonId.toString() === id.toString())
+      const allLessonsDone = lessonIds.every((id) =>
+        progress.completedLessons.some((l) => l.lessonId.toString() === id.toString())
       );
-      const allQuizzesDone = quizIds.every(id =>
-        progress.completedQuizzes.some(q => q.quizId.toString() === id.toString() && q.passed)
+      const allQuizzesDone = quizIds.every((id) =>
+        progress.completedQuizzes.some(
+          (q) => q.quizId.toString() === id.toString() && q.passed
+        )
       );
 
       const existingCert = await Certificate.findOne({ studentId, courseId });
@@ -284,33 +278,34 @@ exports.submitQuizAttempt = async (req, res) => {
           completionDate: new Date(),
           quizResultId:   quizResult._id,
           issuedBy:       course.createdBy,
-          status:         'active'
+          status:         'active',
         });
 
         progress.issueCertificate(certificate._id);
-        certificateGenerated      = true;
+        certificateGenerated         = true;
         quizResult.certificateIssued = true;
         await quizResult.save();
 
-        // 🏆 Course Completed badge
-        const alreadyHas = gamification.badges.some(b => b.badgeName === 'Course Completed');
+        // Badge: Course Completed
+        const alreadyHas = gamification.badges.some((b) => b.badgeName === 'Course Completed');
         if (!alreadyHas) {
           gamification.badges.push({
             badgeName:   'Course Completed',
             badgeType:   'completion',
             badgeIcon:   '🏆',
             description: `Completed ${course.title}`,
-            xpReward:    50
+            xpReward:    50,
           });
           progress.addXP(50);
+          xpEarned += 50;
         }
       }
     }
 
-    // ── Save everything ──────────────────────────────────────────────────
+    // ✅ Save BOTH documents
     await Promise.all([
+      progress.save(),
       gamification.save(),
-      progress.save()
     ]);
 
     return res.status(200).json({
@@ -326,14 +321,14 @@ exports.submitQuizAttempt = async (req, res) => {
         xpEarned,
         certificateGenerated,
         certificate,
-        answers:             gradedAnswers
+        answers:             gradedAnswers,
       },
       progress: {
         completionPercentage: progress.completionPercentage,
         totalXP:              progress.totalXP,
         isCourseCompleted:    progress.isCourseCompleted,
-        certificateIssued:    progress.certificateIssued
-      }
+        certificateIssued:    progress.certificateIssued,
+      },
     });
 
   } catch (err) {
@@ -342,10 +337,8 @@ exports.submitQuizAttempt = async (req, res) => {
   }
 };
 
-/**
- * GET /students/course/:courseId/progress
- * Return the current student's full progress for a course.
- */
+// ─── Get course progress ──────────────────────────────────────────────────────
+
 exports.getCourseProgress = async (req, res) => {
   try {
     const studentId        = req.user.id;
@@ -357,7 +350,6 @@ exports.getCourseProgress = async (req, res) => {
       .lean();
 
     if (!progress) {
-      // Return zeroed-out shape so the UI never has to null-check
       return res.status(200).json({
         success: true,
         progress: {
@@ -372,8 +364,8 @@ exports.getCourseProgress = async (req, res) => {
           certificateId:        null,
           totalLessons:         lessonIds.length,
           totalQuizzes:         quizIds.length,
-          totalItems:           lessonIds.length + quizIds.length
-        }
+          totalItems:           lessonIds.length + quizIds.length,
+        },
       });
     }
 
@@ -383,8 +375,8 @@ exports.getCourseProgress = async (req, res) => {
         ...progress,
         totalLessons: lessonIds.length,
         totalQuizzes: quizIds.length,
-        totalItems:   lessonIds.length + quizIds.length
-      }
+        totalItems:   lessonIds.length + quizIds.length,
+      },
     });
 
   } catch (err) {
@@ -393,10 +385,8 @@ exports.getCourseProgress = async (req, res) => {
   }
 };
 
-/**
- * GET /students/progress/all
- * Summary of all courses the student is enrolled in.
- */
+// ─── Get all progress ─────────────────────────────────────────────────────────
+
 exports.getAllProgress = async (req, res) => {
   try {
     const studentId = req.user.id;
@@ -407,14 +397,14 @@ exports.getAllProgress = async (req, res) => {
       .lean();
 
     const stats = {
-      totalCourses:     progresses.length,
-      completedCourses: progresses.filter(p => p.isCourseCompleted).length,
-      inProgress:       progresses.filter(p => !p.isCourseCompleted && p.completionPercentage > 0).length,
-      notStarted:       progresses.filter(p => p.completionPercentage === 0).length,
-      totalXP:          progresses.reduce((sum, p) => sum + (p.totalXP || 0), 0),
+      totalCourses:      progresses.length,
+      completedCourses:  progresses.filter((p) => p.isCourseCompleted).length,
+      inProgress:        progresses.filter((p) => !p.isCourseCompleted && p.completionPercentage > 0).length,
+      notStarted:        progresses.filter((p) => p.completionPercentage === 0).length,
+      totalXP:           progresses.reduce((sum, p) => sum + (p.totalXP || 0), 0),
       averageCompletion: progresses.length
         ? Math.round(progresses.reduce((sum, p) => sum + p.completionPercentage, 0) / progresses.length)
-        : 0
+        : 0,
     };
 
     return res.status(200).json({ success: true, progresses, stats });
