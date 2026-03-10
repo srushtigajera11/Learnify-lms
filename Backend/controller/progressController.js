@@ -73,20 +73,50 @@ exports.markLessonComplete = async (req, res) => {
       // Award XP for lesson completion (5 XP per lesson)
       const XP_PER_LESSON = 5;
       progress.addXP(XP_PER_LESSON);
+      // Award "First Step" badge on very first lesson
+const totalCompleted = progress.completedLessons.length;
 
-      // Recalculate overall progress
-      const { lessonIds, quizIds } = await getCourseContentIds(courseId);
-      progress.recalculate(lessonIds, quizIds);
+let gamification = await Gamification.findOne({ studentId, courseId });
+if (!gamification) {
+  gamification = await Gamification.create({ studentId, courseId });
+}
 
-      // Update gamification streak
-      const gamification = await Gamification.findOne({ studentId, courseId });
-      if (gamification) {
-        gamification.updateStreak();
-        await gamification.save();
-      }
+gamification.updateStreak();
 
-      await progress.save();
-    }
+if (totalCompleted === 1) {
+  const alreadyHas = gamification.badges.some(b => b.badgeName === 'First Step');
+  if (!alreadyHas) {
+    gamification.badges.push({
+      badgeName:   'First Step',
+      badgeType:   'completion',
+      badgeIcon:   '👣',
+      description: 'Completed your first lesson!',
+      xpReward:    10
+    });
+    progress.addXP(10);
+  }
+}
+
+// Award "Halfway There" badge at 50% lessons
+const { lessonIds, quizIds } = await getCourseContentIds(courseId);
+const halfwayPoint = Math.ceil(lessonIds.length / 2);
+
+if (totalCompleted === halfwayPoint) {
+  const alreadyHas = gamification.badges.some(b => b.badgeName === 'Halfway There');
+  if (!alreadyHas) {
+    gamification.badges.push({
+      badgeName:   'Halfway There',
+      badgeType:   'completion',
+      badgeIcon:   '⚡',
+      description: 'Completed half the course!',
+      xpReward:    20
+    });
+    progress.addXP(20);
+  }
+}
+
+await gamification.save();
+}
 
     return res.status(200).json({
       success:              true,
@@ -110,7 +140,7 @@ exports.submitQuizAttempt = async (req, res) => {
   try {
     const studentId            = req.user.id;
     const { courseId, quizId } = req.params;
-    const { answers }          = req.body;   // { [questionId]: selectedOptionId }
+    const { answers }          = req.body;
 
     const quiz = await Quiz.findOne({ _id: quizId, courseId, isPublished: true });
     if (!quiz) {
@@ -135,9 +165,9 @@ exports.submitQuizAttempt = async (req, res) => {
 
     const gradedAnswers = quiz.questions.map(question => {
       totalPoints += question.points;
-      const studentAnswer  = answers[question._id.toString()];
-      const correctOption  = question.options.find(o => o.isCorrect);
-      const isCorrect      = studentAnswer === correctOption?._id.toString();
+      const studentAnswer = answers[question._id.toString()];
+      const correctOption = question.options.find(o => o.isCorrect);
+      const isCorrect     = studentAnswer === correctOption?._id.toString();
 
       if (isCorrect) {
         correctCount++;
@@ -145,10 +175,10 @@ exports.submitQuizAttempt = async (req, res) => {
       }
 
       return {
-        questionId:    question._id,
+        questionId:     question._id,
         selectedOption: studentAnswer,
         isCorrect,
-        pointsEarned:  isCorrect ? question.points : 0
+        pointsEarned:   isCorrect ? question.points : 0
       };
     });
 
@@ -174,7 +204,7 @@ exports.submitQuizAttempt = async (req, res) => {
     const progress = await getOrCreateProgress(studentId, courseId);
     progress.updateQuiz(quizId, { score, passed, attemptNumber });
 
-    // XP: only on first-pass (attempt === 1) and only if quiz rewards XP
+    // XP: only on first pass and only if quiz rewards XP
     let xpEarned = 0;
     if (passed && attemptNumber === 1 && quiz.xpReward > 0) {
       xpEarned = quiz.xpReward;
@@ -185,6 +215,49 @@ exports.submitQuizAttempt = async (req, res) => {
 
     const { lessonIds, quizIds } = await getCourseContentIds(courseId);
     progress.recalculate(lessonIds, quizIds);
+
+    // ── Gamification: get or create doc ─────────────────────────────────
+    let gamification = await Gamification.findOne({ studentId, courseId });
+    if (!gamification) {
+      gamification = await Gamification.create({ studentId, courseId });
+    }
+
+    // Update streak on every quiz attempt
+    gamification.updateStreak();
+
+    // ── Badges on pass ───────────────────────────────────────────────────
+    if (passed) {
+
+      // 🚀 Quick Learner — passed on first attempt
+      if (attemptNumber === 1) {
+        const alreadyHas = gamification.badges.some(b => b.badgeName === 'Quick Learner');
+        if (!alreadyHas) {
+          gamification.badges.push({
+            badgeName:   'Quick Learner',
+            badgeType:   'performance',
+            badgeIcon:   '🚀',
+            description: 'Passed a quiz on the first attempt!',
+            xpReward:    15
+          });
+          progress.addXP(15);
+        }
+      }
+
+      // ⭐ Perfect Score — scored 100%
+      if (score === 100) {
+        const alreadyHas = gamification.badges.some(b => b.badgeName === 'Perfect Score');
+        if (!alreadyHas) {
+          gamification.badges.push({
+            badgeName:   'Perfect Score',
+            badgeType:   'performance',
+            badgeIcon:   '⭐',
+            description: 'Scored 100% on a quiz!',
+            xpReward:    25
+          });
+          progress.addXP(25);
+        }
+      }
+    }
 
     // ── Certificate check ────────────────────────────────────────────────
     let certificateGenerated = false;
@@ -215,51 +288,45 @@ exports.submitQuizAttempt = async (req, res) => {
         });
 
         progress.issueCertificate(certificate._id);
-        certificateGenerated = true;
+        certificateGenerated      = true;
         quizResult.certificateIssued = true;
         await quizResult.save();
 
-        // Badge for completing the course
-        let gamification = await Gamification.findOne({ studentId, courseId });
-        if (!gamification) {
-          gamification = await Gamification.create({ studentId, courseId });
+        // 🏆 Course Completed badge
+        const alreadyHas = gamification.badges.some(b => b.badgeName === 'Course Completed');
+        if (!alreadyHas) {
+          gamification.badges.push({
+            badgeName:   'Course Completed',
+            badgeType:   'completion',
+            badgeIcon:   '🏆',
+            description: `Completed ${course.title}`,
+            xpReward:    50
+          });
+          progress.addXP(50);
         }
-        await gamification.addBadge({
-          badgeName:   'Course Completed',
-          badgeType:   'completion',
-          badgeIcon:   '🏆',
-          description: `Completed ${course.title}`,
-          xpReward:    50
-        });
-
-        // Add certificate XP to StudentProgress too
-        progress.addXP(50);
       }
     }
 
-    // Update gamification streak
-    let gamification = await Gamification.findOne({ studentId, courseId });
-    if (gamification) {
-      gamification.updateStreak();
-      await gamification.save();
-    }
-
-    await progress.save();
+    // ── Save everything ──────────────────────────────────────────────────
+    await Promise.all([
+      gamification.save(),
+      progress.save()
+    ]);
 
     return res.status(200).json({
       success: true,
       result: {
         score,
         passed,
-        correctAnswers:  correctCount,
-        totalQuestions:  quiz.questions.length,
+        correctAnswers:      correctCount,
+        totalQuestions:      quiz.questions.length,
         earnedPoints,
         totalPoints,
         attemptNumber,
         xpEarned,
         certificateGenerated,
         certificate,
-        answers:         gradedAnswers
+        answers:             gradedAnswers
       },
       progress: {
         completionPercentage: progress.completionPercentage,

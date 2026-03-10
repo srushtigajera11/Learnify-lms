@@ -7,18 +7,9 @@ import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import axiosInstance from "../../utils/axiosInstance"; // ← adjust path if needed
 
-// ─── Google Font injection ────────────────────────────────────────────────────
-const FontLink = () => (
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap"
-    rel="stylesheet"
-  />
-);
-
 // ─── API ──────────────────────────────────────────────────────────────────────
 const fetchGamificationStats = async (studentId) => {
-  // axiosInstance already has baseURL (e.g. http://localhost:5000/api)
-  // so we only need the path after /api
+  
   const res = await axiosInstance.get(`/students/${studentId}/gamification`);
   return res.data.data;
 };
@@ -431,13 +422,7 @@ const StudentDashboardRightSidebar = ({ studentId }) => {
 
   return (
     <>
-      <FontLink />
-      <style>{`
-        @keyframes shimmer {
-          0%   { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-      `}</style>
+     
 
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {loading && <SidebarSkeleton />}
@@ -450,7 +435,7 @@ const StudentDashboardRightSidebar = ({ studentId }) => {
           <>
             <SkillProgressSection xp={stats.xp}        skills={stats.skills} />
             <StreakSection         streak={stats.streak}                       />
-            <AchievementsSection  badges={stats.badges}                       />
+            <AchievementsSection  badges={stats.badges}    />
             <QuickLinks />
           </>
         )}

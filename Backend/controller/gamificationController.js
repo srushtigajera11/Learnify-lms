@@ -63,7 +63,6 @@ exports.getStudentGamificationStats = async (req, res) => {
   try {
     const { studentId } = req.params;
 
-    // ── Auth guard: students can only fetch their own stats ──────────────
     if (req.user.id !== studentId && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
@@ -72,42 +71,26 @@ exports.getStudentGamificationStats = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid student ID' });
     }
 
-    // ── Fetch all gamification docs for this student (all courses) ───────
-    const gamificationDocs = await Gamification.find({ studentId }).lean();
-
-    // ── Fetch all progress docs for skill bars ───────────────────────────
+    // ✅ Fetch from StudentProgress (source of truth for XP)
     const progressDocs = await StudentProgress.find({ studentId })
       .populate('courseId', 'title')
       .lean();
 
-    // ─────────────────────────────────────────────────────────────────────
-    // 1. XP & LEVEL  — use highest-level gamification doc as primary,
-    //                  then sum totalXp across all courses for display.
-    // ─────────────────────────────────────────────────────────────────────
-    let totalXp = 0;
-    let highestLevel = 1;
-    let progressToNextLevel = 0;
-    let nextLevelXp = 100;
+    // ✅ Still fetch Gamification for streak + badges
+    const gamificationDocs = await Gamification.find({ studentId }).lean();
 
-    if (gamificationDocs.length > 0) {
-      totalXp = gamificationDocs.reduce((sum, g) => sum + (g.totalXp || 0), 0);
+    // ── 1. XP & LEVEL from StudentProgress.totalXP ──
+    const totalXp = progressDocs.reduce((sum, p) => sum + (p.totalXP || 0), 0);
 
-      // Re-derive level from aggregate XP using the same formula in the model
-      const baseXP = 100;
-      highestLevel        = Math.floor(Math.sqrt(totalXp / baseXP)) + 1;
-      const nextLvlXP     = Math.pow(highestLevel, 2) * baseXP;
-      const currentLvlXP  = Math.pow(highestLevel - 1, 2) * baseXP;
-      nextLevelXp         = nextLvlXP;
-      progressToNextLevel = Math.round(
-        ((totalXp - currentLvlXP) / (nextLvlXP - currentLvlXP)) * 100
-      );
-    }
+    const baseXP = 100;
+    const highestLevel       = Math.floor(Math.sqrt(totalXp / baseXP)) + 1;
+    const nextLvlXP          = Math.pow(highestLevel, 2) * baseXP;
+    const currentLvlXP       = Math.pow(highestLevel - 1, 2) * baseXP;
+    const progressToNextLevel = (nextLvlXP - currentLvlXP) > 0
+      ? Math.round(((totalXp - currentLvlXP) / (nextLvlXP - currentLvlXP)) * 100)
+      : 0;
 
-    // ─────────────────────────────────────────────────────────────────────
-    // 2. STREAK  — take the best current streak + best longest streak
-    //              across all courses (student shouldn't be penalised
-    //              for being active in only one course on a given day).
-    // ─────────────────────────────────────────────────────────────────────
+    // ── 2. STREAK from Gamification ──
     const currentStreak = gamificationDocs.reduce(
       (max, g) => Math.max(max, g.currentStreak || 0), 0
     );
@@ -115,24 +98,20 @@ exports.getStudentGamificationStats = async (req, res) => {
       (max, g) => Math.max(max, g.longestStreak || 0), 0
     );
 
-    // ─────────────────────────────────────────────────────────────────────
-    // 3. SKILLS  — one bar per enrolled course, value = completionPercentage
-    // ─────────────────────────────────────────────────────────────────────
+    // ── 3. SKILLS from StudentProgress ──
     const skills = progressDocs
-      .filter(p => p.courseId)           // skip orphaned docs
+      .filter(p => p.courseId)
       .map((p, i) => ({
-        name:     p.courseId.title?.slice(0, 10) || `Course ${i + 1}`, // truncate for bar label
+        name:     p.courseId.title?.slice(0, 14) || `Course ${i + 1}`,
         progress: p.completionPercentage || 0,
         fill:     colourForIndex(i),
       }));
 
-    // ─────────────────────────────────────────────────────────────────────
-    // 4. BADGES  — flatten + deduplicate by badgeName across all courses
-    // ─────────────────────────────────────────────────────────────────────
+    // ── 4. BADGES from Gamification ──
     const seenBadges = new Set();
     const badges = gamificationDocs
       .flatMap(g => g.badges || [])
-      .sort((a, b) => new Date(b.earnedDate) - new Date(a.earnedDate)) // newest first
+      .sort((a, b) => new Date(b.earnedDate) - new Date(a.earnedDate))
       .filter(badge => {
         if (seenBadges.has(badge.badgeName)) return false;
         seenBadges.add(badge.badgeName);
@@ -145,22 +124,16 @@ exports.getStudentGamificationStats = async (req, res) => {
         earnedDate: badge.earnedDate,
       }));
 
-    // ─────────────────────────────────────────────────────────────────────
-    // 5. Build response
-    // ─────────────────────────────────────────────────────────────────────
     return res.status(200).json({
       success: true,
       data: {
         xp: {
           level:           highestLevel,
           currentXP:       totalXp,
-          nextLevelXP:     nextLevelXp,
-          progressPercent: Math.min(progressToNextLevel, 100), // cap at 100
+          nextLevelXP:     nextLvlXP,
+          progressPercent: Math.min(progressToNextLevel, 100),
         },
-        streak: {
-          current: currentStreak,
-          longest: longestStreak,
-        },
+        streak: { current: currentStreak, longest: longestStreak },
         skills,
         badges,
       },
