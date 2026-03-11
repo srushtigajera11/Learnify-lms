@@ -6,8 +6,7 @@ A full-stack Learning Management System (LMS) built with the MERN stack. Learnif
 
 ## 🚀 Live Demo
 
-- **Frontend:** [https://learnify-lms-pi.vercel.app](https://learnify-lms-pi.vercel.app)
-- **Backend API:** [https://your-render-url.onrender.com](https://your-render-url.onrender.com)
+- **Frontend:** [https://learnify-lms-five-kappa.vercel.app/](https://learnify-lms-five-kappa.vercel.app)
 
 ---
 
