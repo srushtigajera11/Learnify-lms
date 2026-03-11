@@ -30,18 +30,19 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, []); 
 
   const logout = async () => {
-    try {
-      await axiosInstance.post("/users/logout");
-    } catch (err) {
-      console.error("Logout error", err);
-    } finally {
-      setUser(null);
-      setIsAuthenticated(false);
-    }
-  };
+  try {
+    await axiosInstance.post("/users/logout");
+  } catch (err) {
+    console.error("Logout error", err);
+  } finally {
+    localStorage.removeItem("token"); // 🔥 add this
+    setUser(null);
+    setIsAuthenticated(false);
+  }
+};
 
   return (
     <AuthContext.Provider

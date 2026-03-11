@@ -86,32 +86,33 @@ exports.signup = async (req,res)=>{
  }
 
 exports.loginUser = async (req, res) => {
-     const { email, password } = req.body;
-    try {
-        const user = await User.findOne({ email });
-        if (!user) return res.status(400).json({ message: "Invalid credentials" });
+  const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ message: "Invalid password" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ message: "Invalid password" });
 
-        const token = jwt.sign({ id: user._id , role : user.role,isAdmin : user.isAdmin}, process.env.JWT_SECRET, { expiresIn: "4h" });
-       res.cookie('token', token, {
-                httpOnly: true,
-                sameSite: 'Lax',
-                secure: false,
-                maxAge: 60 * 60  * 1000, 
-              });
-        res.json({ success : true , message: 'Logged in', user:{user_id : user._id ,role : user.role,isAdmin : user.isAdmin} });
-    } catch (err) {
-        res.status(500).json({ message: "Server error" });
-    }
-} 
+    const token = jwt.sign(
+      { id: user._id, role: user.role, isAdmin: user.isAdmin },
+      process.env.JWT_SECRET,
+      { expiresIn: "4h" }
+    );
+
+    // 🔥 Send token in response body (for production)
+    res.json({
+      success: true,
+      message: "Logged in",
+      token: token,  // ✅ add this
+      user: { user_id: user._id, role: user.role, isAdmin: user.isAdmin }
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+}
 exports.logoutUser = (req, res) => {
-  res.clearCookie("token", {
-    httpOnly: true,
-    sameSite: 'Lax',
-    secure: false, // set to true in production with HTTPS
-  }).json({ success: true, message: "Logged out successfully" });
+  res.json({ success: true, message: "Logged out successfully" });
 };
 
 exports.getUserProfile = async(req,res)=>{

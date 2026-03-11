@@ -25,16 +25,13 @@ const handleLogin = async (e) => {
   setLoading(true);
 
   try {
-    const { data } = await axiosInstance.post("/users/login", {
-      email: email.trim(),
-      password,
-    });
+   const { data } = await axiosInstance.post("/users/login", {
+  email: email.trim(),
+  password,
+});
 
-    toast.success(data.message || "Login successful");
-
-    // 🔥 Let authContext re-check cookie & set user
-    await refreshUser();
-
+localStorage.setItem("token", data.token); // 🔥 save first
+await refreshUser();                        // 🔥 then refresh
     const role = data.user.role.toLowerCase();
     const isAdmin = data.user.isAdmin;
 
