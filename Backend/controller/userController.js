@@ -143,13 +143,19 @@ exports.forgotPassword = async (req, res) => {
   
     console.log("Sending email to:", user.email);
 
-    await sendEmail(
-      user.email,
-      "Learnify - Reset Password",
-      "Reset link text",
-      "<p>Reset link html</p>"
-    );
-
+   await sendEmail(
+  user.email,
+  "Learnify - Reset Your Password",
+  `
+  <h2>Password Reset Request</h2>
+  <p>Click the button below to reset your password.</p>
+  <a href="${resetUrl}" 
+     style="background:#6366f1;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;">
+     Reset Password
+  </a>
+  <p>This link expires in 30 minutes.</p>
+  `
+);
     res.json({ message: "Reset link sent" });
 
   } catch (err) {
