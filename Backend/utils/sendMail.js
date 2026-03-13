@@ -1,20 +1,14 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-const sendEmail = async (to, subject, text, html = null) => {
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-  await transporter.sendMail({
-    from: `"Learnify System" <${process.env.EMAIL_USER}>`,
+const sendEmail = async (to, subject, html) => {
+  await resend.emails.send({
+    from: "Learnify <noreply@yourdomain.com>",
     to,
     subject,
-    text,
-    ...(html && { html }),
+    html
   });
 };
+
 module.exports = sendEmail;
