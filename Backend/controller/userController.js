@@ -140,18 +140,24 @@ exports.forgotPassword = async (req, res) => {
 
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${token}`;
 
+  
+    console.log("Sending email to:", user.email);
+
     await sendEmail(
-  user.email,
-  "Learnify - Reset Your Password",
-  `Reset your password: ${resetUrl}\n\nExpires in 30 minutes. If you didn't request this, ignore this email.`,
-  `<h2>Password Reset Request</h2>
-   <p>Click the link below to reset your password. It expires in 30 minutes.</p>
-   <a href="${resetUrl}" style="background:#6366f1;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;">Reset Password</a>
-   <p>If you didn't request this, ignore this email.</p>`
-);
-    res.json({ message: "Reset link sent to your email" });
+      user.email,
+      "Learnify - Reset Password",
+      "Reset link text",
+      "<p>Reset link html</p>"
+    );
+
+    res.json({ message: "Reset link sent" });
+
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error("FORGOT PASSWORD ERROR:", err);   // IMPORTANT
+    res.status(500).json({
+      message: "Server error",
+      error: err.message
+    });
   }
 };
 
