@@ -109,12 +109,9 @@ await refreshUser();                        // 🔥 then refresh
 
             {/* Forgot Password Link */}
             <div className="text-right">
-              <Link 
-                to="/forgot-password" 
-                className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
-              >
-                Forgot your password?
-              </Link>
+             <Link to="/forgot-password" className="text-sm text-indigo-600 hover:underline">
+                  Forgot password?
+                </Link>
             </div>
 
             {/* Submit Button */}

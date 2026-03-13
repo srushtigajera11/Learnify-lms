@@ -8,9 +8,10 @@ const {
   logoutUser,
   getProfile,
   updateProfile,
-  signup,
   changePassword,
-  verifyEmail
+  verifyEmail,
+  forgotPassword,
+  resetPassword
 } = require('../controller/userController');
 
 // AUTH ROUTES
@@ -23,6 +24,8 @@ router.post('/logout', logoutUser);
 router.get('/profile', isAuthenticated, getProfile);
 router.put('/profile', isAuthenticated, updateProfile);
 router.put('/change-password', isAuthenticated, changePassword);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password/:token", resetPassword);
 
 // DASHBOARDS
 router.get('/student-dashboard', authorizeRoles('student'), (req, res) => {

@@ -38,6 +38,8 @@ import AdminProtectedRoute from "./pages/Admin/AdminProtectedRoute";
 import { AuthProvider } from "./Context/authContext";
 import TutorLessonPreview from "./pages/Tutor/TutorLessonPreview";
 import UnifiedCourseLearn from "./pages/Student/CourseContent/CoursePlayer";
+import ForgotPassword from "./pages/ForgetPassword";
+import ResetPassword from "./pages/ResetPassword";
 function AppRoutes() {
   const { user } = useAuth();
 
@@ -47,6 +49,8 @@ function AppRoutes() {
       <Route path="/" element={<HomePage />} />
       <Route path="/register" element={<Register />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
 
       {/* Student Routes */}

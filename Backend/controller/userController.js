@@ -5,7 +5,8 @@ const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
 const { registerSchema } = require('../utils/validation');
 const { generateTokenAndSetCookie } = require('../utils/generateTokenAndSetCookie');
-const {sendVerificationEmail} = require("../mailtrap/emails.js")
+const crypto = require("crypto");
+const sendEmail = require("../utils/sendMail");
 dotenv.config();
 
 
@@ -126,6 +127,73 @@ exports.getUserProfile = async(req,res)=>{
 };
 
 
+// POST /api/auth/forgot-password
+exports.forgotPassword = async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) return res.status(404).json({ message: "No user with that email" });
+
+    const token = crypto.randomBytes(32).toString("hex");
+    user.resetPasswordToken = crypto.createHash("sha256").update(token).digest("hex");
+    user.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 min
+    await user.save();
+
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${token}`;
+
+    await sendEmail(
+  user.email,
+  "Learnify - Reset Your Password",
+  `Reset your password: ${resetUrl}\n\nExpires in 30 minutes. If you didn't request this, ignore this email.`,
+  `<h2>Password Reset Request</h2>
+   <p>Click the link below to reset your password. It expires in 30 minutes.</p>
+   <a href="${resetUrl}" style="background:#6366f1;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;">Reset Password</a>
+   <p>If you didn't request this, ignore this email.</p>`
+);
+    res.json({ message: "Reset link sent to your email" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// POST /api/auth/reset-password/:token
+exports.resetPassword = async (req, res) => {
+  try {
+
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(req.params.token)
+      .digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+    console.log("Token from URL:", req.params.token);
+console.log("Hashed token:", hashedToken);
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid or expired link"
+      });
+    }
+
+    user.password = await bcrypt.hash(req.body.password, 10);
+
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+
+    res.json({
+      message: "Password reset successful"
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
 // @desc    Get current user's profile
 // @route   GET /api/users/profile
 // @access  Private
