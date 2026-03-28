@@ -1,197 +1,162 @@
-import { Link } from "react-router-dom";
-import { BookOpen, PlayCircle, Award, Users } from "lucide-react";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "../utils/axiosInstance";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Register = () => {
+  const navigate = useNavigate();
+  const [inputValue, setInputValue] = useState({
+    email: "",
+    password: "",
+    name: "",
+    role: "student",
+  });
+
+  const { email, password, name, role } = inputValue;
+
+  const handleOnChange = (e) => {
+    const { name, value } = e.target;
+    setInputValue((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleError = (err) =>
+    toast.error(err, { position: "bottom-left" });
+
+  const handleSuccess = (msg) =>
+    toast.success(msg, { position: "bottom-right" });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const { data } = await axios.post("/users/register", inputValue);
+      if (data.success) {
+        handleSuccess(data.message || "Registration successful!");
+        setTimeout(() => navigate("/login"), 1500);
+      } else {
+        handleError(data.message || "Registration failed!");
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      handleError(
+        error.response?.data?.message || "Server error during registration"
+      );
+    }
+  };
+
   return (
-    <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 min-h-screen">
-
-      {/* HERO SECTION */}
-      <section className="max-w-7xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-10 items-center">
-        
-        <div>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">
-            Learn Without Limits with{" "}
-            <span className="text-indigo-600">Learnify</span>
+    <div className="min-h-screen flex bg-gradient-to-r from-blue-50 to-pink-50">
+      {/* Left Form Side */}
+      <div className="flex-1 flex justify-center items-center px-2">
+        <div className="w-full max-w-md p-8 rounded-2xl backdrop-blur-sm bg-white/70 shadow-xl">
+          <h1 className="text-2xl font-bold text-blue-900 text-center mb-2">
+            Create an Account
           </h1>
-
-          <p className="mt-6 text-lg text-gray-600">
-            Explore structured courses, interactive lessons, quizzes, and earn
-            certificates — all in one powerful learning platform.
+          
+          <p className="text-gray-600 text-center mb-6">
+            Join our learning community
           </p>
 
-          <div className="mt-8 flex gap-4">
-            <Link
-              to="/register"
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-500 text-white rounded-xl shadow-lg hover:scale-105 transition"
-            >
-              Get Started
-            </Link>
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <input
+                type="text"
+                name="name"
+                value={name}
+                onChange={handleOnChange}
+                placeholder="Full Name"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
 
-            <Link
-              to="/courses"
-              className="px-6 py-3 border border-indigo-600 text-indigo-600 rounded-xl hover:bg-indigo-50 transition"
-            >
-              Browse Courses
-            </Link>
-          </div>
+            <div className="mb-4 relative">
+              
+              <input
+                type="email"
+                name="email"
+                value={email}
+                onChange={handleOnChange}
+                placeholder="Email Address"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
 
-          <div className="flex gap-6 mt-8 text-gray-500 text-sm">
-            <span>500+ Students</span>
-            <span>40+ Courses</span>
-            <span>Certificates</span>
-          </div>
-        </div>
+            <div className="mb-4">
+              <input
+                type="password"
+                name="password"
+                value={password}
+                onChange={handleOnChange}
+                placeholder="Password"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
 
-        <div className="flex justify-center">
-          <img
-            src="/images/learning.png"
-            alt="Learning illustration"
-            className="w-full max-w-md"
-          />
-        </div>
-      </section>
-
-      {/* FEATURES */}
-      <section className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="text-3xl font-bold text-center mb-12">
-          Platform Features
-        </h2>
-
-        <div className="grid md:grid-cols-4 gap-6">
-          
-          <div className="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition">
-            <BookOpen className="text-indigo-600 mb-3" />
-            <h3 className="font-semibold">Structured Courses</h3>
-            <p className="text-gray-500 text-sm">
-              Organized lessons for better learning flow.
-            </p>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition">
-            <PlayCircle className="text-indigo-600 mb-3" />
-            <h3 className="font-semibold">Video Lessons</h3>
-            <p className="text-gray-500 text-sm">
-              Learn visually with engaging videos.
-            </p>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition">
-            <Award className="text-indigo-600 mb-3" />
-            <h3 className="font-semibold">Certificates</h3>
-            <p className="text-gray-500 text-sm">
-              Earn certificate after completing courses.
-            </p>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition">
-            <Users className="text-indigo-600 mb-3" />
-            <h3 className="font-semibold">Expert Tutors</h3>
-            <p className="text-gray-500 text-sm">
-              Learn from experienced instructors.
-            </p>
-          </div>
-
-        </div>
-      </section>
-
-      {/* COURSES PREVIEW */}
-      <section className="bg-white py-16">
-        <div className="max-w-6xl mx-auto px-6">
-          
-          <h2 className="text-3xl font-bold text-center mb-12">
-            Popular Courses
-          </h2>
-
-          <div className="grid md:grid-cols-3 gap-6">
-
-            {[1,2,3].map((item)=>(
-              <div
-                key={item}
-                className="rounded-2xl shadow hover:shadow-xl transition bg-gray-50 overflow-hidden"
-              >
-                <img
-                  src="/images/course.jpg"
-                  alt="course"
-                  className="h-40 w-full object-cover"
-                />
-
-                <div className="p-5">
-                  <h3 className="font-semibold text-lg">
-                    React for Beginners
-                  </h3>
-
-                  <p className="text-gray-500 text-sm mt-2">
-                    Learn React step by step with projects.
-                  </p>
-
-                  <button className="mt-4 text-indigo-600 font-medium">
-                    View Course →
-                  </button>
-                </div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Select Role
+              </label>
+              <div className="flex space-x-6">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="role"
+                    value="student"
+                    checked={role === "student"}
+                    onChange={handleOnChange}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-gray-700">Student</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="role"
+                    value="tutor"
+                    checked={role === "tutor"}
+                    onChange={handleOnChange}
+                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-gray-700">Tutor</span>
+                </label>
               </div>
-            ))}
+            </div>
 
-          </div>
+            <button
+              type="submit"
+              className="w-full py-3 bg-gradient-to-r from-indigo-600 to-blue-500 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-blue-600 transition-all shadow-lg mb-4"
+            >
+              Register
+            </button>
+
+            <p className="text-center text-gray-600 mt-2">
+              Already have an account?{" "}
+              <Link 
+                to="/login" 
+                className="text-blue-900 font-medium hover:underline"
+              >
+                Login
+              </Link>
+            </p>
+          </form>
         </div>
-      </section>
+      </div>
 
-      {/* HOW IT WORKS */}
-      <section className="max-w-6xl mx-auto px-6 py-16">
-        
-        <h2 className="text-3xl font-bold text-center mb-12">
-          How Learnify Works
-        </h2>
-
-        <div className="grid md:grid-cols-3 gap-6 text-center">
-
-          <div>
-            <div className="text-3xl font-bold text-indigo-600">1</div>
-            <h3 className="font-semibold mt-2">Create Account</h3>
-            <p className="text-gray-500 text-sm">
-              Sign up as student or tutor.
-            </p>
-          </div>
-
-          <div>
-            <div className="text-3xl font-bold text-indigo-600">2</div>
-            <h3 className="font-semibold mt-2">Start Learning</h3>
-            <p className="text-gray-500 text-sm">
-              Watch lessons and complete quizzes.
-            </p>
-          </div>
-
-          <div>
-            <div className="text-3xl font-bold text-indigo-600">3</div>
-            <h3 className="font-semibold mt-2">Get Certificate</h3>
-            <p className="text-gray-500 text-sm">
-              Receive certificate after completion.
-            </p>
-          </div>
-
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="bg-gradient-to-r from-indigo-600 to-blue-500 text-white py-16 text-center">
-        
-        <h2 className="text-3xl font-bold">
-          Start Learning Today 🚀
-        </h2>
-
-        <Link
-          to="/register"
-          className="inline-block mt-6 px-6 py-3 bg-white text-indigo-600 font-semibold rounded-xl shadow"
-        >
-          Join Learnify
-        </Link>
-
-      </section>
-
-      {/* FOOTER */}
-      <footer className="text-center text-gray-500 py-6">
-        © {new Date().getFullYear()} Learnify. All rights reserved.
-      </footer>
-
+      {/* Right Image Side */}
+      <div className="flex-1 flex justify-center items-center bg-gray-100">
+        <img
+          src="/images/login.png"
+          alt="Register Illustration"
+          className="w-11/12 max-w-lg rounded-2xl"
+        />
+      </div>
+      <ToastContainer />
     </div>
   );
 };

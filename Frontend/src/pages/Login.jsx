@@ -30,8 +30,8 @@ const handleLogin = async (e) => {
   password,
 });
 
-localStorage.setItem("token", data.token); // 🔥 save first
-await refreshUser();                        // 🔥 then refresh
+localStorage.setItem("token", data.token); 
+await refreshUser();                        
     const role = data.user.role.toLowerCase();
     const isAdmin = data.user.isAdmin;
 

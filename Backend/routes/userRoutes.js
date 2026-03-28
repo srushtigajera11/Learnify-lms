@@ -9,14 +9,12 @@ const {
   getProfile,
   updateProfile,
   changePassword,
-  verifyEmail,
   forgotPassword,
   resetPassword
 } = require('../controller/userController');
 
 // AUTH ROUTES
 router.post('/register', createUserProfile);
-router.post('/verify-email', verifyEmail);
 router.post('/login', loginUser);
 router.post('/logout', logoutUser);
 
