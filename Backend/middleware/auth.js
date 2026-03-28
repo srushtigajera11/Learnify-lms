@@ -3,7 +3,6 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const isAuthenticated = (req, res, next) => {
-  // 🔥 Check Authorization header first, then cookie
   const token = req.headers.authorization?.split(" ")[1] || req.cookies.token;
   
   if (!token) return res.status(401).json({ message: "No token, authorization denied" });

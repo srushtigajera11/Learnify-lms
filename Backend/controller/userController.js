@@ -63,28 +63,6 @@ exports.signup = async (req,res)=>{
     res.status(500).json({success:false ,message:err.message});
   }
 }
- exports.verifyEmail = async(req,res)=>{
- const code = Number(req.body.code);
-
-  try{
-    const user = await User.findOne({
-      verificationToken:code,
-      verificationTokenExpiry:{$gt:Date.now()}
-    })
-    if(!user){
-      return res.status(400).json({success:false,message:"invaild or expired verification token"})
-    }
-    user.isVerified = true;
-    user.verificationToken = undefined;
-    user.verificationTokenExpiry = undefined;
-    await user.save();
-    await user.sendWelcomeEamil(user.email ,user.name);
-    res.status(200).json({success:true,message:"email sent!",user:{...user._doc,password:undefined},});
-  }catch(error){
-    
-  }
-
- }
 
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
@@ -101,11 +79,11 @@ exports.loginUser = async (req, res) => {
       { expiresIn: "4h" }
     );
 
-    // 🔥 Send token in response body (for production)
+   
     res.json({
       success: true,
       message: "Logged in",
-      token: token,  // ✅ add this
+      token: token,  
       user: { user_id: user._id, role: user.role, isAdmin: user.isAdmin }
     });
   } catch (err) {
@@ -139,9 +117,6 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
 
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${token}`;
-
-  
-    console.log("Sending email to:", user.email);
 
    await sendEmail(
   user.email,
@@ -180,8 +155,6 @@ exports.resetPassword = async (req, res) => {
       resetPasswordToken: hashedToken,
       resetPasswordExpire: { $gt: Date.now() }
     });
-    console.log("Token from URL:", req.params.token);
-console.log("Hashed token:", hashedToken);
     if (!user) {
       return res.status(400).json({
         message: "Invalid or expired link"
