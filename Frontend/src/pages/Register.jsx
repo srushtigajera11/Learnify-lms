@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { BookOpen, PlayCircle, Award, Users } from "lucide-react";
 
-const LandingPage = () => {
+const Register = () => {
   return (
     <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 min-h-screen">
 
@@ -196,4 +196,4 @@ const LandingPage = () => {
   );
 };
 
-export default LandingPage;
+export default Register;
