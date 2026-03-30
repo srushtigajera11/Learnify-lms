@@ -393,7 +393,7 @@ const PasswordForm = () => {
 const StudentProfile = () => {
   const { user: authUser, loading: authLoading, isAuthenticated, setUser: setAuthUser } = useAuth();
   const [user, setUser]   = useState(null);
-  const [stats, setStats] = useState({ enrolled: 0, completed: 0, xp: 0, streak: 0 });
+  const [stats, setStats] = useState({ enrolled: 3, completed: 2, xp: 90, streak: 1 });
   const [tab, setTab]     = useState(0);
 
   useEffect(() => {
