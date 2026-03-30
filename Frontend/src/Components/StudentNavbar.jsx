@@ -50,9 +50,9 @@ const StudentNavbar = () => {
     }
     setIsSearching(true);
     try {
-      const response = await axiosInstance.get(
-        `/students/courses?q=${encodeURIComponent(query)}`
-      );
+    const response = await axiosInstance.get(
+  `/students/search-courses?q=${encodeURIComponent(query)}`
+);
 
       if (response.data?.success) {
         setSearchResults(response.data.courses || []);

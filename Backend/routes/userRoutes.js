@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authorizeRoles, isAuthenticated } = require('../middleware/auth');
+const { authorizeRoles, isAuthenticated,isBlocked } = require('../middleware/auth');
 const {
   createUserProfile,
   getUserProfile,
@@ -19,9 +19,9 @@ router.post('/login', loginUser);
 router.post('/logout', logoutUser);
 
 // PROFILE ROUTES
-router.get('/profile', isAuthenticated, getProfile);
-router.put('/profile', isAuthenticated, updateProfile);
-router.put('/change-password', isAuthenticated, changePassword);
+router.get('/profile', isAuthenticated, isBlocked, getProfile);
+router.put('/profile', isAuthenticated, isBlocked, updateProfile);
+router.put('/change-password', isAuthenticated, isBlocked, changePassword);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:token", resetPassword);
 

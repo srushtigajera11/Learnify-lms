@@ -243,6 +243,3 @@ exports.getQuizContent = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
-// NOTE: markLessonComplete and submitQuizAttempt live in progressController.js
-// Import them directly from there in your routes file.

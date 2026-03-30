@@ -1,4 +1,3 @@
-
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
@@ -9,11 +8,9 @@ const crypto = require("crypto");
 const sendEmail = require("../utils/sendMail");
 dotenv.config();
 
-
-
 exports.createUserProfile = async (req, res) => {
   try {
-     const { error } = registerSchema.validate(req.body);
+    const { error } = registerSchema.validate(req.body);
     if (error) return res.status(400).json({ message: error.details[0].message });
 
     const { name, email, password, role } = req.body;
@@ -22,47 +19,47 @@ exports.createUserProfile = async (req, res) => {
     if (existingUser) return res.status(400).json({ message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ name, email, password: hashedPassword, role : role.toLowerCase() });
+    const user = new User({ name, email, password: hashedPassword, role: role.toLowerCase() });
 
-    await user.save(); // Save BEFORE sending response
-
-    res.status(201).json({  success: true,  message: "User profile created"}); // ✅ Only ONE response
+    await user.save();
+    res.status(201).json({ success: true, message: "User profile created" });
   } catch (error) {
-   
     res.status(500).json({ error: error.message });
   }
 };
-exports.signup = async (req,res)=>{
-  const {email,password,name} = req.body;
-  try{
-    if(!email||!password||!name){
-      throw new Error("All fields are required");
-    }
-    const userAlreadyExists = await User.findOne({email});
-    if(userAlreadyExists){
-      return res.status(400).json({message : "User already exists"});
-    }
-    const hashedPassword = await bcrypt.hash(password,10);
-    const verificationToken = Math.floor(100000 + Math.random()*900000).toString();
+
+exports.signup = async (req, res) => {
+  const { email, password, name } = req.body;
+  try {
+    if (!email || !password || !name) throw new Error("All fields are required");
+
+    const userAlreadyExists = await User.findOne({ email });
+    if (userAlreadyExists) return res.status(400).json({ message: "User already exists" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+
     const user = new User({
       email,
-      password : hashedPassword,
-    name,
-  verificationToken,
-  verificationTokenExpiry : Date.now() + 3600000
+      password: hashedPassword,
+      name,
+      verificationToken,
+      verificationTokenExpiry: Date.now() + 3600000,
     });
-    await user.save();
-    generateTokenAndSetCookie(res,user._id);
-    await sendVerificationEmail(user.email,verificationToken);
-    res.status(201).json({success:true,message:"user registered successfully.",user:{
-      ...user._doc,
-      password : undefined,
-    },});
 
-  }catch(err){
-    res.status(500).json({success:false ,message:err.message});
+    await user.save();
+    generateTokenAndSetCookie(res, user._id);
+    await sendVerificationEmail(user.email, verificationToken);
+
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully.",
+      user: { ...user._doc, password: undefined },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
-}
+};
 
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
@@ -73,39 +70,42 @@ exports.loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid password" });
 
+    if (user.isBlocked) {
+      return res.status(403).json({ message: "Your account is blocked. Contact support." });
+    }
+
     const token = jwt.sign(
       { id: user._id, role: user.role, isAdmin: user.isAdmin },
       process.env.JWT_SECRET,
       { expiresIn: "4h" }
     );
 
-   
     res.json({
       success: true,
       message: "Logged in",
-      token: token,  
-      user: { user_id: user._id, role: user.role, isAdmin: user.isAdmin }
+      token,
+      user: { user_id: user._id, role: user.role, isAdmin: user.isAdmin },
     });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
-}
+};
+
 exports.logoutUser = (req, res) => {
   res.json({ success: true, message: "Logged out successfully" });
 };
 
-exports.getUserProfile = async(req,res)=>{
-    try{
-        const user = await User.findById(req.params.id);
-        if(!user) return res.status(404).json({error : 'user not found'});
-        res.json(user);
-    }catch(err){
-        res.status(500).json({error : err.message})
-    }
+exports.getUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
-
-// POST /api/auth/forgot-password
+// POST /api/users/forgot-password
 exports.forgotPassword = async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
@@ -118,74 +118,57 @@ exports.forgotPassword = async (req, res) => {
 
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${token}`;
 
-   await sendEmail(
-  user.email,
-  "Learnify - Reset Your Password",
-  `
-  <h2>Password Reset Request</h2>
-  <p>Click the button below to reset your password.</p>
-  <a href="${resetUrl}" 
-     style="background:#6366f1;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;">
-     Reset Password
-  </a>
-  <p>This link expires in 30 minutes.</p>
-  `
-);
-    res.json({ message: "Reset link sent" });
+    await sendEmail(
+      user.email,
+      "Learnify - Reset Your Password",
+      `
+      <h2>Password Reset Request</h2>
+      <p>Click the button below to reset your password.</p>
+      <a href="${resetUrl}"
+         style="background:#6366f1;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;">
+         Reset Password
+      </a>
+      <p>This link expires in 30 minutes.</p>
+      `
+    );
 
+    res.json({ message: "Reset link sent" });
   } catch (err) {
-    console.error("FORGOT PASSWORD ERROR:", err);   // IMPORTANT
-    res.status(500).json({
-      message: "Server error",
-      error: err.message
-    });
+    console.error("FORGOT PASSWORD ERROR:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
-// POST /api/auth/reset-password/:token
+// POST /api/users/reset-password/:token
 exports.resetPassword = async (req, res) => {
   try {
-
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(req.params.token)
-      .digest("hex");
+    const hashedToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
 
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
-      resetPasswordExpire: { $gt: Date.now() }
+      resetPasswordExpire: { $gt: Date.now() },
     });
-    if (!user) {
-      return res.status(400).json({
-        message: "Invalid or expired link"
-      });
-    }
+
+    if (!user) return res.status(400).json({ message: "Invalid or expired link" });
 
     user.password = await bcrypt.hash(req.body.password, 10);
-
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
-
     await user.save();
 
-    res.json({
-      message: "Password reset successful"
-    });
-
+    res.json({ message: "Password reset successful" });
   } catch (error) {
-    res.status(500).json({
-      message: "Server error",
-      error: error.message
-    });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 // @desc    Get current user's profile
 // @route   GET /api/users/profile
 // @access  Private
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
-    res.status(200).json({user});
+    res.status(200).json({ user });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
@@ -195,24 +178,37 @@ exports.getProfile = async (req, res) => {
 // @route   PUT /api/users/profile
 // @access  Private
 exports.updateProfile = async (req, res) => {
-  const { name, email, tutorProfile } = req.body;
+  const { name, email, tutorProfile, studentProfile } = req.body;
 
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // Basic fields
-    if (name) user.name = name;
+    if (name)  user.name  = name;
     if (email) user.email = email;
 
-    // Tutor-specific fields (only update if role is tutor)
+    // ── Student profile fields ──
+   // ── Student profile fields ──
+if (user.role === "student" && studentProfile) {
+  user.studentProfile = {
+    enrolledCourses:  user.studentProfile?.enrolledCourses  || [],
+    completedCourses: user.studentProfile?.completedCourses || [],
+    educationLevel:   studentProfile.educationLevel ?? user.studentProfile?.educationLevel,
+    learningGoals:    studentProfile.learningGoals  ?? user.studentProfile?.learningGoals,
+    interests:        studentProfile.interests      ?? user.studentProfile?.interests,
+  };
+   user.markModified("studentProfile");
+}
+
+    // ── Tutor profile fields ──
     if (user.role === "tutor" && tutorProfile) {
       user.tutorProfile = {
-        headline:   tutorProfile.headline   ?? user.tutorProfile?.headline,
-        bio:        tutorProfile.bio        ?? user.tutorProfile?.bio,
-        location:   tutorProfile.location   ?? user.tutorProfile?.location,
-        experience: tutorProfile.experience ?? user.tutorProfile?.experience,
-        expertise:  tutorProfile.expertise  ?? user.tutorProfile?.expertise,
+        headline:    tutorProfile.headline    ?? user.tutorProfile?.headline,
+        bio:         tutorProfile.bio         ?? user.tutorProfile?.bio,
+        location:    tutorProfile.location    ?? user.tutorProfile?.location,
+        experience:  tutorProfile.experience  ?? user.tutorProfile?.experience,
+        expertise:   tutorProfile.expertise   ?? user.tutorProfile?.expertise,
         socialLinks: {
           youtube:  tutorProfile.socialLinks?.youtube  ?? user.tutorProfile?.socialLinks?.youtube,
           linkedin: tutorProfile.socialLinks?.linkedin ?? user.tutorProfile?.socialLinks?.linkedin,
@@ -220,19 +216,29 @@ exports.updateProfile = async (req, res) => {
           website:  tutorProfile.socialLinks?.website  ?? user.tutorProfile?.socialLinks?.website,
         },
       };
+        user.markModified("tutorProfile");
     }
-
+console.log("before save:", {
+  role: user.role,
+  studentProfile: user.studentProfile,
+  isStudentBlock: user.role === "student" && !!studentProfile,
+});
     const updatedUser = await user.save();
+    console.log("after save:", {
+  studentProfile: updatedUser.studentProfile,
+});
 
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
       user: {
-        _id:          updatedUser._id,
-        name:         updatedUser.name,
-        email:        updatedUser.email,
-        role:         updatedUser.role,
-        tutorProfile: updatedUser.tutorProfile,
+        _id:            updatedUser._id,
+        name:           updatedUser.name,
+        email:          updatedUser.email,
+        role:           updatedUser.role,
+        createdAt:      updatedUser.createdAt,
+        tutorProfile:   updatedUser.tutorProfile,
+        studentProfile: updatedUser.studentProfile, // ✅ was missing — caused form to reset after save
       },
     });
   } catch (err) {
@@ -240,6 +246,7 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({ message: "Update failed" });
   }
 };
+
 // @route   PUT /api/users/change-password
 // @access  Private
 exports.changePassword = async (req, res) => {
@@ -249,16 +256,11 @@ exports.changePassword = async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Check if current password matches
     const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Current password is incorrect" });
-    }
+    if (!isMatch) return res.status(400).json({ message: "Current password is incorrect" });
 
-    // Hash new password
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
-
     await user.save();
 
     res.status(200).json({ message: "Password changed successfully" });

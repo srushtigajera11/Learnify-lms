@@ -25,7 +25,7 @@ import Dashboard from "./pages/Student/Dashboard";
 import WishList from "./pages/Student/WishList";
 import Reviews from "./pages/Student/Reviews";
 import PurchaseHistory from "./pages/Student/PurchaseHistory";
-import Profile from "./pages/Student/Profile";
+import Profile from "./pages/Student/StudentProfile";
 // import CourseDetailStudent from "./pages/Student/CourseDetail";
 import ViewQuiz from "./pages/Tutor/ViewQuiz";
 import EditQuiz from "./pages/Tutor/EditQuiz";
@@ -40,6 +40,7 @@ import TutorLessonPreview from "./pages/Tutor/TutorLessonPreview";
 import UnifiedCourseLearn from "./pages/Student/CourseContent/CoursePlayer";
 import ForgotPassword from "./pages/ForgetPassword";
 import ResetPassword from "./pages/ResetPassword";
+import StudentProfile from "./pages/Student/StudentProfile";
 function AppRoutes() {
   const { user } = useAuth();
 
@@ -61,7 +62,7 @@ function AppRoutes() {
           <Route path="wishlist" element={<WishList />} />
           <Route path="review" element={<Reviews />} />
           <Route path="purchaseHistory" element={<PurchaseHistory />} />
-          <Route path="profile" element={<Profile />} />
+          <Route path="profile" element={<StudentProfile />} />
           <Route path="*" element={<Dashboard />} />
         </Route>
 

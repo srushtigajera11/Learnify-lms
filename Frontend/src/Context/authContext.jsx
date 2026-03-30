@@ -4,15 +4,13 @@ import axiosInstance from "../utils/axiosInstance";
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser]                   = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]             = useState(true);
 
   const checkAuth = async () => {
     try {
       const res = await axiosInstance.get("/users/profile");
-
-      // 🔥 IMPORTANT: your API returns { user }
       if (res.data?.user) {
         setUser(res.data.user);
         setIsAuthenticated(true);
@@ -20,7 +18,7 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setIsAuthenticated(false);
       }
-    } catch (error) {
+    } catch {
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -30,24 +28,25 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAuth();
-  }, []); 
+  }, []);
 
   const logout = async () => {
-  try {
-    await axiosInstance.post("/users/logout");
-  } catch (err) {
-    console.error("Logout error", err);
-  } finally {
-    localStorage.removeItem("token"); // 🔥 add this
-    setUser(null);
-    setIsAuthenticated(false);
-  }
-};
+    try {
+      await axiosInstance.post("/users/logout");
+    } catch (err) {
+      console.error("Logout error", err);
+    } finally {
+      localStorage.removeItem("token");
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+  };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        setUser,          // ✅ exposed so profile pages can sync context after save
         isAuthenticated,
         loading,
         logout,

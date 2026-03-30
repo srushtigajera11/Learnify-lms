@@ -268,16 +268,39 @@ exports.getLesson = async (req, res) => {
 // ─── Search courses ──────────────────────────────────────────────────────────
 exports.getSearchCourse = async (req, res) => {
   try {
-    const { q = '', limit = 20 } = req.query;
+    const { q = '', limit = 10 } = req.query;
 
-    const query = q.trim()
-      ? { $or: [{ title: { $regex: q, $options: 'i' } }, { description: { $regex: q, $options: 'i' } }, { category: { $regex: q, $options: 'i' } }] }
-      : {};
+    if (!q.trim()) {
+      return res.status(200).json({
+        success: true,
+        totalCourses: 0,
+        courses: []
+      });
+    }
 
-    const courses = await Course.find(query).limit(Number(limit)).select('title description category price thumbnail level rating');
-    res.status(200).json({ success: true, totalCourses: courses.length, courses });
+    const query = {
+      $or: [
+        { title: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+        { category: { $regex: q, $options: 'i' } }
+      ]
+    };
+
+    const courses = await Course.find(query)
+      .limit(Number(limit))
+      .select('title description category price thumbnail level rating totalLessons');
+
+    res.status(200).json({
+      success: true,
+      totalCourses: courses.length,
+      courses
+    });
+
   } catch (err) {
     console.error('getSearchCourse error:', err);
-    res.status(500).json({ success: false, message: 'Failed to search courses' });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to search courses'
+    });
   }
 };

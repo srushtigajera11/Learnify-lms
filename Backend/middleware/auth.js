@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
+const User = require('../models/User');
 dotenv.config();
 
 const isAuthenticated = (req, res, next) => {
@@ -29,4 +30,34 @@ const authorizeRoles = (...roles) => {
   };
 };
 
-module.exports = {isAuthenticated , authorizeRoles };
+const isBlocked = async (req, res, next) => {
+  try {
+
+    // req.user comes from JWT middleware
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({
+        message: "Your account has been blocked by admin"
+      });
+    }
+
+    next();
+
+  } catch (error) {
+
+    console.error("Block check error:", error);
+
+    return res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+};
+module.exports = {isAuthenticated , authorizeRoles, isBlocked };
