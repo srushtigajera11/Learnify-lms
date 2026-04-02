@@ -21,11 +21,8 @@ const StudentContentRoute = require('./routes/StudentContentRoute');
 const certificateRoutes = require('./routes/certificateRoutes');
 const gamificationRoutes = require('./routes/gamificationRoute');
 const path = require("path");
-
 const PORT = process.env.PORT || 5000;
-
 connectDB();
-
 const app = express();
 app.use(cookieParser());
 app.use(cors({
@@ -37,7 +34,6 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' })); // or higher if needed
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
 //routes
 app.use('/api/users', userRoutes);
 app.use('/api/courses', courseRoutes);
@@ -54,10 +50,8 @@ app.use('/api/quiz-results', quizResultRoute);
 app.use('/api/students', StudentContentRoute);
 app.use('/api/students', gamificationRoutes);
 app.use('/api/certificates', certificateRoutes);
-
 // Error handling middleware
 app.use(errorHandler);
-
 app.listen(PORT, () => {
     console.log(`Server running on port ${process.env.PORT}`);
 });

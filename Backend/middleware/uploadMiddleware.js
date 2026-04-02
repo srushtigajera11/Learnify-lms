@@ -4,16 +4,6 @@ const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('../utils/cloudinary');
 
-// // profile pic storage
-// const profilePicStorage = multer.diskStorage({
-//   destination: './uploads/profilePics',
-//   filename: (req, file, cb) => {
-//     cb(null, `profile_${Date.now()}${path.extname(file.originalname)}`);
-//   },
-// });
-
-// const uploadProfilePic = multer({ storage: profilePicStorage });    
-
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {

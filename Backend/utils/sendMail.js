@@ -10,7 +10,6 @@ const sendEmail = async (to, subject, html) => {
     html
   });
 
-  console.log("Email sent:", response);
 };
 
 module.exports = sendEmail;
