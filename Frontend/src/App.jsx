@@ -63,7 +63,7 @@ function AppRoutes() {
           <Route path="wishlist" element={<WishList />} />
           <Route path="review" element={<Reviews />} />
           <Route path="purchaseHistory" element={<PurchaseHistory />} />
-          <Route path="/billing/:id" element={<StudentBilling/>}/>
+          <Route path="billing/:id" element={<StudentBilling/>}/>
           <Route path="profile" element={<StudentProfile />} />
           <Route path="*" element={<Dashboard />} />
         </Route>

@@ -79,13 +79,12 @@ const Dashboard = () => {
             currency: "INR",
           };
           try {
-            await axiosInstance.post("/payment/verify-enroll", verificationData);
-            const res = await axiosInstance.post(
-            "/payment/verify-enroll",
-            verificationData
-          );
+           const res = await axiosInstance.post(
+              "/payment/verify-enroll",
+              verificationData
+            );
 
-          navigate(`/student/billing/${res.data.paymentId}`);
+            navigate(`/student/billing/${res.data.paymentId}`);
           } catch (err) {
             console.error("Verification failed", err);
             alert("Payment verified, but enrollment failed");
