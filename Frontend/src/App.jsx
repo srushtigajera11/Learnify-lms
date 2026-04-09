@@ -41,6 +41,7 @@ import UnifiedCourseLearn from "./pages/Student/CourseContent/CoursePlayer";
 import ForgotPassword from "./pages/ForgetPassword";
 import ResetPassword from "./pages/ResetPassword";
 import StudentProfile from "./pages/Student/StudentProfile";
+import StudentBilling from "./pages/Student/StudentBilling";
 function AppRoutes() {
   const { user } = useAuth();
 
@@ -62,6 +63,7 @@ function AppRoutes() {
           <Route path="wishlist" element={<WishList />} />
           <Route path="review" element={<Reviews />} />
           <Route path="purchaseHistory" element={<PurchaseHistory />} />
+          <Route path="/billing/:id" element={<StudentBilling/>}/>
           <Route path="profile" element={<StudentProfile />} />
           <Route path="*" element={<Dashboard />} />
         </Route>

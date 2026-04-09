@@ -71,7 +71,6 @@ router.patch(
   lessonController.updateProgress
 );
 
-// ✅ Get Single Lesson (KEEP THIS LAST)
 router.get(
   "/:lessonId",
   isAuthenticated,

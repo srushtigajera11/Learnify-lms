@@ -30,7 +30,9 @@ exports.getKey  = async (req, res) => {
 
 exports.verifyAndEnroll = async (req, res) => {
   try {
+
     const studentId = req.user.id;
+
     const {
       courseId,
       razorpay_order_id,
@@ -40,58 +42,106 @@ exports.verifyAndEnroll = async (req, res) => {
       currency = 'INR'
     } = req.body;
 
-    // 1. Verify payment
+    // verify signature
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
 
     if (expectedSignature !== razorpay_signature) {
+
       await Payment.create({
-        userId: studentId,  // ✅ fixed here
+        userId: studentId,
         courseId,
         razorpayOrderId: razorpay_order_id,
         razorpayPaymentId: razorpay_payment_id,
         razorpaySignature: razorpay_signature,
         amount,
         currency,
-        status: 'failed'
+        status: "failed"
       });
 
-      return res.status(400).json({ success: false, message: 'Payment verification failed' });
+      return res.status(400).json({
+        success: false,
+        message: "Payment verification failed"
+      });
     }
 
-    // 2. Check course
     const course = await Course.findById(courseId);
-    if (!course || course.status !== 'published') {
-      return res.status(404).json({ success: false, message: 'Course not found or unpublished' });
-    }
 
-    // 3. Check if already enrolled
-    const alreadyEnrolled = await Enrollment.findOne({ courseId, studentId });
-    if (alreadyEnrolled) {
-      return res.status(400).json({ success: false, message: 'Already enrolled in this course' });
-    }
+    const invoiceNumber = "INV-" + Date.now();
 
-    // 4. Save successful payment
-    await Payment.create({
-      userId: studentId,  // ✅ fixed here too
+    const payment = await Payment.create({
+
+      userId: studentId,
       courseId,
+
       razorpayOrderId: razorpay_order_id,
       razorpayPaymentId: razorpay_payment_id,
       razorpaySignature: razorpay_signature,
+
       amount,
       currency,
-      status: 'success'
+      status: "success",
+
+      invoiceNumber
     });
 
-    // 5. Enroll
-    const enrollment = await Enrollment.create({ courseId, studentId });
-    console.log("RAZORPAY_KEY_SECRET from env:", process.env.RAZORPAY_KEY_SECRET);
+    const enrollment = await Enrollment.create({
+      courseId,
+      studentId
+    });
 
-    res.status(201).json({ success: true, message: 'Enrolled successfully', enrollment });
+    res.status(201).json({
+
+      success: true,
+
+      message: "Payment successful",
+
+      enrollment,
+
+      paymentId: payment._id
+
+    });
+
   } catch (error) {
-    console.error('Enrollment Error:', error);
-    res.status(500).json({ success: false, message: 'Server Error' });
+
+    console.log(error);
+
+    res.status(500).json({
+
+      success: false,
+      message: "Server Error"
+
+    });
+
+  }
+};
+
+exports.getInvoice = async (req, res) => {
+
+  try {
+
+    const payment = await Payment
+      .findById(req.params.id)
+      .populate("courseId")
+      .populate("userId");
+
+    if (!payment)
+      return res.status(404).json({
+        message: "Invoice not found"
+      });
+
+    res.json({
+      success: true,
+      payment
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
   }
 };

@@ -80,8 +80,12 @@ const Dashboard = () => {
           };
           try {
             await axiosInstance.post("/payment/verify-enroll", verificationData);
-            alert("Enrollment successful!");
-            navigate(`/student/course/${courseId}`);
+            const res = await axiosInstance.post(
+            "/payment/verify-enroll",
+            verificationData
+          );
+
+          navigate(`/student/billing/${res.data.paymentId}`);
           } catch (err) {
             console.error("Verification failed", err);
             alert("Payment verified, but enrollment failed");

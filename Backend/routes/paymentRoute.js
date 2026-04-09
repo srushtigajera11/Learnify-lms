@@ -9,5 +9,6 @@ const paymentController = require('../controller/paymentController');
 router.post('/create-order', isAuthenticated, authorizeRoles('student'),paymentController.createOrder);
 router.get('/get-key', isAuthenticated, authorizeRoles('student'), paymentController.getKey);
 router.post('/verify-enroll', isAuthenticated, authorizeRoles('student'), paymentController.verifyAndEnroll);
+router.get("/invoice/:id",isAuthenticated,authorizeRoles("student"),paymentController.getInvoice);
 
 module.exports = router;

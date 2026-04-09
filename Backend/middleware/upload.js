@@ -31,29 +31,8 @@
     },
   });
 
-  /* =========================================
-    COURSE THUMBNAIL STORAGE
-  ========================================= */
-
-  const thumbnailStorage = new CloudinaryStorage({
-    cloudinary,
-    params: {
-      folder: "Learnify/Thumbnails",
-      allowed_formats: ["jpg", "jpeg", "png"],
-      transformation: [
-        { width: 600, height: 400, crop: "limit" },
-      ],
-    },
-  });
-
-  const uploadThumbnail = multer({
-    storage: thumbnailStorage,
-    limits: {
-      fileSize: 5 * 1024 * 1024, // 5MB limit
-    },
-  });
 
   module.exports = {
     upload,
-    uploadThumbnail,
+   
   };

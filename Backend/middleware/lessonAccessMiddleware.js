@@ -18,16 +18,9 @@ const verifyLessonAccess = async (req, res, next) => {
 
     const course = await Course.findById(lesson.courseId);
 
-    /* =============================
-       1️⃣ ADMIN CAN ACCESS EVERYTHING
-    ============================== */
     if (userRole === "admin") {
       return next();
     }
-
-    /* =============================
-       2️⃣ INSTRUCTOR CAN ACCESS OWN COURSE
-    ============================== */
     if (
       userRole === "instructor" &&
       course.instructor.toString() === userId
@@ -35,9 +28,7 @@ const verifyLessonAccess = async (req, res, next) => {
       return next();
     }
 
-    /* =============================
-       3️⃣ PREVIEW LESSON (PUBLIC ACCESS)
-    ============================== */
+  
     const isPreviewLesson = lesson.materials.some(
       (m) => m.isPreview === true
     );
@@ -46,9 +37,6 @@ const verifyLessonAccess = async (req, res, next) => {
       return next();
     }
 
-    /* =============================
-       4️⃣ STUDENT MUST BE ENROLLED
-    ============================== */
     const enrollment = await Enrollment.findOne({
       studentId: userId,
       courseId: lesson.courseId,
