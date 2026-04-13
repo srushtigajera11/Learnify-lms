@@ -29,6 +29,9 @@ const CourseCreate = () => {
     'Communication',
     'Python',
     'UI/UX',
+    'Data Science',
+    'Marketing',
+    'Soft Skills',
   ];
 
   const levels = ['beginner', 'intermediate', 'advanced'];
