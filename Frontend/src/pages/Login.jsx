@@ -5,7 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 import axiosInstance from "../utils/axiosInstance";
 import { useAuth } from "../Context/authContext";
 import { Mail, Lock, LogIn } from "lucide-react";
-
+import { Mail, Lock, LogIn, Eye, EyeOff } from "lucide-react";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,7 +13,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { login: setUser } = useAuth();
   const { refreshUser } = useAuth();
-
+const [showPassword, setShowPassword] = useState(false);
   const handleError = (err) =>
     toast.error(err, { position: "bottom-left" });
 
@@ -88,24 +88,43 @@ await refreshUser();
             </div>
 
             {/* Password Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl bg-white/50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                  placeholder="Enter your password"
-                  required
-                />
-              </div>
-            </div>
+            {/* Password Field */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Password
+  </label>
+
+  <div className="relative">
+    
+    {/* Lock Icon */}
+    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <Lock className="h-5 w-5 text-gray-400" />
+    </div>
+
+    {/* Input */}
+    <input
+      type={showPassword ? "text" : "password"}
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl bg-white/50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+      placeholder="Enter your password"
+      required
+    />
+
+    {/* Eye Icon */}
+    <div
+      className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer"
+      onClick={() => setShowPassword(!showPassword)}
+    >
+      {showPassword ? (
+        <EyeOff className="h-5 w-5 text-gray-500" />
+      ) : (
+        <Eye className="h-5 w-5 text-gray-500" />
+      )}
+    </div>
+
+  </div>
+</div>
 
             {/* Forgot Password Link */}
             <div className="text-right">
