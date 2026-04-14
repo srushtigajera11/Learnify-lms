@@ -4,7 +4,6 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axiosInstance from "../utils/axiosInstance";
 import { useAuth } from "../Context/authContext";
-import { Mail, Lock, LogIn } from "lucide-react";
 import { Mail, Lock, LogIn, Eye, EyeOff } from "lucide-react";
 const Login = () => {
   const [email, setEmail] = useState("");

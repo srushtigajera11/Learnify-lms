@@ -48,7 +48,11 @@ async function syncToStudentProgress(studentId, courseId, quizId, { score, passe
 
     const existingCert = await Certificate.findOne({ studentId, courseId });
 
-    if (allLessonsDone && allQuizzesDone && !existingCert) {
+    if (
+   allLessonsDone &&
+   allQuizzesDone &&
+   !existingCert &&
+   !sp.certificateIssued) {
       const course = await Course.findById(courseId);
       certificate = await Certificate.create({
         studentId,

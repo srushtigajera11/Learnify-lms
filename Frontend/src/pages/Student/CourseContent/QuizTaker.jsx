@@ -53,22 +53,32 @@ export default function QuizTaker({ quiz, courseId, quizId, onComplete }) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handleSubmit = async () => {
-    if (isSubmitting) return;
-    
-    setIsSubmitting(true);
-    try {
-      const res = await submitQuiz(courseId, quizId, answers);
-      setResult(res);
-      if (onComplete) onComplete();
-    } catch (error) {
-      console.error("Quiz submission error:", error);
-      alert("Failed to submit quiz. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+const handleSubmit = async () => {
+  if (isSubmitting || result) return; // prevent duplicate call
 
+  setIsSubmitting(true);
+
+  try {
+    const res = await submitQuiz(courseId, quizId, answers);
+
+    setResult(res);
+
+    if (onComplete) onComplete();
+
+  }catch (error) {
+
+ console.error(error);
+
+ const msg = error.response?.data?.message;
+
+ if(msg !== "Maximum attempts reached for this quiz"){
+    alert(msg || "Failed to submit quiz");
+ }
+
+}finally {
+    setIsSubmitting(false);
+  }
+};
   const handleRetry = () => {
     setAnswers({});
     setResult(null);
