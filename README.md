@@ -165,7 +165,7 @@ Learnify uses **JWT-based authentication**:
 
 ---
 
-## 🌐 API Routes
+## 🌐 API Routes/-
 
 ### Users
 | Method | Route | Description |
